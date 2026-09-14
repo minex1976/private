@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Winzo Admin Dashboard</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#21103c,#07121f 65%);color:#f5efff;font-family:Segoe UI,Roboto,system-ui,sans-serif;min-height:100vh}
+.hidden{display:none!important}.wrap{max-width:1250px;margin:auto;padding:18px}.card{background:rgba(20,12,39,.84);border:1px solid rgba(180,120,255,.18);border-radius:22px;box-shadow:0 18px 55px rgba(0,0,0,.35);backdrop-filter:blur(16px)}
+.login{max-width:420px;margin:9vh auto;padding:28px}.login h1{text-align:center;margin:0 0 8px}.sub{text-align:center;color:#a995c3;font-size:13px;margin-bottom:22px}
+input,select{width:100%;padding:12px 14px;border-radius:13px;border:1px solid rgba(180,120,255,.22);background:#100b21;color:#fff;outline:none;margin-bottom:10px}button{border:0;border-radius:12px;padding:10px 15px;font-weight:800;cursor:pointer}
+.primary{background:linear-gradient(135deg,#ffdf6b,#e7951b);color:#241500}.danger{background:#63243b;color:#ffdce6}.ghost{background:rgba(120,80,200,.15);color:#e8ddf8;border:1px solid rgba(180,120,255,.14)}
+header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:15px}.brand{font-size:23px;font-weight:900;letter-spacing:2px}.brand span{color:#ffcc44}.status{font-size:12px;color:#8affb0}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:15px}.stat{padding:15px}.stat small{display:block;color:#9d8bb7}.stat b{font-size:25px;color:#ffcc44}
+.toolbar{padding:12px;display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}.toolbar input,.toolbar select{margin:0;max-width:220px}
+table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.card.pad{padding:15px}th,td{text-align:left;padding:11px 9px;border-bottom:1px solid rgba(180,120,255,.09);font-size:13px;white-space:nowrap}th{color:#9d8bb7;font-size:11px;text-transform:uppercase}.pending{color:#ffd866}.approved{color:#8affb0}.rejected{color:#ff8a8a}
+.actions{display:flex;gap:6px}.actions button{padding:7px 10px;font-size:12px}.empty{text-align:center;padding:35px;color:#8f7ea8}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;padding:18px;z-index:20}.overlay.open{display:flex}.modal{max-width:560px;width:100%;padding:22px;max-height:90vh;overflow:auto}.modal h2{margin-top:0}.kv{display:grid;grid-template-columns:130px 1fr;gap:8px;font-size:13px}.kv div:nth-child(odd){color:#9d8bb7}.proof{max-width:100%;border-radius:14px;margin-top:12px;border:1px solid rgba(255,255,255,.1)}
+.note{margin-top:14px;padding:11px;border-radius:12px;background:rgba(255,204,68,.07);color:#d9c994;font-size:12px;line-height:1.5}
+@media(max-width:800px){.stats{grid-template-columns:repeat(2,1fr)}th,td{font-size:12px}.wrap{padding:10px}.brand{font-size:19px}}
+</style>
+</head>
+<body>
+<div id="loginView" class="wrap">
+  <div class="login card">
+    <h1>WINZO <span style="color:#ffcc44">ADMIN</span></h1>
+    <div class="sub">Transaction control dashboard</div>
+    <input id="adminUser" placeholder="Admin username" autocomplete="username">
+    <input id="adminPass" type="password" placeholder="Admin password" autocomplete="current-password">
+    <button class="primary" style="width:100%" id="loginBtn">Sign in</button>
+    <div id="loginError" style="color:#ff8a8a;text-align:center;margin-top:10px;font-size:13px"></div>
+    <div class="note">Admin credentials are stored only in this browser's local storage. For production security, move authorization to Firebase Authentication + database rules.</div>
+  </div>
+</div>
+
+<div id="appView" class="wrap hidden">
+<header>
+  <div><div class="brand">WINZO <span>CONTROL</span></div><div class="status" id="connection">Connecting…</div></div>
+  <button class="ghost" id="logoutBtn">Logout</button>
+</header>
+
+<div class="stats">
+  <div class="stat card"><small>Pending deposits</small><b id="pendingDeposits">0</b></div>
+  <div class="stat card"><small>Pending withdrawals</small><b id="pendingWithdrawals">0</b></div>
+  <div class="stat card"><small>Users</small><b id="userCount">0</b></div>
+  <div class="stat card"><small>Live rooms</small><b id="roomCount">0</b></div>
+</div>
+
+<div class="toolbar card">
+  <select id="filter"><option value="pending">Pending requests</option><option value="all">All transactions</option><option value="deposit">Deposits</option><option value="withdraw">Withdrawals</option></select>
+  <input id="search" placeholder="Search username / reference">
+  <button class="ghost" id="refreshBtn">Refresh</button>
+</div>
+
+<div class="card pad" style="margin-bottom:15px">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <div>
+      <h2 style="margin:0">📩 SMS Inbox <span id="smsCount" style="font-size:13px;color:#ffcc44">0</span></h2>
+      <div style="color:#9d8bb7;font-size:12px;margin-top:4px">Enter your own sender filter criteria.</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <select id="smsFilterMode" style="margin:0;max-width:145px">
+        <option value="starts">Starts with</option>
+        <option value="contains">Contains</option>
+        <option value="exact">Exact match</option>
+      </select>
+      <input id="smsFilterCriteria" placeholder="Sender filter criteria" style="margin:0;max-width:210px">
+      <button class="primary" id="applySmsFilterBtn">Apply Filter</button>
+      <button class="ghost" id="clearSmsFilterBtn">Clear</button>
+    </div>
+  </div>
+  <div class="table-wrap" style="margin-top:12px">
+    <table>
+      <thead><tr><th>Time</th><th>Sender</th><th>Message</th><th>Action</th></tr></thead>
+      <tbody id="smsBody"></tbody>
+    </table>
+    <div id="smsEmpty" class="empty">No matching SMS messages.</div>
+  </div>
+</div>
+
+<div class="card pad table-wrap">
+<table>
+<thead><tr><th>Time</th><th>Type</th><th>Player</th><th>Amount</th><th>Reference / Phone</th><th>Status</th><th>Action</th></tr></thead>
+<tbody id="txBody"></tbody>
+</table>
+<div id="empty" class="empty">No transactions found.</div>
+</div>
+</div>
+
+<div id="detailOverlay" class="overlay">
+ <div class="modal card">
+  <h2 id="detailTitle">Transaction</h2>
+  <div id="detailBody"></div>
+  <div id="detailActions" class="actions" style="margin-top:18px"></div>
+  <button class="ghost" style="width:100%;margin-top:10px" onclick="closeDetail()">Close</button>
+ </div>
+</div>
+
+<div id="firebaseError" style="display:none;margin:12px 0;padding:12px;border-radius:10px;background:#3b1717;color:#ffb0b0;font-weight:700;word-break:break-word"></div>
+<script>
+const firebaseConfig={
+ apiKey:"AIzaSyA2VCeCTCx_NAcsxK-es1DCTmRjOD43dt4",
+ authDomain:"renewed-8fe38.firebaseapp.com",
+ databaseURL:"https://renewed-8fe38-default-rtdb.firebaseio.com",
+ projectId:"renewed-8fe38",
+ storageBucket:"renewed-8fe38.firebasestorage.app",
+ messagingSenderId:"741808375705",
+ appId:"1:741808375705:web:c961f1664a0e17ad257508",
+ measurementId:"G-04EW1D775E"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+const storage=firebase.storage();
+
+const ADMIN_KEY="winzo_admin_session_v1";
+const DEFAULT_ADMINS={
+  "admin":"winzo-admin",
+  "superadmin":"winzo-super-admin"
+};
+let transactions={};
+let users={};
+let rooms={};
+let selectedId=null;
+let smsMessages={};
+let appliedSmsFilter="";
+let appliedSmsFilterMode="starts";
+
+const $=id=>document.getElementById(id);
+function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
+function money(v){return Number(v||0).toLocaleString()+" Birr";}
+function time(v){return v?new Date(Number(v)).toLocaleString():"—";}
+
+function login(){
+ const u=$("adminUser").value.trim(),p=$("adminPass").value;
+ if(DEFAULT_ADMINS[u]!==p){$("loginError").textContent="Invalid admin credentials.";return;}
+ localStorage.setItem(ADMIN_KEY,JSON.stringify({username:u,at:Date.now()}));
+ showApp();
+}
+function showApp(){
+ $("loginView").classList.add("hidden");$("appView").classList.remove("hidden");
+ startListeners();
+}
+function logout(){localStorage.removeItem(ADMIN_KEY);location.reload();}
+$("loginBtn").onclick=login;$("logoutBtn").onclick=logout;
+$("adminPass").addEventListener("keydown",e=>{if(e.key==="Enter")login();});
+
+function startListeners(){
+ db.ref(".info/connected").on("value",s=>{
+   $("connection").textContent=s.val()?"● Firebase connected":"● Firebase offline";
+   $("connection").style.color=s.val()?"#8affb0":"#ff8a8a";
+ },err=>showFirebaseError("Connection check failed: "+err.message));
+ db.ref("transactions").on("value",s=>{transactions=s.val()||{};render();},err=>showFirebaseError("Cannot read /transactions: "+err.message));
+ db.ref("users").on("value",s=>{users=s.val()||{};$ ("userCount").textContent=Object.keys(users).length;},err=>showFirebaseError("Cannot read /users: "+err.message));
+ db.ref("rooms").on("value",s=>{rooms=s.val()||{};$ ("roomCount").textContent=Object.keys(rooms).length;},err=>showFirebaseError("Cannot read /rooms: "+err.message));
+  db.ref("sms").on("value",s=>{smsMessages=s.val()||{};renderSms();},err=>showFirebaseError("Cannot read /sms: "+err.message));
+ db.ref("transactions").once("value").then(s=>{transactions=s.val()||{};render();}).catch(err=>showFirebaseError("Initial /transactions read failed: "+err.message));
+}
+function smsSender(x){
+  return String(x?.sender||x?.senderNumber||x?.from||x?.phoneNumber||"").trim();
+}
+function smsText(x){
+  return String(x?.message||x?.text||x?.body||"").trim();
+}
+function smsMatches(sender,criteria,mode){
+  if(!criteria)return true;
+  const a=sender.toLowerCase(),b=criteria.toLowerCase();
+  if(mode==="exact")return a===b;
+  if(mode==="contains")return a.includes(b);
+  return a.startsWith(b);
+}
+function renderSms(){
+  const arr=Object.entries(smsMessages).map(([id,x])=>({id,x}))
+    .filter(o=>o.x && smsMatches(smsSender(o.x),appliedSmsFilter,appliedSmsFilterMode))
+    .sort((a,b)=>Number(b.x.timestamp||b.x.receivedAt||0)-Number(a.x.timestamp||a.x.receivedAt||0));
+
+  $("smsCount").textContent=arr.length;
+  $("smsBody").innerHTML=arr.map(o=>{
+    const x=o.x, ts=x.timestamp||x.receivedAt||x.time;
+    return `<tr>
+      <td>${esc(time(ts))}</td>
+      <td><b>${esc(smsSender(x)||"Unknown")}</b></td>
+      <td style="white-space:normal;min-width:260px">${esc(smsText(x))}</td>
+      <td><button class="ghost" onclick="deleteSms('${esc(o.id)}')">Delete</button></td>
+    </tr>`;
+  }).join("");
+  $("smsEmpty").style.display=arr.length?"none":"block";
+}
+function applySmsFilter(){
+  appliedSmsFilter=$("smsFilterCriteria").value.trim();
+  appliedSmsFilterMode=$("smsFilterMode").value;
+  renderSms();
+}
+function clearSmsFilter(){
+  $("smsFilterCriteria").value="";
+  appliedSmsFilter="";
+  appliedSmsFilterMode="starts";
+  $("smsFilterMode").value="starts";
+  renderSms();
+}
+function deleteSms(id){
+  if(!confirm("Delete this SMS?"))return;
+  db.ref("sms/"+id).remove().catch(e=>alert("Could not delete SMS: "+e.message));
+}
+$("applySmsFilterBtn").onclick=applySmsFilter;
+$("clearSmsFilterBtn").onclick=clearSmsFilter;
+$("smsFilterCriteria").addEventListener("keydown",e=>{if(e.key==="Enter")applySmsFilter();});
+
+function showFirebaseError(message){
+ console.error("WINZO ADMIN FIREBASE:",message);
+ const el=$("firebaseError");
+ if(el){el.textContent="⚠️ "+message;el.style.display="block";}
+}
+function filtered(){
+ let arr=Object.values(transactions).filter(Boolean);
+ const f=$("filter").value,q=$("search").value.trim().toLowerCase();
+ if(f==="pending")arr=arr.filter(x=>x.status==="pending");
+ else if(f==="deposit"||f==="withdraw")arr=arr.filter(x=>x.type===f);
+ if(q)arr=arr.filter(x=>String(x.username||"").toLowerCase().includes(q)||String(x.reference||"").toLowerCase().includes(q)||String(x.phoneNumber||"").toLowerCase().includes(q));
+ return arr.sort((a,b)=>Number(b.timestamp||0)-Number(a.timestamp||0));
+}
+function render(){
+ const arr=filtered();
+ const pd=Object.values(transactions).filter(x=>x&&x.status==="pending"&&x.type==="deposit").length;
+ const pw=Object.values(transactions).filter(x=>x&&x.status==="pending"&&x.type==="withdraw").length;
+ $("pendingDeposits").textContent=pd;$("pendingWithdrawals").textContent=pw;
+ $("txBody").innerHTML=arr.map(x=>{
+   const id=x.id||Object.keys(transactions).find(k=>transactions[k]===x);
+   const ref=x.type==="deposit"?(x.reference||"—"):(x.phoneNumber||"—");
+   const action=x.status==="pending"?`<button class="primary" onclick="openDetail('${esc(id)}')">Review</button>`:`<button class="ghost" onclick="openDetail('${esc(id)}')">View</button>`;
+   return `<tr><td>${esc(time(x.timestamp))}</td><td>${x.type==="deposit"?"💰 Deposit":"🏦 Withdraw"}</td><td>${esc(x.username)}</td><td>${esc(money(x.amount))}</td><td>${esc(ref)}</td><td class="${esc(x.status)}">${esc(x.status)}</td><td>${action}</td></tr>`;
+ }).join("");
+ $("empty").style.display=arr.length?"none":"block";
+}
+$("filter").onchange=render;$("search").oninput=render;$("refreshBtn").onclick=render;
+
+function openDetail(id){
+ selectedId=id;const x=transactions[id];if(!x)return;
+ $("detailTitle").textContent=(x.type==="deposit"?"💰 Deposit":"🏦 Withdrawal")+" · "+(x.status||"pending");
+ let html=`<div class="kv">
+ <div>Player</div><div>${esc(x.username)}</div>
+ <div>Amount</div><div><b>${esc(money(x.amount))}</b></div>
+ <div>Requested</div><div>${esc(time(x.timestamp))}</div>`;
+ if(x.type==="deposit"){
+   html+=`<div>Reference</div><div>${esc(x.reference||"—")}</div>`;
+ }else{
+   html+=`<div>Full name</div><div>${esc(x.fullName||"—")}</div><div>Phone</div><div>${esc(x.phoneNumber||"—")}</div>`;
+ }
+ html+=`<div>Transaction ID</div><div style="word-break:break-all">${esc(x.id||id)}</div></div>`;
+ if(x.imageUrl)html+=`<img class="proof" src="${esc(x.imageUrl)}" alt="Deposit proof">`;
+ if(x.status==="pending")html+=`<div class="note">Approve applies the wallet change once using a Firebase transaction marker. Reject changes no wallet balance for deposits; for withdrawals it releases the reserved pending amount.</div>`;
+ $("detailBody").innerHTML=html;
+ $("detailActions").innerHTML=x.status==="pending"
+  ?`<button class="primary" onclick="approveSelected()">Approve</button><button class="danger" onclick="rejectSelected()">Reject</button>`:"";
+ $("detailOverlay").classList.add("open");
+}
+function closeDetail(){$("detailOverlay").classList.remove("open");selectedId=null;}
+
+async function settle(id,decision){
+ const tx=transactions[id];if(!tx||tx.status!=="pending")return;
+ const username=tx.username,amount=Number(tx.amount||0);
+ if(!username||!amount||!["deposit","withdraw"].includes(tx.type))return alert("Invalid transaction.");
+ try{
+   // First claim the request. This prevents two admin tabs from settling the same request.
+   const claim=await db.ref("transactions/"+id+"/status").transaction(v=>v==="pending"?(decision==="approved"?"processing":"rejecting"):v);
+   if(!claim.committed)return alert("This request was already handled by another admin.");
+   try{
+     const userRef=db.ref("users/"+username);
+     if(decision==="approved"){
+       const result=await userRef.transaction(user=>{
+         if(!user)return user;
+         user.processedTransactions=user.processedTransactions||{};
+         if(user.processedTransactions[id])return user;
+         if(tx.type==="deposit"){
+           user.playWallet=Number(user.playWallet||0)+amount;
+         }else{
+           const main=Number(user.mainWallet||0);
+           if(main<amount)throw new Error("Insufficient main wallet for withdrawal approval.");
+           user.mainWallet=main-amount;
+           user.pendingWithdrawal=Math.max(0,Number(user.pendingWithdrawal||0)-amount);
+         }
+         user.processedTransactions[id]={type:tx.type,amount,timestamp:firebase.database.ServerValue.TIMESTAMP};
+         return user;
+       });
+       if(!result.committed)throw new Error("Wallet update was not committed.");
+     }else if(tx.type==="withdraw"){
+       const result=await userRef.transaction(user=>{
+         if(!user)return user;
+         user.pendingWithdrawal=Math.max(0,Number(user.pendingWithdrawal||0)-amount);
+         return user;
+       });
+       if(!result.committed)throw new Error("Could not release pending withdrawal.");
+     }
+     await db.ref("transactions/"+id).update({
+       status:decision==="approved"?"approved":"rejected",
+       walletApplied:decision==="approved",
+       processedBy:JSON.parse(localStorage.getItem(ADMIN_KEY)||"{}").username||"admin",
+       processedAt:firebase.database.ServerValue.TIMESTAMP
+     });
+     await db.ref("notifications/"+username).push({
+       message: decision==="approved"
+        ? (tx.type==="deposit"?`✅ Your ${amount} Birr deposit was approved.`:`✅ Your ${amount} Birr withdrawal was approved.`)
+        : `❌ Your ${tx.type} request for ${amount} Birr was rejected.`,
+       timestamp:firebase.database.ServerValue.TIMESTAMP,read:false
+     });
+     closeDetail();render();
+   }catch(err){
+     // Return the request to pending so an admin can retry if wallet processing failed.
+     await db.ref("transactions/"+id).update({status:"pending"});
+     alert(err.message||"Settlement failed.");
+   }
+ }catch(err){alert(err.message||"Could not claim transaction.");}
+}
+function approveSelected(){if(selectedId)settle(selectedId,"approved")}
+function rejectSelected(){if(selectedId)settle(selectedId,"rejected")}
+
+if(localStorage.getItem(ADMIN_KEY))showApp();
+</script>
+</body>
+</html>
