@@ -11,7 +11,7 @@
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#21103c,#07121f 65%);color:#f5efff;font-family:Segoe UI,Roboto,system-ui,sans-serif;min-height:100vh}
 .hidden{display:none!important}.wrap{max-width:1250px;margin:auto;padding:18px}.card{background:rgba(20,12,39,.84);border:1px solid rgba(180,120,255,.18);border-radius:22px;box-shadow:0 18px 55px rgba(0,0,0,.35);backdrop-filter:blur(16px)}
 .login{max-width:420px;margin:9vh auto;padding:28px}.login h1{text-align:center;margin:0 0 8px}.sub{text-align:center;color:#a995c3;font-size:13px;margin-bottom:22px}
-input,select{width:100%;padding:12px 14px;border-radius:13px;border:1px solid rgba(180,120,255,.22);background:#100b21;color:#fff;outline:none;margin-bottom:10px}button{border:0;border-radius:12px;padding:10px 15px;font-weight:800;cursor:pointer}
+input,select,textarea{width:100%;padding:12px 14px;border-radius:13px;border:1px solid rgba(180,120,255,.22);background:#100b21;color:#fff;outline:none;margin-bottom:10px;font-family:inherit}button{border:0;border-radius:12px;padding:10px 15px;font-weight:800;cursor:pointer}
 .primary{background:linear-gradient(135deg,#ffdf6b,#e7951b);color:#241500}.danger{background:#63243b;color:#ffdce6}.ghost{background:rgba(120,80,200,.15);color:#e8ddf8;border:1px solid rgba(180,120,255,.14)}
 header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:15px}.brand{font-size:23px;font-weight:900;letter-spacing:2px}.brand span{color:#ffcc44}.status{font-size:12px;color:#8affb0}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:15px}.stat{padding:15px}.stat small{display:block;color:#9d8bb7}.stat b{font-size:25px;color:#ffcc44}
@@ -22,13 +22,11 @@ table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.card.pad{pa
 .note{margin-top:14px;padding:11px;border-radius:12px;background:rgba(255,204,68,.07);color:#d9c994;font-size:12px;line-height:1.5}
 @media(max-width:800px){.stats{grid-template-columns:repeat(2,1fr)}th,td{font-size:12px}.wrap{padding:10px}.brand{font-size:19px}}
 
-/* View tabs */
 .view-tabs{display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap}
 .view-tab{padding:10px 18px;border-radius:14px;background:rgba(120,80,200,.12);color:#d4c0f0;border:1px solid rgba(180,120,255,.14);font-weight:800;cursor:pointer;font-size:13px;letter-spacing:.4px;transition:all .15s}
 .view-tab:hover{background:rgba(120,80,200,.22)}
 .view-tab.active{background:linear-gradient(135deg,#ffdf6b,#e7951b);color:#241500;border-color:#ffcc44;box-shadow:0 6px 20px rgba(255,204,68,.25)}
 
-/* Filter bars */
 .filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px;padding:12px;background:rgba(10,6,22,.5);border-radius:16px;border:1px solid rgba(180,120,255,.1)}
 .filter-group{display:flex;flex-direction:column;gap:4px;min-width:150px}
 .filter-group label{color:#9d8bb7;font-size:10px;text-transform:uppercase;letter-spacing:.6px;font-weight:700}
@@ -36,6 +34,11 @@ table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.card.pad{pa
 .filter-group.checkbox{flex-direction:row;align-items:center;gap:8px;min-width:auto}
 .filter-group.checkbox label{text-transform:none;font-size:13px;color:#d4c0f0;letter-spacing:0;cursor:pointer;display:flex;align-items:center;gap:6px}
 .filter-group.checkbox input{width:auto;margin:0;cursor:pointer}
+
+.reject-box{margin-top:14px;padding:14px;border-radius:14px;background:rgba(255,80,80,.06);border:1px solid rgba(255,120,120,.22)}
+.reject-box label{display:block;color:#ffb0b0;font-size:11px;text-transform:uppercase;letter-spacing:.6px;font-weight:700;margin-bottom:8px}
+.reject-box textarea{min-height:76px;margin:0;resize:vertical}
+.reject-hint{color:#9d8bb7;font-size:11px;margin-top:6px;line-height:1.4}
 </style>
 </head>
 <body>
@@ -235,6 +238,11 @@ table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.card.pad{pa
  <div class="modal card">
   <h2 id="detailTitle">Transaction</h2>
   <div id="detailBody"></div>
+  <div id="detailRejectBox" class="reject-box" style="display:none">
+    <label for="rejectReason">✍️ Rejection reason (required to reject)</label>
+    <textarea id="rejectReason" placeholder="Type the message the player will see in their popup..."></textarea>
+    <div class="reject-hint">This exact text will be pushed to the player's game as a popup notification.</div>
+  </div>
   <div id="detailActions" class="actions" style="margin-top:18px"></div>
   <button class="ghost" style="width:100%;margin-top:10px" onclick="closeDetail()">Close</button>
  </div>
@@ -418,13 +426,6 @@ function isExcluded(name, list){
   return list.includes(String(name || '').toLowerCase());
 }
 
-/* ------------------------------------------------------------
-   Resolve a user's mobile number.
-   1) Prefer a direct field on the user profile.
-   2) Fall back to the phoneNumber on their most recent transaction
-      (this is the number they submitted with their last withdrawal,
-      which in turn is the number linked to their profile).
-   ------------------------------------------------------------ */
 function getUserPhone(userName, userData){
   const direct = userData && (
     userData.phoneNumber ||
@@ -605,18 +606,25 @@ function openDetail(id){
  }
  html+=`<div>Transaction ID</div><div style="word-break:break-all">${esc(x.id||id)}</div></div>`;
  if(x.imageUrl)html+=`<img class="proof" src="${esc(x.imageUrl)}" alt="Deposit proof">`;
- if(x.status==="pending")html+=`<div class="note">Approve applies the wallet change once using a Firebase transaction marker. Reject changes no wallet balance for deposits; for withdrawals it releases the reserved pending amount.</div>`;
+ if(x.status==="pending")html+=`<div class="note">Approve applies the wallet change once using a Firebase transaction marker. Reject changes no wallet balance for deposits; for withdrawals it releases the reserved pending amount. The player will receive a popup in their game.</div>`;
  $("detailBody").innerHTML=html;
+
+ const rejectBox = $("detailRejectBox");
+ const rejectInput = $("rejectReason");
+ if(rejectBox) rejectBox.style.display = (x.status === "pending") ? "block" : "none";
+ if(rejectInput) rejectInput.value = "";
+
  $("detailActions").innerHTML=x.status==="pending"
   ?`<button class="primary" onclick="approveSelected()">Approve</button><button class="danger" onclick="rejectSelected()">Reject</button>`:"";
  $("detailOverlay").classList.add("open");
 }
 function closeDetail(){$("detailOverlay").classList.remove("open");selectedId=null;}
 
-async function settle(id,decision){
+async function settle(id,decision,reason){
  const tx=transactions[id];if(!tx||tx.status!=="pending")return;
  const username=tx.username,amount=Number(tx.amount||0);
  if(!username||!amount||!["deposit","withdraw"].includes(tx.type))return alert("Invalid transaction.");
+ if(decision==="rejected" && (!reason || !String(reason).trim())) return alert("Please enter a rejection reason.");
  try{
    const claim=await db.ref("transactions/"+id+"/status").transaction(v=>v==="pending"?(decision==="approved"?"processing":"rejecting"):v);
    if(!claim.committed)return alert("This request was already handled by another admin.");
@@ -647,18 +655,32 @@ async function settle(id,decision){
        });
        if(!result.committed)throw new Error("Could not release pending withdrawal.");
      }
+
      await db.ref("transactions/"+id).update({
        status:decision==="approved"?"approved":"rejected",
        walletApplied:decision==="approved",
+       rejectionReason: decision==="rejected" ? String(reason).trim() : null,
        processedBy:JSON.parse(localStorage.getItem(ADMIN_KEY)||"{}").username||"admin",
        processedAt:firebase.database.ServerValue.TIMESTAMP
      });
+
+     // Push the popup notification to the player
+     const isApproved = decision === "approved";
+     const popupMessage = isApproved
+        ? "Your request is approved"
+        : String(reason).trim();
+
      await db.ref("notifications/"+username).push({
-       message: decision==="approved"
-        ? (tx.type==="deposit"?`✅ Your ${amount} Birr deposit was approved.`:`✅ Your ${amount} Birr withdrawal was approved.`)
-        : `❌ Your ${tx.type} request for ${amount} Birr was rejected.`,
-       timestamp:firebase.database.ServerValue.TIMESTAMP,read:false
+       type: "transaction_result",
+       status: isApproved ? "approved" : "rejected",
+       txType: tx.type,
+       amount: amount,
+       message: popupMessage,
+       reason: isApproved ? "" : String(reason).trim(),
+       timestamp: firebase.database.ServerValue.TIMESTAMP,
+       read: false
      });
+
      closeDetail();render();
    }catch(err){
      await db.ref("transactions/"+id).update({status:"pending"});
@@ -666,8 +688,14 @@ async function settle(id,decision){
    }
  }catch(err){alert(err.message||"Could not claim transaction.");}
 }
-function approveSelected(){if(selectedId)settle(selectedId,"approved")}
-function rejectSelected(){if(selectedId)settle(selectedId,"rejected")}
+function approveSelected(){ if(selectedId) settle(selectedId,"approved",""); }
+function rejectSelected(){
+  if(!selectedId) return;
+  const reasonEl = $("rejectReason");
+  const reason = reasonEl ? reasonEl.value.trim() : "";
+  if(!reason){ alert("Please type a rejection reason before rejecting."); if(reasonEl) reasonEl.focus(); return; }
+  settle(selectedId,"rejected",reason);
+}
 
 if(localStorage.getItem(ADMIN_KEY))showApp();
 </script>
