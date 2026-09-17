@@ -145,7 +145,7 @@ table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.card.pad{pa
             <th>Main Balance</th>
             <th>Play Balance</th>
             <th>Telegram</th>
-            <th>Telegram Number</th>
+            <th>Number</th>
           </tr>
         </thead>
         <tbody id="usersBody"></tbody>
@@ -294,11 +294,11 @@ function startListeners(){
    $("connection").textContent=s.val()?"● Firebase connected":"● Firebase offline";
    $("connection").style.color=s.val()?"#8affb0":"#ff8a8a";
  },err=>showFirebaseError("Connection check failed: "+err.message));
- db.ref("transactions").on("value",s=>{transactions=s.val()||{};render();renderJournal();renderBalance();},err=>showFirebaseError("Cannot read /transactions: "+err.message));
+ db.ref("transactions").on("value",s=>{transactions=s.val()||{};render();renderJournal();renderUsers();renderBalance();},err=>showFirebaseError("Cannot read /transactions: "+err.message));
  db.ref("users").on("value",s=>{users=s.val()||{};$("userCount").textContent=Object.keys(users).length;renderUsers();renderBalance();},err=>showFirebaseError("Cannot read /users: "+err.message));
  db.ref("rooms").on("value",s=>{rooms=s.val()||{};$("roomCount").textContent=Object.keys(rooms).length;},err=>showFirebaseError("Cannot read /rooms: "+err.message));
  db.ref("sms").on("value",s=>{smsMessages=s.val()||{};renderSms();},err=>showFirebaseError("Cannot read /sms: "+err.message));
- db.ref("transactions").once("value").then(s=>{transactions=s.val()||{};render();renderJournal();renderBalance();}).catch(err=>showFirebaseError("Initial /transactions read failed: "+err.message));
+ db.ref("transactions").once("value").then(s=>{transactions=s.val()||{};render();renderJournal();renderUsers();renderBalance();}).catch(err=>showFirebaseError("Initial /transactions read failed: "+err.message));
 }
 function smsSender(x){
   return String(x?.sender||x?.senderNumber||x?.from||x?.phoneNumber||"").trim();
@@ -418,6 +418,37 @@ function isExcluded(name, list){
   return list.includes(String(name || '').toLowerCase());
 }
 
+/* ------------------------------------------------------------
+   Resolve a user's mobile number.
+   1) Prefer a direct field on the user profile.
+   2) Fall back to the phoneNumber on their most recent transaction
+      (this is the number they submitted with their last withdrawal,
+      which in turn is the number linked to their profile).
+   ------------------------------------------------------------ */
+function getUserPhone(userName, userData){
+  const direct = userData && (
+    userData.phoneNumber ||
+    userData.phone ||
+    userData.mobileNumber ||
+    userData.mobile ||
+    userData.telegramNumber ||
+    userData.telegram_phone
+  );
+  if(direct) return String(direct);
+
+  let latest = null;
+  let latestTs = 0;
+  const lowerName = String(userName || '').toLowerCase();
+  Object.values(transactions).forEach(t => {
+    if(!t) return;
+    if(String(t.username || '').toLowerCase() !== lowerName) return;
+    if(!t.phoneNumber) return;
+    const ts = Number(t.timestamp) || 0;
+    if(ts > latestTs){ latestTs = ts; latest = t.phoneNumber; }
+  });
+  return latest ? String(latest) : '—';
+}
+
 /* ============================================================
    USERS VIEW
    ============================================================ */
@@ -433,7 +464,6 @@ function renderUsers(){
       if(hideBots && o.u.isBot === true) return false;
       if(isExcluded(o.name, exclude)) return false;
       if(dateMode !== 'all'){
-        // Keep users who had at least one transaction in range, OR have a createdAt in range
         let ok = false;
         if(inDateRange(o.u.createdAt, dateMode)) ok = true;
         if(!ok){
@@ -456,7 +486,7 @@ function renderUsers(){
   body.innerHTML = arr.map(o => {
     const u = o.u;
     const tg = '@' + o.name;
-    const phone = u.phoneNumber || u.phone || u.telegramNumber || u.telegram_phone || '—';
+    const phone = getUserPhone(o.name, u);
     return `<tr>
       <td><b>${esc(o.name)}</b>${u.isBot ? ' <span style="color:#9d8bb7;font-size:11px">(bot)</span>' : ''}</td>
       <td>${esc(money(u.mainWallet))}</td>
@@ -513,7 +543,6 @@ function renderBalance(){
   let totalWithdraw = 0;
   let totalPayouts = 0;
 
-  // Approved transactions in range, excluding specified users
   Object.values(transactions).forEach(t => {
     if(!t) return;
     if(t.status !== 'approved') return;
@@ -523,7 +552,6 @@ function renderBalance(){
     if(t.type === 'withdraw') totalWithdraw += Number(t.amount) || 0;
   });
 
-  // Service income from game win payouts (pool = 80% of pot, service = 20% → service = pool * 0.25)
   Object.entries(users).forEach(([name, u]) => {
     if(!u || typeof u !== 'object') return;
     if(isExcluded(name, exclude)) return;
@@ -545,26 +573,23 @@ function renderBalance(){
    FILTER EVENT HOOKS
    ============================================================ */
 (function hookFilters(){
-  // Users
   const uD = $('usersDate'), uE = $('usersExclude'), uB = $('usersHideBots');
   if(uD) uD.addEventListener('change', renderUsers);
   if(uE) uE.addEventListener('input',  renderUsers);
   if(uB) uB.addEventListener('change', renderUsers);
 
-  // Journal
   const jD = $('journalDate'), jT = $('journalType'), jE = $('journalExclude');
   if(jD) jD.addEventListener('change', renderJournal);
   if(jT) jT.addEventListener('change', renderJournal);
   if(jE) jE.addEventListener('input',  renderJournal);
 
-  // Balance
   const bD = $('balanceDate'), bE = $('balanceExclude');
   if(bD) bD.addEventListener('change', renderBalance);
   if(bE) bE.addEventListener('input',  renderBalance);
 })();
 
 /* ============================================================
-   DETAIL MODAL (original)
+   DETAIL MODAL
    ============================================================ */
 function openDetail(id){
  selectedId=id;const x=transactions[id];if(!x)return;
