@@ -21,6 +21,21 @@ table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.card.pad{pa
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;padding:18px;z-index:20}.overlay.open{display:flex}.modal{max-width:560px;width:100%;padding:22px;max-height:90vh;overflow:auto}.modal h2{margin-top:0}.kv{display:grid;grid-template-columns:130px 1fr;gap:8px;font-size:13px}.kv div:nth-child(odd){color:#9d8bb7}.proof{max-width:100%;border-radius:14px;margin-top:12px;border:1px solid rgba(255,255,255,.1)}
 .note{margin-top:14px;padding:11px;border-radius:12px;background:rgba(255,204,68,.07);color:#d9c994;font-size:12px;line-height:1.5}
 @media(max-width:800px){.stats{grid-template-columns:repeat(2,1fr)}th,td{font-size:12px}.wrap{padding:10px}.brand{font-size:19px}}
+
+/* View tabs */
+.view-tabs{display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap}
+.view-tab{padding:10px 18px;border-radius:14px;background:rgba(120,80,200,.12);color:#d4c0f0;border:1px solid rgba(180,120,255,.14);font-weight:800;cursor:pointer;font-size:13px;letter-spacing:.4px;transition:all .15s}
+.view-tab:hover{background:rgba(120,80,200,.22)}
+.view-tab.active{background:linear-gradient(135deg,#ffdf6b,#e7951b);color:#241500;border-color:#ffcc44;box-shadow:0 6px 20px rgba(255,204,68,.25)}
+
+/* Filter bars */
+.filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px;padding:12px;background:rgba(10,6,22,.5);border-radius:16px;border:1px solid rgba(180,120,255,.1)}
+.filter-group{display:flex;flex-direction:column;gap:4px;min-width:150px}
+.filter-group label{color:#9d8bb7;font-size:10px;text-transform:uppercase;letter-spacing:.6px;font-weight:700}
+.filter-group select,.filter-group input{margin:0;padding:9px 12px;font-size:13px}
+.filter-group.checkbox{flex-direction:row;align-items:center;gap:8px;min-width:auto}
+.filter-group.checkbox label{text-transform:none;font-size:13px;color:#d4c0f0;letter-spacing:0;cursor:pointer;display:flex;align-items:center;gap:6px}
+.filter-group.checkbox input{width:auto;margin:0;cursor:pointer}
 </style>
 </head>
 <body>
@@ -49,45 +64,171 @@ table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.card.pad{pa
   <div class="stat card"><small>Live rooms</small><b id="roomCount">0</b></div>
 </div>
 
-<div class="toolbar card">
-  <select id="filter"><option value="pending">Pending requests</option><option value="all">All transactions</option><option value="deposit">Deposits</option><option value="withdraw">Withdrawals</option></select>
-  <input id="search" placeholder="Search username / reference">
-  <button class="ghost" id="refreshBtn">Refresh</button>
-</div>
+<nav class="view-tabs">
+  <button class="view-tab active" data-view="transactions">💳 Transactions</button>
+  <button class="view-tab" data-view="users">👥 Users</button>
+  <button class="view-tab" data-view="journal">📒 Journal</button>
+  <button class="view-tab" data-view="balance">💰 Check Balance</button>
+</nav>
 
-<div class="card pad" style="margin-bottom:15px">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-    <div>
-      <h2 style="margin:0">📩 SMS Inbox <span id="smsCount" style="font-size:13px;color:#ffcc44">0</span></h2>
-      <div style="color:#9d8bb7;font-size:12px;margin-top:4px">Enter your own sender filter criteria.</div>
+<!-- ================= TRANSACTIONS VIEW ================= -->
+<div id="view-transactions" class="view">
+  <div class="toolbar card">
+    <select id="filter"><option value="pending">Pending requests</option><option value="all">All transactions</option><option value="deposit">Deposits</option><option value="withdraw">Withdrawals</option></select>
+    <input id="search" placeholder="Search username / reference">
+    <button class="ghost" id="refreshBtn">Refresh</button>
+  </div>
+
+  <div class="card pad" style="margin-bottom:15px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <div>
+        <h2 style="margin:0">📩 SMS Inbox <span id="smsCount" style="font-size:13px;color:#ffcc44">0</span></h2>
+        <div style="color:#9d8bb7;font-size:12px;margin-top:4px">Enter your own sender filter criteria.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select id="smsFilterMode" style="margin:0;max-width:145px">
+          <option value="starts">Starts with</option>
+          <option value="contains">Contains</option>
+          <option value="exact">Exact match</option>
+        </select>
+        <input id="smsFilterCriteria" placeholder="Sender filter criteria" style="margin:0;max-width:210px">
+        <button class="primary" id="applySmsFilterBtn">Apply Filter</button>
+        <button class="ghost" id="clearSmsFilterBtn">Clear</button>
+      </div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <select id="smsFilterMode" style="margin:0;max-width:145px">
-        <option value="starts">Starts with</option>
-        <option value="contains">Contains</option>
-        <option value="exact">Exact match</option>
-      </select>
-      <input id="smsFilterCriteria" placeholder="Sender filter criteria" style="margin:0;max-width:210px">
-      <button class="primary" id="applySmsFilterBtn">Apply Filter</button>
-      <button class="ghost" id="clearSmsFilterBtn">Clear</button>
+    <div class="table-wrap" style="margin-top:12px">
+      <table>
+        <thead><tr><th>Time</th><th>Sender</th><th>Message</th><th>Action</th></tr></thead>
+        <tbody id="smsBody"></tbody>
+      </table>
+      <div id="smsEmpty" class="empty">No matching SMS messages.</div>
     </div>
   </div>
-  <div class="table-wrap" style="margin-top:12px">
+
+  <div class="card pad table-wrap">
     <table>
-      <thead><tr><th>Time</th><th>Sender</th><th>Message</th><th>Action</th></tr></thead>
-      <tbody id="smsBody"></tbody>
+      <thead><tr><th>Time</th><th>Type</th><th>Player</th><th>Amount</th><th>Reference / Phone</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody id="txBody"></tbody>
     </table>
-    <div id="smsEmpty" class="empty">No matching SMS messages.</div>
+    <div id="empty" class="empty">No transactions found.</div>
   </div>
 </div>
 
-<div class="card pad table-wrap">
-<table>
-<thead><tr><th>Time</th><th>Type</th><th>Player</th><th>Amount</th><th>Reference / Phone</th><th>Status</th><th>Action</th></tr></thead>
-<tbody id="txBody"></tbody>
-</table>
-<div id="empty" class="empty">No transactions found.</div>
+<!-- ================= USERS VIEW ================= -->
+<div id="view-users" class="view hidden">
+  <div class="card pad">
+    <h2 style="margin:0 0 6px">👥 Users</h2>
+    <div style="color:#9d8bb7;font-size:12px;margin-bottom:12px">All registered players with balances and Telegram information.</div>
+    <div class="filters">
+      <div class="filter-group">
+        <label>Date (last activity)</label>
+        <select id="usersDate">
+          <option value="all">All time</option>
+          <option value="today">Today</option>
+          <option value="7d">Last 7 days</option>
+          <option value="30d">Last 30 days</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Exclude users (comma-separated)</label>
+        <input id="usersExclude" placeholder="e.g. user1, user2">
+      </div>
+      <div class="filter-group checkbox">
+        <label><input type="checkbox" id="usersHideBots" checked> Hide bots</label>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Main Balance</th>
+            <th>Play Balance</th>
+            <th>Telegram</th>
+            <th>Telegram Number</th>
+          </tr>
+        </thead>
+        <tbody id="usersBody"></tbody>
+      </table>
+      <div id="usersEmpty" class="empty">No users found.</div>
+    </div>
+  </div>
 </div>
+
+<!-- ================= JOURNAL VIEW ================= -->
+<div id="view-journal" class="view hidden">
+  <div class="card pad">
+    <h2 style="margin:0 0 6px">📒 Journal</h2>
+    <div style="color:#9d8bb7;font-size:12px;margin-bottom:12px">Every deposit and withdrawal ever requested.</div>
+    <div class="filters">
+      <div class="filter-group">
+        <label>Date</label>
+        <select id="journalDate">
+          <option value="all">All time</option>
+          <option value="today">Today</option>
+          <option value="7d">Last 7 days</option>
+          <option value="30d">Last 30 days</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Transaction type</label>
+        <select id="journalType">
+          <option value="all">All types</option>
+          <option value="deposit">Deposit</option>
+          <option value="withdraw">Withdraw</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Exclude users (comma-separated)</label>
+        <input id="journalExclude" placeholder="e.g. user1, user2">
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Transaction Type</th>
+            <th>Amount</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="journalBody"></tbody>
+      </table>
+      <div id="journalEmpty" class="empty">No journal entries.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= CHECK BALANCE VIEW ================= -->
+<div id="view-balance" class="view hidden">
+  <div class="card pad">
+    <h2 style="margin:0 0 6px">💰 Check Balance</h2>
+    <div style="color:#9d8bb7;font-size:12px;margin-bottom:12px">Aggregated financial summary for the selected period.</div>
+    <div class="filters">
+      <div class="filter-group">
+        <label>Date</label>
+        <select id="balanceDate">
+          <option value="all">All time</option>
+          <option value="today">Today</option>
+          <option value="7d">Last 7 days</option>
+          <option value="30d">Last 30 days</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Exclude users (comma-separated)</label>
+        <input id="balanceExclude" placeholder="e.g. user1, user2">
+      </div>
+    </div>
+    <div class="stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:0">
+      <div class="stat card"><small>Total Withdraw</small><b id="totalWithdraw">0 Birr</b></div>
+      <div class="stat card"><small>Total Deposit</small><b id="totalDeposit">0 Birr</b></div>
+      <div class="stat card"><small>Total Service Income</small><b id="totalService">0 Birr</b></div>
+    </div>
+    <div class="note">Service income = 20% game service fee. Estimated from total winners' payouts across the selected period (payouts represent the 80% pool, so service fee ≈ payouts × 0.25). Withdrawals and deposits count only approved transactions.</div>
+  </div>
+</div>
+
 </div>
 
 <div id="detailOverlay" class="overlay">
@@ -153,11 +294,11 @@ function startListeners(){
    $("connection").textContent=s.val()?"● Firebase connected":"● Firebase offline";
    $("connection").style.color=s.val()?"#8affb0":"#ff8a8a";
  },err=>showFirebaseError("Connection check failed: "+err.message));
- db.ref("transactions").on("value",s=>{transactions=s.val()||{};render();},err=>showFirebaseError("Cannot read /transactions: "+err.message));
- db.ref("users").on("value",s=>{users=s.val()||{};$ ("userCount").textContent=Object.keys(users).length;},err=>showFirebaseError("Cannot read /users: "+err.message));
- db.ref("rooms").on("value",s=>{rooms=s.val()||{};$ ("roomCount").textContent=Object.keys(rooms).length;},err=>showFirebaseError("Cannot read /rooms: "+err.message));
-  db.ref("sms").on("value",s=>{smsMessages=s.val()||{};renderSms();},err=>showFirebaseError("Cannot read /sms: "+err.message));
- db.ref("transactions").once("value").then(s=>{transactions=s.val()||{};render();}).catch(err=>showFirebaseError("Initial /transactions read failed: "+err.message));
+ db.ref("transactions").on("value",s=>{transactions=s.val()||{};render();renderJournal();renderBalance();},err=>showFirebaseError("Cannot read /transactions: "+err.message));
+ db.ref("users").on("value",s=>{users=s.val()||{};$("userCount").textContent=Object.keys(users).length;renderUsers();renderBalance();},err=>showFirebaseError("Cannot read /users: "+err.message));
+ db.ref("rooms").on("value",s=>{rooms=s.val()||{};$("roomCount").textContent=Object.keys(rooms).length;},err=>showFirebaseError("Cannot read /rooms: "+err.message));
+ db.ref("sms").on("value",s=>{smsMessages=s.val()||{};renderSms();},err=>showFirebaseError("Cannot read /sms: "+err.message));
+ db.ref("transactions").once("value").then(s=>{transactions=s.val()||{};render();renderJournal();renderBalance();}).catch(err=>showFirebaseError("Initial /transactions read failed: "+err.message));
 }
 function smsSender(x){
   return String(x?.sender||x?.senderNumber||x?.from||x?.phoneNumber||"").trim();
@@ -237,6 +378,194 @@ function render(){
 }
 $("filter").onchange=render;$("search").oninput=render;$("refreshBtn").onclick=render;
 
+/* ============================================================
+   VIEW SWITCHING
+   ============================================================ */
+document.querySelectorAll('.view-tab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.view-tab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden'));
+    btn.classList.add('active');
+    const view = document.getElementById('view-'+btn.dataset.view);
+    if(view) view.classList.remove('hidden');
+  });
+});
+
+/* ============================================================
+   FILTER HELPERS
+   ============================================================ */
+function inDateRange(ts, mode){
+  if(mode === 'all') return true;
+  const t = Number(ts) || 0;
+  if(!t) return false;
+  const now = Date.now();
+  const dayMs = 86400000;
+  if(mode === 'today'){
+    const s = new Date(); s.setHours(0,0,0,0);
+    return t >= s.getTime();
+  }
+  if(mode === '7d')  return t >= now - 7  * dayMs;
+  if(mode === '30d') return t >= now - 30 * dayMs;
+  return true;
+}
+function parseExclude(str){
+  return String(str || '')
+    .split(/[,\s]+/)
+    .map(s => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+function isExcluded(name, list){
+  return list.includes(String(name || '').toLowerCase());
+}
+
+/* ============================================================
+   USERS VIEW
+   ============================================================ */
+function renderUsers(){
+  const dateMode = $('usersDate') ? $('usersDate').value : 'all';
+  const exclude  = parseExclude($('usersExclude') ? $('usersExclude').value : '');
+  const hideBots = $('usersHideBots') ? $('usersHideBots').checked : true;
+
+  const arr = Object.entries(users)
+    .map(([name, u]) => ({ name, u }))
+    .filter(o => {
+      if(!o.u || typeof o.u !== 'object') return false;
+      if(hideBots && o.u.isBot === true) return false;
+      if(isExcluded(o.name, exclude)) return false;
+      if(dateMode !== 'all'){
+        // Keep users who had at least one transaction in range, OR have a createdAt in range
+        let ok = false;
+        if(inDateRange(o.u.createdAt, dateMode)) ok = true;
+        if(!ok){
+          for(const t of Object.values(transactions)){
+            if(!t) continue;
+            if(String(t.username || '').toLowerCase() !== o.name.toLowerCase()) continue;
+            if(inDateRange(t.timestamp, dateMode)) { ok = true; break; }
+          }
+        }
+        if(!ok) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const body = $('usersBody');
+  const empty = $('usersEmpty');
+  if(!body) return;
+
+  body.innerHTML = arr.map(o => {
+    const u = o.u;
+    const tg = '@' + o.name;
+    const phone = u.phoneNumber || u.phone || u.telegramNumber || u.telegram_phone || '—';
+    return `<tr>
+      <td><b>${esc(o.name)}</b>${u.isBot ? ' <span style="color:#9d8bb7;font-size:11px">(bot)</span>' : ''}</td>
+      <td>${esc(money(u.mainWallet))}</td>
+      <td>${esc(money(u.playWallet))}</td>
+      <td><a href="https://t.me/${esc(o.name)}" target="_blank" rel="noopener" style="color:#74b9ff;text-decoration:none">${esc(tg)}</a></td>
+      <td>${esc(phone)}</td>
+    </tr>`;
+  }).join('');
+  if(empty) empty.style.display = arr.length ? 'none' : 'block';
+}
+
+/* ============================================================
+   JOURNAL VIEW
+   ============================================================ */
+function renderJournal(){
+  const dateMode = $('journalDate') ? $('journalDate').value : 'all';
+  const typeMode = $('journalType') ? $('journalType').value : 'all';
+  const exclude  = parseExclude($('journalExclude') ? $('journalExclude').value : '');
+
+  const arr = Object.values(transactions)
+    .filter(t => {
+      if(!t) return false;
+      if(!inDateRange(t.timestamp, dateMode)) return false;
+      if(typeMode !== 'all' && t.type !== typeMode) return false;
+      if(isExcluded(t.username, exclude)) return false;
+      return true;
+    })
+    .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0));
+
+  const body = $('journalBody');
+  const empty = $('journalEmpty');
+  if(!body) return;
+
+  body.innerHTML = arr.map(t => {
+    const label = t.type === 'deposit' ? '💰 Deposit' : '🏦 Withdraw';
+    return `<tr>
+      <td><b>${esc(t.username)}</b></td>
+      <td>${label}</td>
+      <td>${esc(money(t.amount))}</td>
+      <td>${esc(time(t.timestamp))}</td>
+    </tr>`;
+  }).join('');
+  if(empty) empty.style.display = arr.length ? 'none' : 'block';
+}
+
+/* ============================================================
+   CHECK BALANCE VIEW
+   ============================================================ */
+function renderBalance(){
+  const dateMode = $('balanceDate') ? $('balanceDate').value : 'all';
+  const exclude  = parseExclude($('balanceExclude') ? $('balanceExclude').value : '');
+
+  let totalDeposit = 0;
+  let totalWithdraw = 0;
+  let totalPayouts = 0;
+
+  // Approved transactions in range, excluding specified users
+  Object.values(transactions).forEach(t => {
+    if(!t) return;
+    if(t.status !== 'approved') return;
+    if(!inDateRange(t.timestamp, dateMode)) return;
+    if(isExcluded(t.username, exclude)) return;
+    if(t.type === 'deposit')  totalDeposit  += Number(t.amount) || 0;
+    if(t.type === 'withdraw') totalWithdraw += Number(t.amount) || 0;
+  });
+
+  // Service income from game win payouts (pool = 80% of pot, service = 20% → service = pool * 0.25)
+  Object.entries(users).forEach(([name, u]) => {
+    if(!u || typeof u !== 'object') return;
+    if(isExcluded(name, exclude)) return;
+    if(!u.gameWinPayouts) return;
+    Object.values(u.gameWinPayouts).forEach(p => {
+      if(!p) return;
+      if(!inDateRange(p.timestamp, dateMode)) return;
+      totalPayouts += Number(p.amount) || 0;
+    });
+  });
+  const totalService = Math.round(totalPayouts * 0.25);
+
+  if($('totalWithdraw')) $('totalWithdraw').textContent = money(totalWithdraw);
+  if($('totalDeposit'))  $('totalDeposit').textContent  = money(totalDeposit);
+  if($('totalService'))  $('totalService').textContent  = money(totalService);
+}
+
+/* ============================================================
+   FILTER EVENT HOOKS
+   ============================================================ */
+(function hookFilters(){
+  // Users
+  const uD = $('usersDate'), uE = $('usersExclude'), uB = $('usersHideBots');
+  if(uD) uD.addEventListener('change', renderUsers);
+  if(uE) uE.addEventListener('input',  renderUsers);
+  if(uB) uB.addEventListener('change', renderUsers);
+
+  // Journal
+  const jD = $('journalDate'), jT = $('journalType'), jE = $('journalExclude');
+  if(jD) jD.addEventListener('change', renderJournal);
+  if(jT) jT.addEventListener('change', renderJournal);
+  if(jE) jE.addEventListener('input',  renderJournal);
+
+  // Balance
+  const bD = $('balanceDate'), bE = $('balanceExclude');
+  if(bD) bD.addEventListener('change', renderBalance);
+  if(bE) bE.addEventListener('input',  renderBalance);
+})();
+
+/* ============================================================
+   DETAIL MODAL (original)
+   ============================================================ */
 function openDetail(id){
  selectedId=id;const x=transactions[id];if(!x)return;
  $("detailTitle").textContent=(x.type==="deposit"?"💰 Deposit":"🏦 Withdrawal")+" · "+(x.status||"pending");
@@ -264,7 +593,6 @@ async function settle(id,decision){
  const username=tx.username,amount=Number(tx.amount||0);
  if(!username||!amount||!["deposit","withdraw"].includes(tx.type))return alert("Invalid transaction.");
  try{
-   // First claim the request. This prevents two admin tabs from settling the same request.
    const claim=await db.ref("transactions/"+id+"/status").transaction(v=>v==="pending"?(decision==="approved"?"processing":"rejecting"):v);
    if(!claim.committed)return alert("This request was already handled by another admin.");
    try{
@@ -308,7 +636,6 @@ async function settle(id,decision){
      });
      closeDetail();render();
    }catch(err){
-     // Return the request to pending so an admin can retry if wallet processing failed.
      await db.ref("transactions/"+id).update({status:"pending"});
      alert(err.message||"Settlement failed.");
    }
