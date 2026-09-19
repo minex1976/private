@@ -38,7 +38,23 @@ table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.card.pad{pa
 .reject-box{margin-top:14px;padding:14px;border-radius:14px;background:rgba(255,80,80,.06);border:1px solid rgba(255,120,120,.22)}
 .reject-box label{display:block;color:#ffb0b0;font-size:11px;text-transform:uppercase;letter-spacing:.6px;font-weight:700;margin-bottom:8px}
 .reject-box textarea{min-height:76px;margin:0;resize:vertical}
+.reject-box select{margin-bottom:8px;border-color:rgba(255,120,120,.28);background:#1a0d16}
 .reject-hint{color:#9d8bb7;font-size:11px;margin-top:6px;line-height:1.4}
+
+/* ---- Broadcast ---- */
+.radio-row{display:flex;gap:12px;flex-wrap:wrap;margin:4px 0 14px}
+.radio-line{display:flex;align-items:center;gap:9px;color:#d4c0f0;font-size:13px;cursor:pointer;background:rgba(120,80,200,.12);border:1px solid rgba(180,120,255,.14);padding:10px 15px;border-radius:13px;transition:all .15s;user-select:none}
+.radio-line:hover{background:rgba(120,80,200,.2)}
+.radio-line.active{background:rgba(255,204,68,.14);border-color:#ffcc44;color:#ffe9a8}
+.radio-line input{width:auto;margin:0;cursor:pointer;accent-color:#ffcc44}
+.radio-line small{color:#9d8bb7;font-size:11px}
+.radio-line.active small{color:#d9c994}
+.bcast-msg{white-space:pre-wrap;min-width:240px;max-width:460px}
+.tag{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.3px}
+.tag.sticky{background:rgba(255,120,120,.14);color:#ffb0b0;border:1px solid rgba(255,120,120,.3)}
+.tag.dismissible{background:rgba(138,255,176,.12);color:#8affb0;border:1px solid rgba(138,255,176,.28)}
+.preset-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.preset-row select{margin:0}
 </style>
 </head>
 <body>
@@ -72,6 +88,7 @@ table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.card.pad{pa
   <button class="view-tab" data-view="users">👥 Users</button>
   <button class="view-tab" data-view="journal">📒 Journal</button>
   <button class="view-tab" data-view="balance">💰 Check Balance</button>
+  <button class="view-tab" data-view="broadcast">📢 Broadcast</button>
 </nav>
 
 <!-- ================= TRANSACTIONS VIEW ================= -->
@@ -232,6 +249,54 @@ table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.card.pad{pa
   </div>
 </div>
 
+<!-- ================= BROADCAST VIEW ================= -->
+<div id="view-broadcast" class="view hidden">
+  <div class="card pad" style="margin-bottom:15px">
+    <h2 style="margin:0 0 6px">📢 Send Message to All Players</h2>
+    <div style="color:#9d8bb7;font-size:12px;margin-bottom:14px">
+      The message pops up inside the game app for every player — including new players who register later.
+    </div>
+
+    <textarea id="broadcastMessage" placeholder="Type the message to send to all players…" style="min-height:110px;resize:vertical"></textarea>
+
+    <div class="radio-row">
+      <label class="radio-line active" id="rline-dismissible">
+        <input type="radio" name="broadcastType" value="dismissible" checked>
+        <span>✅ Dismissible<br><small>Player taps OK to close it</small></span>
+      </label>
+      <label class="radio-line" id="rline-sticky">
+        <input type="radio" name="broadcastType" value="sticky">
+        <span>📌 Sticky<br><small>Stays on screen until the admin removes it</small></span>
+      </label>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="primary" id="sendBroadcastBtn">📨 Send to all players</button>
+      <button class="ghost" id="clearBroadcastBtn">Clear</button>
+    </div>
+    <div id="broadcastStatus" style="margin-top:12px;font-size:13px"></div>
+
+    <div class="note">
+      <b>Game app contract:</b> listen to <b>/broadcasts</b> and show every child where <b>active === true</b>.<br>
+      Each child: <b>message</b>, <b>type</b> (<i>"dismissible"</i> = player closes it with OK; <i>"sticky"</i> = removed only when admin deletes it),
+      <b>dismissible</b> (true/false), <b>sentBy</b>, <b>timestamp</b>.
+      Because all messages live in one shared node, every new player automatically receives the currently active ones.
+    </div>
+  </div>
+
+  <div class="card pad">
+    <h2 style="margin:0 0 6px">Active messages <span id="broadcastCount" style="font-size:13px;color:#ffcc44">0</span></h2>
+    <div style="color:#9d8bb7;font-size:12px;margin-bottom:12px">Deleting a message removes it from every player's game screen immediately.</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Time</th><th>Message</th><th>Type</th><th>Sent by</th><th>Action</th></tr></thead>
+        <tbody id="broadcastBody"></tbody>
+      </table>
+      <div id="broadcastEmpty" class="empty">No active broadcast messages.</div>
+    </div>
+  </div>
+</div>
+
 </div>
 
 <div id="detailOverlay" class="overlay">
@@ -240,6 +305,11 @@ table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.card.pad{pa
   <div id="detailBody"></div>
   <div id="detailRejectBox" class="reject-box" style="display:none">
     <label for="rejectReason">✍️ Rejection reason (required to reject)</label>
+    <div class="preset-row">
+      <select id="rejectPreset">
+        <option value="">— Choose a default message —</option>
+      </select>
+    </div>
     <textarea id="rejectReason" placeholder="Type the message the player will see in their popup..."></textarea>
     <div class="reject-hint">This exact text will be pushed to the player's game as a popup notification.</div>
   </div>
@@ -270,6 +340,15 @@ const DEFAULT_ADMINS={
   "admin":"winzo-admin",
   "superadmin":"winzo-super-admin"
 };
+
+/* Default rejection reasons used in the dropdown */
+const DEFAULT_REJECTIONS=[
+  "የገንዘብ መጠን ያለመመሳሰል",
+  "የሪፈራንስ ቁጥር ያለመመሳሰል",
+  "እባኮዎ ቅድሚያ በቴሌ ብር በተጠቀሰዉ ቁጥር ያስገቡ",
+  "ከቴል ብር የደረሶትን መልዕክት(SMS) ይላኩልን"
+];
+
 let transactions={};
 let users={};
 let rooms={};
@@ -277,11 +356,13 @@ let selectedId=null;
 let smsMessages={};
 let appliedSmsFilter="";
 let appliedSmsFilterMode="starts";
+let broadcasts={};
 
 const $=id=>document.getElementById(id);
 function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
 function money(v){return Number(v||0).toLocaleString()+" Birr";}
 function time(v){return v?new Date(Number(v)).toLocaleString():"—";}
+function adminName(){try{return JSON.parse(localStorage.getItem(ADMIN_KEY)||"{}").username||"admin";}catch(e){return "admin";}}
 
 function login(){
  const u=$("adminUser").value.trim(),p=$("adminPass").value;
@@ -306,6 +387,7 @@ function startListeners(){
  db.ref("users").on("value",s=>{users=s.val()||{};$("userCount").textContent=Object.keys(users).length;renderUsers();renderBalance();},err=>showFirebaseError("Cannot read /users: "+err.message));
  db.ref("rooms").on("value",s=>{rooms=s.val()||{};$("roomCount").textContent=Object.keys(rooms).length;},err=>showFirebaseError("Cannot read /rooms: "+err.message));
  db.ref("sms").on("value",s=>{smsMessages=s.val()||{};renderSms();},err=>showFirebaseError("Cannot read /sms: "+err.message));
+ db.ref("broadcasts").on("value",s=>{broadcasts=s.val()||{};renderBroadcasts();},err=>showFirebaseError("Cannot read /broadcasts: "+err.message));
  db.ref("transactions").once("value").then(s=>{transactions=s.val()||{};render();renderJournal();renderUsers();renderBalance();}).catch(err=>showFirebaseError("Initial /transactions read failed: "+err.message));
 }
 function smsSender(x){
@@ -590,6 +672,127 @@ function renderBalance(){
 })();
 
 /* ============================================================
+   BROADCAST MESSAGES  (admin -> all players)
+   Firebase path: /broadcasts/{pushId}
+   {
+     message:     "text",
+     type:        "dismissible" | "sticky",
+     dismissible: true | false,
+     active:      true,
+     sentBy:      "admin",
+     timestamp:   1699999999999
+   }
+   Game app: listen to /broadcasts, show every child where active === true.
+   ============================================================ */
+function highlightBroadcastType(){
+  document.querySelectorAll('.radio-line').forEach(l=>l.classList.remove('active'));
+  const checked=document.querySelector('input[name="broadcastType"]:checked');
+  if(checked && checked.closest('.radio-line')) checked.closest('.radio-line').classList.add('active');
+}
+document.querySelectorAll('input[name="broadcastType"]').forEach(r=>r.addEventListener('change',highlightBroadcastType));
+
+function setBroadcastStatus(msg, ok){
+  const el=$("broadcastStatus");
+  if(!el) return;
+  el.textContent=msg;
+  el.style.color= ok===false ? "#ff8a8a" : "#8affb0";
+  if(msg) setTimeout(()=>{ if(el.textContent===msg) el.textContent=""; },6000);
+}
+
+function sendBroadcast(){
+  const msgEl=$("broadcastMessage");
+  const msg=msgEl.value.trim();
+  if(!msg){ alert("Please type a message to broadcast."); msgEl.focus(); return; }
+
+  const typeEl=document.querySelector('input[name="broadcastType"]:checked');
+  const type=typeEl?typeEl.value:"dismissible";
+
+  const btn=$("sendBroadcastBtn");
+  btn.disabled=true; btn.textContent="Sending…";
+
+  db.ref("broadcasts").push({
+    message: msg,
+    type: type,
+    dismissible: type === "dismissible",
+    active: true,
+    sentBy: adminName(),
+    timestamp: firebase.database.ServerValue.TIMESTAMP
+  }).then(()=>{
+    msgEl.value="";
+    setBroadcastStatus("✅ Message sent to all players.", true);
+  }).catch(err=>{
+    setBroadcastStatus("⚠️ Could not send: "+err.message, false);
+  }).then(()=>{
+    btn.disabled=false; btn.textContent="📨 Send to all players";
+  });
+}
+
+function clearBroadcast(){
+  $("broadcastMessage").value="";
+  $("broadcastMessage").focus();
+}
+
+function deleteBroadcast(id){
+  if(!confirm("Remove this message from all players?"))return;
+  db.ref("broadcasts/"+id).remove().catch(e=>alert("Could not remove message: "+e.message));
+}
+
+function renderBroadcasts(){
+  const arr=Object.entries(broadcasts)
+    .map(([id,x])=>({id,x}))
+    .filter(o=>o.x && typeof o.x==="object" && o.x.active!==false)
+    .sort((a,b)=>Number(b.x.timestamp||0)-Number(a.x.timestamp||0));
+
+  const body=$("broadcastBody"), empty=$("broadcastEmpty"), count=$("broadcastCount");
+  if(count) count.textContent=arr.length;
+  if(!body) return;
+
+  body.innerHTML=arr.map(o=>{
+    const x=o.x;
+    const sticky = x.type==="sticky" || x.dismissible===false;
+    const tag = sticky
+      ? '<span class="tag sticky">📌 Sticky</span>'
+      : '<span class="tag dismissible">✅ Dismissible</span>';
+    return `<tr>
+      <td>${esc(time(x.timestamp))}</td>
+      <td class="bcast-msg">${esc(x.message||"")}</td>
+      <td>${tag}</td>
+      <td>${esc(x.sentBy||"admin")}</td>
+      <td><button class="danger" onclick="deleteBroadcast('${esc(o.id)}')">Remove</button></td>
+    </tr>`;
+  }).join("");
+
+  if(empty) empty.style.display=arr.length?"none":"block";
+}
+
+$("sendBroadcastBtn").onclick=sendBroadcast;
+$("clearBroadcastBtn").onclick=clearBroadcast;
+$("broadcastMessage").addEventListener("keydown",e=>{
+  if(e.key==="Enter" && (e.ctrlKey||e.metaKey)) sendBroadcast();
+});
+
+/* ============================================================
+   DEFAULT REJECTION REASONS (dropdown)
+   ============================================================ */
+(function buildRejectPresets(){
+  const sel=$("rejectPreset");
+  if(!sel) return;
+  DEFAULT_REJECTIONS.forEach(text=>{
+    const opt=document.createElement("option");
+    opt.value=text;
+    opt.textContent=text;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener("change",()=>{
+    const v=sel.value;
+    if(!v) return;
+    $("rejectReason").value=v;
+    $("rejectReason").focus();
+    sel.value=""; // reset so the same option can be picked again
+  });
+})();
+
+/* ============================================================
    DETAIL MODAL
    ============================================================ */
 function openDetail(id){
@@ -611,8 +814,10 @@ function openDetail(id){
 
  const rejectBox = $("detailRejectBox");
  const rejectInput = $("rejectReason");
+ const presetInput = $("rejectPreset");
  if(rejectBox) rejectBox.style.display = (x.status === "pending") ? "block" : "none";
  if(rejectInput) rejectInput.value = "";
+ if(presetInput) presetInput.value = "";
 
  $("detailActions").innerHTML=x.status==="pending"
   ?`<button class="primary" onclick="approveSelected()">Approve</button><button class="danger" onclick="rejectSelected()">Reject</button>`:"";
@@ -660,7 +865,7 @@ async function settle(id,decision,reason){
        status:decision==="approved"?"approved":"rejected",
        walletApplied:decision==="approved",
        rejectionReason: decision==="rejected" ? String(reason).trim() : null,
-       processedBy:JSON.parse(localStorage.getItem(ADMIN_KEY)||"{}").username||"admin",
+       processedBy: adminName(),
        processedAt:firebase.database.ServerValue.TIMESTAMP
      });
 
