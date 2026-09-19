@@ -292,7 +292,27 @@ table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.card.pad{pa
     </div>
     <div id="broadcastStatus" style="margin-top:12px;font-size:13px"></div>
 
-
+    <div class="note">
+      <b>How delivery works — both types go through the SAME working channel:</b><br><br>
+      Every broadcast (dismissible AND sticky) is written to each player's own
+      <b>/notifications/{username}/bcast_{id}</b> node — exactly the same path used for
+      approve/reject popups, so the game app already receives them.<br><br>
+      <b>✅ Dismissible:</b> notification has <code>sticky: false</code> and <code>dismissible: true</code>.
+      Player taps OK to close it.<br><br>
+      <b>📌 Sticky (pause-game):</b> notification has <code>sticky: true</code> and <code>dismissible: false</code>.
+      The game must <b>NOT</b> auto-remove it when the player taps; it stays until the admin removes it.
+      In addition, a global control node <b>/sticky_broadcast</b> is written so the game can
+      check at startup and pause immediately — but the player-facing delivery is through the
+      notifications inbox.<br><br>
+      <b>Game app must:</b><br>
+      • Listen to <code>/notifications/{me}</code>.<br>
+      • If a notification has <code>sticky === true</code> → show a non-dismissible overlay
+        and set <code>gamePaused = true</code>.<br>
+      • Do <b>NOT</b> remove sticky notifications on read / OK.<br>
+      • When the notification disappears from Firebase (admin removed it),
+        hide the overlay and resume the game.<br>
+      • Optionally, read <code>/sticky_broadcast</code> once at startup as a fast-path pause check.
+    </div>
   </div>
 
   <div class="card pad">
@@ -694,7 +714,24 @@ function renderBalance(){
   if(bE) bE.addEventListener('input',  renderBalance);
 })();
 
+/* ============================================================
+   BROADCAST MESSAGES
+   ------------------------------------------------------------
+   FIX: sticky messages were only written to /sticky_broadcast
+   (a node the game never read), so they never reached players.
 
+   Now BOTH types are delivered through the SAME working channel
+   that approve/reject popups use: /notifications/{username}.
+
+   • Dismissible -> notification with sticky:false
+   • Sticky      -> notification with sticky:true  + global
+                    /sticky_broadcast control node as a
+                    startup fast-path pause signal.
+
+   Removing a sticky deletes the notification from every inbox
+   → the game's value listener fires → overlay hides → game
+   resumes automatically.
+   ============================================================ */
 const BROADCAST_CHUNK = 800;   // paths per multi-location update
 
 function broadcastNotifKey(id){ return "bcast_" + id; }
@@ -714,25 +751,28 @@ function setBroadcastStatus(msg, ok){
   if(msg) setTimeout(()=>{ if(el.textContent===msg) el.textContent=""; },7000);
 }
 
-/* Dismissible notification object placed in each player's inbox */
-function buildDismissibleNotification(id, src){
+/* Notification object placed in each player's inbox.
+   Works for BOTH dismissible and sticky (differentiated by `sticky`). */
+function buildNotification(id, src, sticky){
   return {
-    type: "broadcast",
+    type: sticky ? "sticky_broadcast" : "broadcast",
     broadcastId: id,
     message: src.message,
-    dismissible: true,
-    sticky: false,
+    dismissible: !sticky,
+    sticky: !!sticky,
     timestamp: firebase.database.ServerValue.TIMESTAMP,
     read: false
   };
 }
 
-/* Fan-out dismissible notifications to usernames, chunked */
-async function pushBroadcastTo(usernames, id, src){
+/* Chunked fan-out to usernames.
+   notifObject === null  →  remove the entry (used on delete). */
+async function fanOutBroadcast(usernames, id, notifObject){
   let batch = {};
   let count = 0;
+  const suffix = broadcastNotifKey(id);
   for(const u of usernames){
-    batch["notifications/"+u+"/"+broadcastNotifKey(id)] = buildDismissibleNotification(id, src);
+    batch["notifications/"+u+"/"+suffix] = notifObject;
     if(++count >= BROADCAST_CHUNK){
       await db.ref().update(batch);
       batch = {}; count = 0;
@@ -752,11 +792,10 @@ async function sendBroadcast(){
 
   const recipients = Object.keys(users);
 
-  if(sticky){
-    if(stickyBroadcast){
-      if(!confirm("A sticky message is already live and will be replaced. Continue?")) return;
-    }
-  } else if(!recipients.length && !confirm("No players found right now. Save the message anyway so new players receive it?")){
+  if(sticky && stickyBroadcast){
+    if(!confirm("A sticky message is already live and will be replaced. Continue?")) return;
+  }
+  if(!sticky && !recipients.length && !confirm("No players found right now. Save the message anyway so new players receive it?")){
     return;
   }
 
@@ -767,20 +806,28 @@ async function sendBroadcast(){
   try{
     const id = db.ref("broadcasts").push().key;
 
-    // Master record (both types)
+    // 1. If a previous sticky is live, retire it first (remove its per-user
+    //    notifications + mark its master record inactive).
+    if(sticky && stickyBroadcast && stickyBroadcast.id && stickyBroadcast.id !== id){
+      const oldId = stickyBroadcast.id;
+      await fanOutBroadcast(recipients, oldId, null);
+      await db.ref("broadcasts/"+oldId).update({active:false}).catch(()=>{});
+    }
+
+    // 2. Master record (used by admin for listing / history)
     await db.ref("broadcasts/"+id).set({
       message: msg,
       type: sticky ? "sticky" : "dismissible",
       dismissible: !sticky,
       active: true,
       sentBy: adminName(),
-      recipients: sticky ? "all" : recipients.length,
+      recipients: recipients.length,
       timestamp: firebase.database.ServerValue.TIMESTAMP
     });
 
+    // 3. Global control node — ONLY for sticky. Single source of truth for
+    //    "game is paused" and used as a fast startup check by the game.
     if(sticky){
-      // Single global node. Presence === "game is paused for everyone".
-      // Survives logout / login because the game app reads it on start.
       await db.ref("sticky_broadcast").set({
         id: id,
         message: msg,
@@ -790,16 +837,20 @@ async function sendBroadcast(){
         sentBy: adminName(),
         timestamp: firebase.database.ServerValue.TIMESTAMP
       });
-      setBroadcastStatus("✅ Sticky message is live. Game activity is paused until you remove it.", true);
-    } else {
-      await pushBroadcastTo(recipients, id, { message: msg });
-      setBroadcastStatus(
-        recipients.length
-          ? "✅ Message delivered to "+recipients.length+" player"+(recipients.length===1?"":"s")+"."
-          : "✅ Message saved — new players will receive it.",
-        true
-      );
     }
+
+    // 4. Fan out to every player's notifications inbox — the SAME channel
+    //    that already works for approve / reject / dismissible popups.
+    await fanOutBroadcast(recipients, id, buildNotification(id, {message: msg}, sticky));
+
+    setBroadcastStatus(
+      sticky
+        ? "✅ Sticky message is live. Game activity is paused until you remove it."
+        : (recipients.length
+            ? "✅ Message delivered to "+recipients.length+" player"+(recipients.length===1?"":"s")+"."
+            : "✅ Message saved — new players will receive it."),
+      true
+    );
     msgEl.value="";
   }catch(err){
     setBroadcastStatus("⚠️ Could not send: "+err.message, false);
@@ -818,48 +869,35 @@ async function deleteBroadcast(id){
     : "Remove this message from all players?")) return;
 
   try{
-    // 1. remove master record
+    // 1. master record
     await db.ref("broadcasts/"+id).remove();
 
-    if(isSticky){
-      // Clear the global sticky node → game apps resume immediately.
-      // Guard by id so we don't accidentally clear a newer sticky.
-      if(stickyBroadcast && stickyBroadcast.id === id){
-        await db.ref("sticky_broadcast").remove();
-      }
-    } else {
-      // Remove per-player dismissible notification (chunked)
-      const names = Object.keys(users);
-      let batch = {};
-      let count = 0;
-      for(const u of names){
-        batch["notifications/"+u+"/"+broadcastNotifKey(id)] = null;
-        if(++count >= BROADCAST_CHUNK){
-          await db.ref().update(batch);
-          batch = {}; count = 0;
-        }
-      }
-      if(count) await db.ref().update(batch);
+    // 2. global sticky control node (guard against removing a newer sticky)
+    if(isSticky && stickyBroadcast && stickyBroadcast.id === id){
+      await db.ref("sticky_broadcast").remove();
     }
+
+    // 3. remove per-player notification (BOTH types now live here)
+    await fanOutBroadcast(Object.keys(users), id, null);
   }catch(e){
     alert("Could not remove message: "+e.message);
   }
 }
 
-/* Deliver the currently-active DISMISSIBLE broadcasts to newly-registered
-   players. Sticky broadcasts are global — no per-user delivery needed. */
+/* When a player registers while this dashboard is open, deliver ALL
+   currently-active broadcasts (dismissible AND sticky) into their inbox. */
 async function deliverActiveBroadcastsTo(usernames){
   const active = Object.entries(broadcasts)
-    .filter(([id,x]) => x && typeof x === "object" && x.active !== false
-                      && x.type !== "sticky" && x.dismissible !== false);
+    .filter(([id,x]) => x && typeof x === "object" && x.active !== false);
   if(!active.length || !usernames.length) return;
 
   let batch = {};
   let count = 0;
   for(const u of usernames){
     for(const [id,x] of active){
+      const isSticky = x.type === "sticky" || x.dismissible === false;
       batch["notifications/"+u+"/"+broadcastNotifKey(id)] =
-        buildDismissibleNotification(id, { message: x.message || "" });
+        buildNotification(id, {message: x.message || ""}, isSticky);
       if(++count >= BROADCAST_CHUNK){
         await db.ref().update(batch);
         batch = {}; count = 0;
@@ -906,9 +944,9 @@ function renderStickyLiveBox(){
       const id = stickyBroadcast.id;
       if(id && broadcasts[id]) deleteBroadcast(id);
       else if(id){
-        // master record missing — still clear the global node
         if(confirm("Remove the sticky message? Game activity will resume for all players.")){
           db.ref("sticky_broadcast").remove().catch(e => alert(e.message));
+          fanOutBroadcast(Object.keys(users), id, null).catch(()=>{});
         }
       }
     };
@@ -935,9 +973,9 @@ function renderBroadcasts(){
     const tag = isSticky
       ? `<span class="tag sticky${isLive?" live":""}">📌 ${isLive?"LIVE":"Sticky"}</span>`
       : '<span class="tag dismissible">✅ Dismissible</span>';
-    const delivered = isSticky
-      ? "All players (global)"
-      : (x.recipients!=null ? String(x.recipients)+" player"+(x.recipients===1?"":"s") : "—");
+    const delivered = (x.recipients!=null)
+      ? String(x.recipients)+" player"+(x.recipients===1?"":"s")
+      : "—";
     return `<tr>
       <td>${esc(time(x.timestamp))}</td>
       <td class="bcast-msg">${esc(x.message||"")}</td>
