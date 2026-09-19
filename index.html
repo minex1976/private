@@ -53,8 +53,13 @@ table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.card.pad{pa
 .tag{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.3px}
 .tag.sticky{background:rgba(255,120,120,.14);color:#ffb0b0;border:1px solid rgba(255,120,120,.3)}
 .tag.dismissible{background:rgba(138,255,176,.12);color:#8affb0;border:1px solid rgba(138,255,176,.28)}
+.tag.live{background:rgba(138,255,176,.18);color:#8affb0;border:1px solid rgba(138,255,176,.5);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
 .preset-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
 .preset-row select{margin:0}
+.sticky-live-box{margin-bottom:15px;padding:14px;border-radius:14px;background:rgba(255,90,90,.09);border:1px solid rgba(255,120,120,.35)}
+.sticky-live-box h3{margin:0 0 6px;font-size:14px;color:#ffb0b0;letter-spacing:.4px}
+.sticky-live-box .live-msg{white-space:pre-wrap;font-size:13px;color:#f0d7d7;margin-bottom:10px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -251,10 +256,21 @@ table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.card.pad{pa
 
 <!-- ================= BROADCAST VIEW ================= -->
 <div id="view-broadcast" class="view hidden">
+
+  <!-- Live sticky broadcast banner -->
+  <div id="stickyLiveBox" class="sticky-live-box" style="display:none">
+    <h3>🔴 STICKY MESSAGE IS LIVE — GAME IS PAUSED FOR ALL PLAYERS</h3>
+    <div class="live-msg" id="stickyLiveMsg"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="danger" id="stickyLiveRemove">Remove (resume game)</button>
+      <span id="stickyLiveMeta" style="color:#c0a0a0;font-size:12px"></span>
+    </div>
+  </div>
+
   <div class="card pad" style="margin-bottom:15px">
     <h2 style="margin:0 0 6px">📢 Send Message to All Players</h2>
     <div style="color:#9d8bb7;font-size:12px;margin-bottom:14px">
-      The message pops up inside the game app for every player — including new players who register later.
+      Choose how the message should behave in the game app.
     </div>
 
     <textarea id="broadcastMessage" placeholder="Type the message to send to all players…" style="min-height:110px;resize:vertical"></textarea>
@@ -262,11 +278,11 @@ table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.card.pad{pa
     <div class="radio-row">
       <label class="radio-line active" id="rline-dismissible">
         <input type="radio" name="broadcastType" value="dismissible" checked>
-        <span>✅ Dismissible<br><small>Player taps OK to close it</small></span>
+        <span>✅ Dismissible popup<br><small>Player taps OK to close it</small></span>
       </label>
       <label class="radio-line" id="rline-sticky">
         <input type="radio" name="broadcastType" value="sticky">
-        <span>📌 Sticky<br><small>Stays on screen until the admin removes it</small></span>
+        <span>📌 Sticky — pauses game<br><small>Blocks the game until the admin removes it</small></span>
       </label>
     </div>
 
@@ -277,19 +293,32 @@ table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.card.pad{pa
     <div id="broadcastStatus" style="margin-top:12px;font-size:13px"></div>
 
     <div class="note">
-      
+      <b>Two delivery channels are used:</b><br><br>
+      <b>✅ Dismissible</b> — written into each player's
+      <b>/notifications/{username}/bcast_{id}</b> (same channel as approve / reject popups).
+      Players tap OK to dismiss.<br><br>
+      <b>📌 Sticky (pause-game)</b> — written into a single global node
+      <b>/sticky_broadcast</b>. The game app must listen to that node and, while it exists,
+      show a full-screen blocking overlay and <i>pause all game activity</i>.
+      It survives logout/login and only disappears when the admin removes it.<br><br>
+      <b>Game app checklist for sticky:</b><br>
+      &nbsp;&nbsp;• On app start and on every <code>value</code> event of <code>/sticky_broadcast</code>,
+        check if it exists.<br>
+      &nbsp;&nbsp;• If it exists, show the <code>message</code> in a non-dismissible overlay
+        and set your <code>gamePaused = true</code> flag.<br>
+      &nbsp;&nbsp;• When it becomes <code>null</code>, hide the overlay and resume the game.
     </div>
   </div>
 
   <div class="card pad">
-    <h2 style="margin:0 0 6px">Active messages <span id="broadcastCount" style="font-size:13px;color:#ffcc44">0</span></h2>
-    <div style="color:#9d8bb7;font-size:12px;margin-bottom:12px">Deleting a message removes it from every player's game screen immediately.</div>
+    <h2 style="margin:0 0 6px">Message history <span id="broadcastCount" style="font-size:13px;color:#ffcc44">0</span></h2>
+    <div style="color:#9d8bb7;font-size:12px;margin-bottom:12px">Removing a message deletes it from every player's game screen immediately.</div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Time</th><th>Message</th><th>Type</th><th>Sent by</th><th>Action</th></tr></thead>
+        <thead><tr><th>Time</th><th>Message</th><th>Type</th><th>Delivery</th><th>Sent by</th><th>Action</th></tr></thead>
         <tbody id="broadcastBody"></tbody>
       </table>
-      <div id="broadcastEmpty" class="empty">No active broadcast messages.</div>
+      <div id="broadcastEmpty" class="empty">No broadcast messages yet.</div>
     </div>
   </div>
 </div>
@@ -354,6 +383,8 @@ let smsMessages={};
 let appliedSmsFilter="";
 let appliedSmsFilterMode="starts";
 let broadcasts={};
+let stickyBroadcast=null;   // the single active sticky (pause-game) message
+let seenUserNames=null;     // used to auto-deliver active broadcasts to new players
 
 const $=id=>document.getElementById(id);
 function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
@@ -381,10 +412,20 @@ function startListeners(){
    $("connection").style.color=s.val()?"#8affb0":"#ff8a8a";
  },err=>showFirebaseError("Connection check failed: "+err.message));
  db.ref("transactions").on("value",s=>{transactions=s.val()||{};render();renderJournal();renderUsers();renderBalance();},err=>showFirebaseError("Cannot read /transactions: "+err.message));
- db.ref("users").on("value",s=>{users=s.val()||{};$("userCount").textContent=Object.keys(users).length;renderUsers();renderBalance();},err=>showFirebaseError("Cannot read /users: "+err.message));
+ db.ref("users").on("value",s=>{
+   users=s.val()||{};
+   $("userCount").textContent=Object.keys(users).length;
+   handleNewUsers();
+   renderUsers();renderBalance();
+ },err=>showFirebaseError("Cannot read /users: "+err.message));
  db.ref("rooms").on("value",s=>{rooms=s.val()||{};$("roomCount").textContent=Object.keys(rooms).length;},err=>showFirebaseError("Cannot read /rooms: "+err.message));
  db.ref("sms").on("value",s=>{smsMessages=s.val()||{};renderSms();},err=>showFirebaseError("Cannot read /sms: "+err.message));
  db.ref("broadcasts").on("value",s=>{broadcasts=s.val()||{};renderBroadcasts();},err=>showFirebaseError("Cannot read /broadcasts: "+err.message));
+ db.ref("sticky_broadcast").on("value",s=>{
+   stickyBroadcast=s.val()||null;
+   renderStickyLiveBox();
+   renderBroadcasts();
+ },err=>showFirebaseError("Cannot read /sticky_broadcast: "+err.message));
  db.ref("transactions").once("value").then(s=>{transactions=s.val()||{};render();renderJournal();renderUsers();renderBalance();}).catch(err=>showFirebaseError("Initial /transactions read failed: "+err.message));
 }
 function smsSender(x){
@@ -668,19 +709,11 @@ function renderBalance(){
   if(bE) bE.addEventListener('input',  renderBalance);
 })();
 
-/* ============================================================
-   BROADCAST MESSAGES  (admin -> all players)
-   Firebase path: /broadcasts/{pushId}
-   {
-     message:     "text",
-     type:        "dismissible" | "sticky",
-     dismissible: true | false,
-     active:      true,
-     sentBy:      "admin",
-     timestamp:   1699999999999
-   }
-   Game app: listen to /broadcasts, show every child where active === true.
-   ============================================================ */
+
+const BROADCAST_CHUNK = 800;   // paths per multi-location update
+
+function broadcastNotifKey(id){ return "bcast_" + id; }
+
 function highlightBroadcastType(){
   document.querySelectorAll('.radio-line').forEach(l=>l.classList.remove('active'));
   const checked=document.querySelector('input[name="broadcastType"]:checked');
@@ -693,35 +726,173 @@ function setBroadcastStatus(msg, ok){
   if(!el) return;
   el.textContent=msg;
   el.style.color= ok===false ? "#ff8a8a" : "#8affb0";
-  if(msg) setTimeout(()=>{ if(el.textContent===msg) el.textContent=""; },6000);
+  if(msg) setTimeout(()=>{ if(el.textContent===msg) el.textContent=""; },7000);
 }
 
-function sendBroadcast(){
+/* Dismissible notification object placed in each player's inbox */
+function buildDismissibleNotification(id, src){
+  return {
+    type: "broadcast",
+    broadcastId: id,
+    message: src.message,
+    dismissible: true,
+    sticky: false,
+    timestamp: firebase.database.ServerValue.TIMESTAMP,
+    read: false
+  };
+}
+
+/* Fan-out dismissible notifications to usernames, chunked */
+async function pushBroadcastTo(usernames, id, src){
+  let batch = {};
+  let count = 0;
+  for(const u of usernames){
+    batch["notifications/"+u+"/"+broadcastNotifKey(id)] = buildDismissibleNotification(id, src);
+    if(++count >= BROADCAST_CHUNK){
+      await db.ref().update(batch);
+      batch = {}; count = 0;
+    }
+  }
+  if(count) await db.ref().update(batch);
+}
+
+async function sendBroadcast(){
   const msgEl=$("broadcastMessage");
   const msg=msgEl.value.trim();
   if(!msg){ alert("Please type a message to broadcast."); msgEl.focus(); return; }
 
   const typeEl=document.querySelector('input[name="broadcastType"]:checked');
   const type=typeEl?typeEl.value:"dismissible";
+  const sticky = type === "sticky";
+
+  const recipients = Object.keys(users);
+
+  if(sticky){
+    if(stickyBroadcast){
+      if(!confirm("A sticky message is already live and will be replaced. Continue?")) return;
+    }
+  } else if(!recipients.length && !confirm("No players found right now. Save the message anyway so new players receive it?")){
+    return;
+  }
 
   const btn=$("sendBroadcastBtn");
+  const oldLabel = btn.textContent;
   btn.disabled=true; btn.textContent="Sending…";
 
-  db.ref("broadcasts").push({
-    message: msg,
-    type: type,
-    dismissible: type === "dismissible",
-    active: true,
-    sentBy: adminName(),
-    timestamp: firebase.database.ServerValue.TIMESTAMP
-  }).then(()=>{
+  try{
+    const id = db.ref("broadcasts").push().key;
+
+    // Master record (both types)
+    await db.ref("broadcasts/"+id).set({
+      message: msg,
+      type: sticky ? "sticky" : "dismissible",
+      dismissible: !sticky,
+      active: true,
+      sentBy: adminName(),
+      recipients: sticky ? "all" : recipients.length,
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    });
+
+    if(sticky){
+      // Single global node. Presence === "game is paused for everyone".
+      // Survives logout / login because the game app reads it on start.
+      await db.ref("sticky_broadcast").set({
+        id: id,
+        message: msg,
+        type: "sticky",
+        dismissible: false,
+        active: true,
+        sentBy: adminName(),
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+      });
+      setBroadcastStatus("✅ Sticky message is live. Game activity is paused until you remove it.", true);
+    } else {
+      await pushBroadcastTo(recipients, id, { message: msg });
+      setBroadcastStatus(
+        recipients.length
+          ? "✅ Message delivered to "+recipients.length+" player"+(recipients.length===1?"":"s")+"."
+          : "✅ Message saved — new players will receive it.",
+        true
+      );
+    }
     msgEl.value="";
-    setBroadcastStatus("✅ Message sent to all players.", true);
-  }).catch(err=>{
+  }catch(err){
     setBroadcastStatus("⚠️ Could not send: "+err.message, false);
-  }).then(()=>{
-    btn.disabled=false; btn.textContent="📨 Send to all players";
-  });
+  }finally{
+    btn.disabled=false; btn.textContent=oldLabel;
+  }
+}
+
+async function deleteBroadcast(id){
+  const x = broadcasts[id];
+  if(!x){ return; }
+  const isSticky = x.type === "sticky" || x.dismissible === false;
+
+  if(!confirm(isSticky
+    ? "Remove this sticky message? Game activity will resume for all players."
+    : "Remove this message from all players?")) return;
+
+  try{
+    // 1. remove master record
+    await db.ref("broadcasts/"+id).remove();
+
+    if(isSticky){
+      // Clear the global sticky node → game apps resume immediately.
+      // Guard by id so we don't accidentally clear a newer sticky.
+      if(stickyBroadcast && stickyBroadcast.id === id){
+        await db.ref("sticky_broadcast").remove();
+      }
+    } else {
+      // Remove per-player dismissible notification (chunked)
+      const names = Object.keys(users);
+      let batch = {};
+      let count = 0;
+      for(const u of names){
+        batch["notifications/"+u+"/"+broadcastNotifKey(id)] = null;
+        if(++count >= BROADCAST_CHUNK){
+          await db.ref().update(batch);
+          batch = {}; count = 0;
+        }
+      }
+      if(count) await db.ref().update(batch);
+    }
+  }catch(e){
+    alert("Could not remove message: "+e.message);
+  }
+}
+
+/* Deliver the currently-active DISMISSIBLE broadcasts to newly-registered
+   players. Sticky broadcasts are global — no per-user delivery needed. */
+async function deliverActiveBroadcastsTo(usernames){
+  const active = Object.entries(broadcasts)
+    .filter(([id,x]) => x && typeof x === "object" && x.active !== false
+                      && x.type !== "sticky" && x.dismissible !== false);
+  if(!active.length || !usernames.length) return;
+
+  let batch = {};
+  let count = 0;
+  for(const u of usernames){
+    for(const [id,x] of active){
+      batch["notifications/"+u+"/"+broadcastNotifKey(id)] =
+        buildDismissibleNotification(id, { message: x.message || "" });
+      if(++count >= BROADCAST_CHUNK){
+        await db.ref().update(batch);
+        batch = {}; count = 0;
+      }
+    }
+  }
+  if(count) await db.ref().update(batch);
+}
+
+function handleNewUsers(){
+  const names = Object.keys(users);
+  if(seenUserNames){
+    const added = names.filter(n => !seenUserNames.has(n));
+    if(added.length){
+      deliverActiveBroadcastsTo(added).catch(e => console.warn("broadcast auto-deliver:", e));
+    }
+  }
+  seenUserNames = new Set(names);
 }
 
 function clearBroadcast(){
@@ -729,11 +900,37 @@ function clearBroadcast(){
   $("broadcastMessage").focus();
 }
 
-function deleteBroadcast(id){
-  if(!confirm("Remove this message from all players?"))return;
-  db.ref("broadcasts/"+id).remove().catch(e=>alert("Could not remove message: "+e.message));
+/* Live banner for the currently active sticky message */
+function renderStickyLiveBox(){
+  const box = $("stickyLiveBox");
+  const msgEl = $("stickyLiveMsg");
+  const metaEl = $("stickyLiveMeta");
+  const rmBtn = $("stickyLiveRemove");
+  if(!box || !msgEl || !metaEl) return;
+
+  if(!stickyBroadcast){
+    box.style.display = "none";
+    if(rmBtn) rmBtn.onclick = null;
+    return;
+  }
+  box.style.display = "block";
+  msgEl.textContent = stickyBroadcast.message || "";
+  metaEl.textContent = "Sent " + time(stickyBroadcast.timestamp) + " by " + (stickyBroadcast.sentBy || "admin");
+  if(rmBtn){
+    rmBtn.onclick = () => {
+      const id = stickyBroadcast.id;
+      if(id && broadcasts[id]) deleteBroadcast(id);
+      else if(id){
+        // master record missing — still clear the global node
+        if(confirm("Remove the sticky message? Game activity will resume for all players.")){
+          db.ref("sticky_broadcast").remove().catch(e => alert(e.message));
+        }
+      }
+    };
+  }
 }
 
+/* History table: shows master records (both types). Live sticky is marked. */
 function renderBroadcasts(){
   const arr=Object.entries(broadcasts)
     .map(([id,x])=>({id,x}))
@@ -744,16 +941,23 @@ function renderBroadcasts(){
   if(count) count.textContent=arr.length;
   if(!body) return;
 
+  const liveId = stickyBroadcast && stickyBroadcast.id;
+
   body.innerHTML=arr.map(o=>{
     const x=o.x;
-    const sticky = x.type==="sticky" || x.dismissible===false;
-    const tag = sticky
-      ? '<span class="tag sticky">📌 Sticky</span>'
+    const isSticky = x.type==="sticky" || x.dismissible===false;
+    const isLive = isSticky && liveId === o.id;
+    const tag = isSticky
+      ? `<span class="tag sticky${isLive?" live":""}">📌 ${isLive?"LIVE":"Sticky"}</span>`
       : '<span class="tag dismissible">✅ Dismissible</span>';
+    const delivered = isSticky
+      ? "All players (global)"
+      : (x.recipients!=null ? String(x.recipients)+" player"+(x.recipients===1?"":"s") : "—");
     return `<tr>
       <td>${esc(time(x.timestamp))}</td>
       <td class="bcast-msg">${esc(x.message||"")}</td>
       <td>${tag}</td>
+      <td>${esc(delivered)}</td>
       <td>${esc(x.sentBy||"admin")}</td>
       <td><button class="danger" onclick="deleteBroadcast('${esc(o.id)}')">Remove</button></td>
     </tr>`;
