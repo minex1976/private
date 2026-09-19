@@ -292,22 +292,7 @@ table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.card.pad{pa
     </div>
     <div id="broadcastStatus" style="margin-top:12px;font-size:13px"></div>
 
-    <div class="note">
-      <b>Two delivery channels are used:</b><br><br>
-      <b>✅ Dismissible</b> — written into each player's
-      <b>/notifications/{username}/bcast_{id}</b> (same channel as approve / reject popups).
-      Players tap OK to dismiss.<br><br>
-      <b>📌 Sticky (pause-game)</b> — written into a single global node
-      <b>/sticky_broadcast</b>. The game app must listen to that node and, while it exists,
-      show a full-screen blocking overlay and <i>pause all game activity</i>.
-      It survives logout/login and only disappears when the admin removes it.<br><br>
-      <b>Game app checklist for sticky:</b><br>
-      &nbsp;&nbsp;• On app start and on every <code>value</code> event of <code>/sticky_broadcast</code>,
-        check if it exists.<br>
-      &nbsp;&nbsp;• If it exists, show the <code>message</code> in a non-dismissible overlay
-        and set your <code>gamePaused = true</code> flag.<br>
-      &nbsp;&nbsp;• When it becomes <code>null</code>, hide the overlay and resume the game.
-    </div>
+
   </div>
 
   <div class="card pad">
