@@ -1,6 +1,227 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Winzo Admin</title><style>body{font-family:system-ui;background:#120b20;color:#eee;padding:20px}input,button{padding:10px;margin:4px;border-radius:8px;border:1px solid #555}button{cursor:pointer}.tx{border:1px solid #444;padding:12px;margin:8px 0;border-radius:10px}</style></head><body><h2>Winzo Admin</h2><input id="url" value="wss://winzo-authoritative-sqlite-fixed-audited.onrender.com" size="35"><input id="key" placeholder="ADMIN_KEY" type="password"><button id="connect">Connect</button><div id="status"></div><div id="list"></div><script>
-let ws; const $=id=>document.getElementById(id); function send(m){if(ws&&ws.readyState===1)ws.send(JSON.stringify(m));}
-$('connect').onclick=()=>{const u=$('url').value.trim();if(!(u.startsWith('ws://')||u.startsWith('wss://'))){$('status').textContent='Enter a valid ws:// or wss:// server URL.';return;}try{ws=new WebSocket(u);}catch(e){$('status').textContent='Invalid WebSocket URL.';return;}ws.onopen=()=>{send({type:'admin-auth',key:$('key').value});$('status').textContent='Connected';};ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}if(m.type==='admin-authed'){send({type:'admin-list-transactions'});$('status').textContent='Authenticated';}if(m.type==='admin-transactions')render(m.transactions||[]);if(m.type==='admin-error'||m.type==='admin-auth-fail')$('status').textContent=m.message||'Admin authentication failed.';};ws.onclose=()=>$('status').textContent='Disconnected';};
-function render(xs){const list=$('list');list.replaceChildren();for(const t of xs){const box=document.createElement('div');box.className='tx';const title=document.createElement('div');const strong=document.createElement('b');strong.textContent=String(t.type||'');title.append(strong,` — ${Number(t.amount)||0} Birr — ${String(t.displayName||t.username||'')} — ${String(t.status||'')}`);const detail=document.createElement('div');detail.textContent=String(t.reference||t.fullName||'');box.append(title,detail);if(t.status==='pending'){const approve=document.createElement('button');approve.textContent='Approve';approve.onclick=()=>dec(t.id,'approved');const reject=document.createElement('button');reject.textContent='Reject';reject.onclick=()=>dec(t.id,'rejected');box.append(approve,reject);}list.append(box);}}
-window.dec=(id,decision)=>{send({type:'admin-decision',id,decision});setTimeout(()=>send({type:'admin-list-transactions'}),300)};
-</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Winzo Admin</title>
+<style>
+  :root{--bg:#120b20;--panel:#1e1530;--border:#3a2a55;--fg:#eee;--muted:#9c8fb5;--accent:#8b5cf6;--accent-hover:#7c3aed;--green:#10b981;--red:#ef4444;--amber:#f59e0b}
+  *{box-sizing:border-box}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:20px;min-height:100vh;line-height:1.5}
+  .container{max-width:760px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 4px}
+  .subtitle{color:var(--muted);font-size:13px;margin-bottom:20px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  input{width:100%;background:#0d0818;color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:11px 12px;font-size:14px;font-family:inherit}
+  input:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+  .row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+  .row>div{flex:1;min-width:180px}
+  button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:11px 18px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;transition:background .15s}
+  button:hover:not(:disabled){background:var(--accent-hover)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.secondary{background:transparent;color:var(--fg);border:1px solid var(--border)}
+  button.secondary:hover:not(:disabled){background:#2a1d3d}
+  button.approve{background:var(--green)}
+  button.approve:hover:not(:disabled){background:#059669}
+  button.reject{background:var(--red)}
+  button.reject:hover:not(:disabled){background:#dc2626}
+  #status{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none;word-break:break-word}
+  #status.show{display:block}
+  #status.info{background:rgba(139,92,246,.15);color:#c4b5fd;border:1px solid rgba(139,92,246,.3)}
+  #status.error{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+  #status.success{background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.3)}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .tx{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
+  .tx-head{display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:8px}
+  .tx-type{font-weight:600;font-size:15px}
+  .tx-type.deposit{color:#6ee7b7}
+  .tx-type.withdraw{color:#fca5a5}
+  .tx-amount{font-size:18px;font-weight:700}
+  .tx-meta{font-size:12px;color:var(--muted);line-height:1.7}
+  .tx-meta b{color:#d1c4e9;font-weight:500}
+  .tx-actions{display:flex;gap:8px;margin-top:12px}
+  .tx-actions button{padding:8px 16px;font-size:13px}
+  .empty{color:var(--muted);text-align:center;padding:40px 20px;font-size:14px}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;background:rgba(245,158,11,.2);color:#fcd34d}
+  code{background:#0d0818;padding:2px 6px;border-radius:4px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Winzo Admin</h1>
+  <div class="subtitle">HTTP-based admin (no WebSocket required)</div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label for="url">Server URL</label>
+        <input id="url" value="https://winzo-authoritative-sqlite-fixed-audited.onrender.com" placeholder="https://...">
+      </div>
+      <div>
+        <label for="key">Admin key</label>
+        <input id="key" type="password" placeholder="ADMIN_KEY">
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div style="flex:0 0 auto"><button id="connect">Connect</button></div>
+      <div style="flex:0 0 auto"><button id="disconnect" class="secondary" disabled>Disconnect</button></div>
+    </div>
+  </div>
+
+  <div id="status"></div>
+
+  <div id="panel" style="display:none">
+    <div class="toolbar">
+      <button id="refresh" class="secondary">↻ Refresh</button>
+      <button id="repair" class="secondary">Repair Telegram IDs</button>
+      <button id="diagnose" class="secondary">Diagnose</button>
+      <label style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;margin-left:auto;margin-bottom:0">
+        <input type="checkbox" id="auto" checked style="width:auto"> Auto-refresh
+      </label>
+    </div>
+    <div id="list"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  let serverUrl='',adminKey='',autoTimer=null;
+
+  function showStatus(msg,kind){
+    const s=$('status'); s.textContent=msg; s.className='show '+(kind||'info');
+    if(kind==='success') setTimeout(()=>{if(s.textContent===msg)s.className='show info';},3500);
+  }
+  function normalizeUrl(u){u=u.trim().replace(/\/+$/,'');if(!/^https?:\/\//i.test(u))u='https://'+u;return u;}
+
+  async function api(path){
+    const res=await fetch(serverUrl+path,{headers:{'X-Admin-Key':adminKey}});
+    let body; try{body=await res.json();}catch{body={ok:false,error:'invalid-json-from-server'};}
+    if(!res.ok||body.ok===false) throw new Error(body.error||('http-'+res.status));
+    return body;
+  }
+
+  async function connect(){
+    const url=normalizeUrl($('url').value), key=$('key').value;
+    if(!key){showStatus('Enter the admin key.','error');return;}
+    $('connect').disabled=true; showStatus('Testing connection…','info');
+    try{
+      const cfg=await (await fetch(url+'/config')).json();
+      if(cfg.database!=='firebase-realtime-database') throw new Error('wrong-backend ('+(cfg.database||'unknown')+')');
+      const test=await fetch(url+'/admin/pending',{headers:{'X-Admin-Key':key}});
+      if(test.status===403) throw new Error('admin-key-rejected');
+      if(!test.ok) throw new Error('admin endpoint missing (status '+test.status+') — server code not deployed');
+      serverUrl=url; adminKey=key;
+      $('disconnect').disabled=false; $('panel').style.display='';
+      showStatus('Connected to '+url,'success');
+      await refresh(); startAuto();
+    }catch(e){
+      showStatus('Connection failed: '+(e.message||e),'error');
+      serverUrl=''; adminKey=''; $('panel').style.display='none';
+    }finally{ $('connect').disabled=false; }
+  }
+
+  function disconnect(){
+    serverUrl=''; adminKey=''; stopAuto();
+    $('panel').style.display='none'; $('disconnect').disabled=true; $('list').replaceChildren();
+    showStatus('Disconnected.','info');
+  }
+
+  function startAuto(){stopAuto();if($('auto').checked)autoTimer=setInterval(refresh,6000);}
+  function stopAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}}
+
+  async function refresh(){
+    if(!serverUrl)return;
+    try{ const data=await api('/admin/pending'); render(data.transactions||[]); }
+    catch(e){ showStatus('Refresh failed: '+e.message,'error'); }
+  }
+
+  function render(txs){
+    const list=$('list'); list.replaceChildren();
+    if(!txs.length){const d=document.createElement('div');d.className='empty';d.textContent='No pending transactions.';list.appendChild(d);return;}
+    for(const t of txs) list.appendChild(renderTx(t));
+  }
+
+  function renderTx(t){
+    const box=document.createElement('div'); box.className='tx';
+    const head=document.createElement('div'); head.className='tx-head';
+    const left=document.createElement('div');
+    const type=document.createElement('div'); type.className='tx-type '+(t.type||''); type.textContent=(t.type||'').toUpperCase(); left.appendChild(type);
+    const who=document.createElement('div'); who.className='tx-meta'; who.innerHTML='<b>'+esc(t.displayName||t.username||'—')+'</b>'; left.appendChild(who);
+    head.appendChild(left);
+
+    const right=document.createElement('div'); right.style.textAlign='right';
+    const amount=document.createElement('div'); amount.className='tx-amount'; amount.textContent=Number(t.amount||0)+' Birr'; right.appendChild(amount);
+    if(t.status==='pending'){const p=document.createElement('span');p.className='pill';p.textContent='pending';right.appendChild(p);}
+    head.appendChild(right);
+    box.appendChild(head);
+
+    const meta=document.createElement('div'); meta.className='tx-meta';
+    const ref=t.reference?'<b>ref</b> '+esc(t.reference):'';
+    const txId='<b>id</b> <code>'+esc(t.id)+'</code>';
+    const uid='<b>uid</b> <code>'+esc(t.walletUid||t.uid||'')+'</code>';
+    const when=t.timestamp?'<b>at</b> '+new Date(Number(t.timestamp)).toLocaleString():'';
+    meta.innerHTML=[ref,txId,uid,when].filter(Boolean).join('<br>');
+    box.appendChild(meta);
+
+    if(t.status==='pending'){
+      const actions=document.createElement('div'); actions.className='tx-actions';
+      const approve=document.createElement('button'); approve.className='approve'; approve.textContent='Approve';
+      const reject=document.createElement('button'); reject.className='reject'; reject.textContent='Reject';
+      approve.onclick=()=>decide(t.id,'approved',approve,reject);
+      reject.onclick=()=>decide(t.id,'rejected',approve,reject);
+      actions.append(approve,reject); box.appendChild(actions);
+    }
+    return box;
+  }
+
+  async function decide(id,decision,approveBtn,rejectBtn){
+    if(!confirm(decision==='approved'?'Approve this transaction?':'Reject this transaction?'))return;
+    approveBtn.disabled=true; rejectBtn.disabled=true;
+    try{
+      await api('/admin/decision?id='+encodeURIComponent(id)+'&decision='+decision);
+      showStatus('Transaction '+decision+'.','success');
+      await refresh();
+    }catch(e){
+      showStatus('Failed: '+e.message,'error');
+      approveBtn.disabled=false; rejectBtn.disabled=false;
+    }
+  }
+
+  async function repair(){
+    if(!confirm('Repair stale telegram_id values on all pending transactions?'))return;
+    try{
+      showStatus('Repairing…','info');
+      const res=await api('/admin/repair-tx-ids');
+      const r=(res.repaired||[]).length, s=(res.skipped||[]).length;
+      showStatus('Repair done: '+r+' fixed, '+s+' skipped.','success');
+      await refresh();
+    }catch(e){showStatus('Repair failed: '+e.message,'error');}
+  }
+
+  async function diagnose(){
+    try{
+      showStatus('Fetching diagnostic…','info');
+      const res=await api('/admin/diagnose');
+      const txs=res.transactions||[];
+      const bad=txs.filter(t=>!t.resolved_uid);
+      if(!bad.length) showStatus('Diagnostic: all '+txs.length+' pending transactions resolve correctly.','success');
+      else showStatus('Diagnostic: '+bad.length+' unresolved — see browser console.','error');
+      console.log('Diagnostic payload:',res);
+    }catch(e){showStatus('Diagnostic failed: '+e.message,'error');}
+  }
+
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+  $('connect').onclick=connect;
+  $('disconnect').onclick=disconnect;
+  $('refresh').onclick=refresh;
+  $('repair').onclick=repair;
+  $('diagnose').onclick=diagnose;
+  $('auto').onchange=()=>{ if($('auto').checked) startAuto(); else stopAuto(); };
+  $('key').addEventListener('keydown',e=>{if(e.key==='Enter')connect();});
+})();
+</script>
+</body>
+</html>
