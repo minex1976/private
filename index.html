@@ -17,15 +17,18 @@
   input:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
   .row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
   .row>div{flex:1;min-width:180px}
-  button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:11px 18px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;transition:background .15s}
+  button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:11px 18px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;transition:background .15s, transform .1s, opacity .1s;}
   button:hover:not(:disabled){background:var(--accent-hover)}
+  button:active:not(:disabled){transform:scale(0.96); opacity:0.85;}
   button:disabled{opacity:.5;cursor:not-allowed}
   button.secondary{background:transparent;color:var(--fg);border:1px solid var(--border)}
   button.secondary:hover:not(:disabled){background:#2a1d3d}
   button.approve{background:var(--green)}
   button.approve:hover:not(:disabled){background:#059669}
+  button.approve:active:not(:disabled){background:#059669; transform:scale(0.96); opacity:0.85;}
   button.reject{background:var(--red)}
   button.reject:hover:not(:disabled){background:#dc2626}
+  button.reject:active:not(:disabled){background:#dc2626; transform:scale(0.96); opacity:0.85;}
   #status{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none;word-break:break-word}
   #status.show{display:block}
   #status.info{background:rgba(139,92,246,.15);color:#c4b5fd;border:1px solid rgba(139,92,246,.3)}
