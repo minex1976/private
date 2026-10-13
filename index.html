@@ -10,6 +10,7 @@
   body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:20px;min-height:100vh;line-height:1.5}
   .container{max-width:760px;margin:0 auto}
   h1{font-size:22px;margin:0 0 4px}
+  h2{font-size:17px;margin:0 0 10px}
   .subtitle{color:var(--muted);font-size:13px;margin-bottom:20px}
   .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
   label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
@@ -29,11 +30,11 @@
   button.reject{background:var(--red)}
   button.reject:hover:not(:disabled){background:#dc2626}
   button.reject:active:not(:disabled){background:#dc2626; transform:scale(0.96); opacity:0.85;}
-  #status{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none;word-break:break-word}
-  #status.show{display:block}
-  #status.info{background:rgba(139,92,246,.15);color:#c4b5fd;border:1px solid rgba(139,92,246,.3)}
-  #status.error{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
-  #status.success{background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.3)}
+  .statusbar{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none;word-break:break-word}
+  .statusbar.show{display:block}
+  .statusbar.info{background:rgba(139,92,246,.15);color:#c4b5fd;border:1px solid rgba(139,92,246,.3)}
+  .statusbar.error{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+  .statusbar.success{background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.3)}
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
   .tx{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
   .tx-head{display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:8px}
@@ -48,6 +49,20 @@
   .empty{color:var(--muted);text-align:center;padding:40px 20px;font-size:14px}
   .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;background:rgba(245,158,11,.2);color:#fcd34d}
   code{background:#0d0818;padding:2px 6px;border-radius:4px;font-size:12px}
+
+  /* ---- SMS section ---- */
+  .sms{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
+  .sms-head{display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:10px}
+  .sms-from{font-weight:600;font-size:15px;color:#c4b5fd;word-break:break-word}
+  .sms-amount{font-size:18px;font-weight:700;color:#6ee7b7;white-space:nowrap}
+  .sms-amount.na{color:var(--muted);font-size:14px;font-weight:500}
+  .sms-meta{font-size:12.5px;color:var(--muted);line-height:2}
+  .sms-meta b{color:#d1c4e9;font-weight:500;display:inline-block;min-width:74px}
+  .sms-ref{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#0d0818;border:1px solid var(--border);padding:3px 9px;border-radius:6px;color:#fcd34d;cursor:pointer;font-size:13px;letter-spacing:.6px;display:inline-block}
+  .sms-ref:hover{background:#1a1030}
+  .sms-raw{margin-top:10px;font-size:11.5px;color:#8b7fa8}
+  .sms-raw summary{cursor:pointer;color:var(--muted);font-size:12px;outline:none}
+  .sms-raw p{margin:8px 0 0;background:#0d0818;border:1px solid var(--border);border-radius:8px;padding:9px;white-space:pre-wrap;word-break:break-word;line-height:1.6}
 </style>
 </head>
 <body>
@@ -72,7 +87,7 @@
     </div>
   </div>
 
-  <div id="status"></div>
+  <div id="status" class="statusbar"></div>
 
   <div id="panel" style="display:none">
     <div class="toolbar">
@@ -85,18 +100,42 @@
     </div>
     <div id="list"></div>
   </div>
+
+  <!-- ================= INCOMING SMS ================= -->
+  <div class="card">
+    <h2>Incoming SMS</h2>
+    <div class="row">
+      <div>
+        <label for="dbUrl">Firebase Realtime DB URL</label>
+        <input id="dbUrl" value="https://render-e9e2d-default-rtdb.firebaseio.com" placeholder="https://....firebaseio.com">
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div style="flex:0 0 auto"><button id="loadSms">Load SMS</button></div>
+      <div style="flex:0 0 auto"><button id="clearSms" class="secondary">Clear</button></div>
+      <label style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;margin-left:auto;margin-bottom:0">
+        <input type="checkbox" id="smsAuto" style="width:auto"> Auto-refresh (10s)
+      </label>
+    </div>
+  </div>
+
+  <div id="smsStatus" class="statusbar"></div>
+  <div id="smsList"></div>
 </div>
 
 <script>
 (function(){
   const $=id=>document.getElementById(id);
-  let serverUrl='',adminKey='',autoTimer=null;
+  let serverUrl='',adminKey='',autoTimer=null,smsTimer=null;
 
-  function showStatus(msg,kind){
-    const s=$('status'); s.textContent=msg; s.className='show '+(kind||'info');
-    if(kind==='success') setTimeout(()=>{if(s.textContent===msg)s.className='show info';},3500);
+  function showStatus(msg,kind,el){
+    const s = el || $('status');
+    s.textContent=msg; s.className='statusbar show '+(kind||'info');
+    if(kind==='success') setTimeout(()=>{if(s.textContent===msg)s.className='statusbar show info';},3500);
   }
-  function normalizeUrl(u){u=u.trim().replace(/\/+$/,'');if(!/^https?:\/\//i.test(u))u='https://'+u;return u;}
+  function normalizeUrl(u){u=String(u||'').trim().replace(/\/+$/,'');if(!/^https?:\/\//i.test(u))u='https://'+u;return u;}
+
+  /* ===================== ADMIN (pending tx) ===================== */
 
   async function api(path){
     const res=await fetch(serverUrl+path,{headers:{'X-Admin-Key':adminKey}});
@@ -215,7 +254,184 @@
     }catch(e){showStatus('Diagnostic failed: '+e.message,'error');}
   }
 
+  /* ===================== SMS RECORDS ===================== */
+
+  // Parse a telebirr-style SMS text into structured fields.
+  // Sample:
+  // "Dear Minyihun You have received ETB 50.00 from Atsede Alebachew(2519****9300)
+  //  100909 on 10/10/2026 17:32:37. Your transaction number is DJA5N697O1.
+  //  Your current E-Money Account balance is ETB 50.00.Thank you for using telebirrEthio telecom"
+  function parseSms(text){
+    const t = String(text==null?'':text).replace(/\s+/g,' ').trim();
+    const out = {amount:null, from:null, reference:null, dateText:null};
+
+    // Amount: first "ETB 50.00" (prefer the one right after "received")
+    let m = t.match(/received\s+(?:ETB|Birr)\s*([\d,]+(?:\.\d+)?)/i)
+         || t.match(/(?:ETB|Birr)\s*([\d,]+(?:\.\d+)?)/i);
+    if(m) out.amount = m[1].replace(/,/g,'');
+
+    // From: name before the phone parenthesis -> "Atsede Alebachew(2519****9300)"
+    m = t.match(/\bfrom\s+(.+?)\s*\(/) || t.match(/\bfrom\s+([A-Za-z][A-Za-z\s.'\-]{1,40}?)(?:\s+\d|\s+on\b|$)/i);
+    if(m) out.from = m[1].trim().replace(/[.,;]+$/,'');
+
+    // Reference: "Your transaction number is DJA5N697O1"  (also accepts the keyword "Reference")
+    m = t.match(/your\s+transaction\s+number\s+is\s*[:\-]?\s*([A-Za-z0-9]{6,})/i)
+     || t.match(/\breference(?:\s*(?:number|code|no\.?))?\s*[:\-]?\s*([A-Za-z0-9]{6,})/i)
+     || t.match(/\b(?:transaction\s+number|txn\s*(?:id|no\.?))\s*[:\-]?\s*([A-Za-z0-9]{6,})/i);
+    if(m) out.reference = m[1].toUpperCase();
+
+    // Date text fallback: "on 10/10/2026 17:32:37"
+    m = t.match(/\bon\s+(\d{1,2}\/\d{1,2}\/\d{4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?)/);
+    if(m) out.dateText = m[1];
+
+    return out;
+  }
+
+  function stampToDate(v){
+    let n = Number(v);
+    if(!n || !isFinite(n)) return null;
+    if(n < 1e12) n *= 1000;              // seconds -> ms
+    const d = new Date(n);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  async function loadSms(){
+    const base = normalizeUrl($('dbUrl').value);
+    if(!base){ showStatus('Enter the Firebase DB URL.','error',$('smsStatus')); return; }
+    $('loadSms').disabled = true;
+    showStatus('Fetching SMS records…','info',$('smsStatus'));
+    try{
+      const res = await fetch(base + '/incoming_sms.json', {cache:'no-store'});
+      if(res.status === 401 || res.status === 403) throw new Error('permission-denied — check Firebase rules');
+      if(!res.ok) throw new Error('http-'+res.status);
+      const data = await res.json();
+      if(!data || typeof data !== 'object'){
+        renderSms([]);
+        showStatus('No SMS records found at /incoming_sms.','info',$('smsStatus'));
+        return;
+      }
+      const items = Object.keys(data).map(k=>{
+        const v = data[k] || {};
+        return Object.assign({_id:k}, (typeof v === 'object' ? v : {text:String(v)}));
+      });
+      items.sort((a,b)=> (Number(b.receivedStamp||b.sentStamp||0)) - (Number(a.receivedStamp||a.sentStamp||0)));
+      renderSms(items);
+      showStatus('Loaded '+items.length+' SMS record'+(items.length===1?'':'s')+'.','success',$('smsStatus'));
+    }catch(e){
+      showStatus('SMS fetch failed: '+(e.message||e),'error',$('smsStatus'));
+    }finally{ $('loadSms').disabled = false; }
+  }
+
+  function renderSms(items){
+    const list = $('smsList'); list.replaceChildren();
+    if(!items.length){
+      const d=document.createElement('div'); d.className='empty'; d.textContent='No SMS records.'; list.appendChild(d); return;
+    }
+    for(const raw of items) list.appendChild(renderSmsItem(raw));
+  }
+
+  function renderSmsItem(raw){
+    const text = raw.text || raw.message || raw.body || '';
+    const p = parseSms(text);
+
+    const fromName  = p.from || raw.from || '—';
+    const amount    = p.amount;
+    const reference = p.reference;
+    const when      = stampToDate(raw.receivedStamp) || stampToDate(raw.sentStamp) || stampToDate(raw.timestamp);
+    const timeText  = when ? when.toLocaleString() : (p.dateText || '—');
+
+    const box = document.createElement('div'); box.className='sms';
+
+    /* head: From + Amount */
+    const head = document.createElement('div'); head.className='sms-head';
+    const left = document.createElement('div');
+    const fromEl = document.createElement('div'); fromEl.className='sms-from'; fromEl.textContent = fromName;
+    left.appendChild(fromEl);
+    head.appendChild(left);
+
+    const right = document.createElement('div'); right.style.textAlign='right';
+    const amtEl = document.createElement('div');
+    if(amount){ amtEl.className='sms-amount'; amtEl.textContent = Number(amount).toFixed(2)+' Birr'; }
+    else { amtEl.className='sms-amount na'; amtEl.textContent='amount not found'; }
+    right.appendChild(amtEl);
+    head.appendChild(right);
+    box.appendChild(head);
+
+    /* meta lines */
+    const meta = document.createElement('div'); meta.className='sms-meta';
+
+    const rowFrom = document.createElement('div');
+    rowFrom.innerHTML = '<b>From:</b> ';
+    rowFrom.appendChild(document.createTextNode(fromName));
+    meta.appendChild(rowFrom);
+
+    const rowTime = document.createElement('div');
+    rowTime.innerHTML = '<b>Time:</b> ';
+    rowTime.appendChild(document.createTextNode(timeText));
+    meta.appendChild(rowTime);
+
+    const rowAmt = document.createElement('div');
+    rowAmt.innerHTML = '<b>Amount:</b> ';
+    rowAmt.appendChild(document.createTextNode(amount ? Number(amount).toFixed(2)+' Birr' : '—'));
+    meta.appendChild(rowAmt);
+
+    const rowRef = document.createElement('div');
+    rowRef.innerHTML = '<b>Reference:</b> ';
+    if(reference){
+      const chip = document.createElement('span');
+      chip.className='sms-ref'; chip.textContent = reference; chip.title='Click to copy';
+      chip.onclick = ()=>{
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(reference).then(()=>{
+            const old = chip.textContent;
+            chip.textContent = 'copied ✓';
+            setTimeout(()=>{chip.textContent = old;}, 1200);
+          }).catch(()=>{});
+        }
+      };
+      rowRef.appendChild(chip);
+    } else {
+      rowRef.appendChild(document.createTextNode('—'));
+    }
+    meta.appendChild(rowRef);
+
+    /* raw sender number (the SMS gateway id, e.g. 127) */
+    if(raw.from && String(raw.from) !== String(fromName)){
+      const rowSender = document.createElement('div');
+      rowSender.innerHTML = '<b>Sender ID:</b> ';
+      rowSender.appendChild(document.createTextNode(String(raw.from)));
+      meta.appendChild(rowSender);
+    }
+
+    box.appendChild(meta);
+
+    /* raw message (collapsed) */
+    if(text){
+      const det = document.createElement('details'); det.className='sms-raw';
+      const sum = document.createElement('summary'); sum.textContent='Raw message';
+      const pre = document.createElement('p'); pre.textContent = text;
+      det.append(sum, pre);
+      box.appendChild(det);
+    }
+
+    return box;
+  }
+
+  function clearSms(){
+    $('smsList').replaceChildren();
+    $('smsStatus').className='statusbar';
+    $('smsStatus').textContent='';
+  }
+
+  function startSmsAuto(){
+    stopSmsAuto();
+    if($('smsAuto').checked) smsTimer = setInterval(loadSms, 10000);
+  }
+  function stopSmsAuto(){ if(smsTimer){clearInterval(smsTimer); smsTimer=null;} }
+
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+  /* ===================== WIRING ===================== */
 
   $('connect').onclick=connect;
   $('disconnect').onclick=disconnect;
@@ -224,6 +440,11 @@
   $('diagnose').onclick=diagnose;
   $('auto').onchange=()=>{ if($('auto').checked) startAuto(); else stopAuto(); };
   $('key').addEventListener('keydown',e=>{if(e.key==='Enter')connect();});
+
+  $('loadSms').onclick=loadSms;
+  $('clearSms').onclick=clearSms;
+  $('smsAuto').onchange=()=>{ if($('smsAuto').checked){ loadSms(); startSmsAuto(); } else stopSmsAuto(); };
+  $('dbUrl').addEventListener('keydown',e=>{if(e.key==='Enter')loadSms();});
 })();
 </script>
 </body>
