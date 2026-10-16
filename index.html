@@ -156,14 +156,14 @@ function startListeners(){
  db.ref("transactions").on("value",s=>{transactions=s.val()||{};render();},err=>showFirebaseError("Cannot read /transactions: "+err.message));
  db.ref("users").on("value",s=>{users=s.val()||{};$ ("userCount").textContent=Object.keys(users).length;},err=>showFirebaseError("Cannot read /users: "+err.message));
  db.ref("rooms").on("value",s=>{rooms=s.val()||{};$ ("roomCount").textContent=Object.keys(rooms).length;},err=>showFirebaseError("Cannot read /rooms: "+err.message));
-  db.ref("sms").on("value",s=>{smsMessages=s.val()||{};renderSms();},err=>showFirebaseError("Cannot read /sms: "+err.message));
+  db.ref("incoming_sms").on("value",s=>{smsMessages=s.val()||{};renderSms();},err=>showFirebaseError("Cannot read /incoming_sms: "+err.message));
  db.ref("transactions").once("value").then(s=>{transactions=s.val()||{};render();}).catch(err=>showFirebaseError("Initial /transactions read failed: "+err.message));
 }
 function smsSender(x){
-  return String(x?.sender||x?.senderNumber||x?.from||x?.phoneNumber||"").trim();
+  return String(x?.sender||x?.senderNumber||x?.from||x?.phoneNumber||x?.address||x?.originatingAddress||"").trim();
 }
 function smsText(x){
-  return String(x?.message||x?.text||x?.body||"").trim();
+  return String(x?.message||x?.text||x?.body||x?.sms||x?.content||"").trim();
 }
 function smsMatches(sender,criteria,mode){
   if(!criteria)return true;
@@ -179,7 +179,7 @@ function renderSms(){
 
   $("smsCount").textContent=arr.length;
   $("smsBody").innerHTML=arr.map(o=>{
-    const x=o.x, ts=x.timestamp||x.receivedAt||x.time;
+    const x=o.x, ts=x.timestamp||x.receivedAt||x.received_at||x.time||x.date;
     return `<tr>
       <td>${esc(time(ts))}</td>
       <td><b>${esc(smsSender(x)||"Unknown")}</b></td>
@@ -203,7 +203,7 @@ function clearSmsFilter(){
 }
 function deleteSms(id){
   if(!confirm("Delete this SMS?"))return;
-  db.ref("sms/"+id).remove().catch(e=>alert("Could not delete SMS: "+e.message));
+  db.ref("incoming_sms/"+id).remove().catch(e=>alert("Could not delete SMS: "+e.message));
 }
 $("applySmsFilterBtn").onclick=applySmsFilter;
 $("clearSmsFilterBtn").onclick=clearSmsFilter;
