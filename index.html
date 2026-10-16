@@ -48,7 +48,17 @@
   .empty{color:var(--muted);text-align:center;padding:40px 20px;font-size:14px}
   .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;background:rgba(245,158,11,.2);color:#fcd34d}
   .pill.dup{background:rgba(239,68,68,.2);color:#fca5a5}
+  .pill.auto{background:rgba(16,185,129,.2);color:#6ee7b7}
   code{background:#0d0818;padding:2px 6px;border-radius:4px;font-size:12px}
+
+  /* tabs */
+  .tabs{display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--border)}
+  .tab{background:transparent;color:var(--muted);border:none;border-bottom:2px solid transparent;border-radius:0;padding:10px 16px;font-size:14px;font-weight:500;cursor:pointer;transition:color .15s,border-color .15s;margin-bottom:-1px}
+  .tab:hover:not(.active){color:var(--fg);background:transparent}
+  .tab.active{color:var(--fg);border-bottom-color:var(--accent)}
+  .tab .count{display:inline-block;background:rgba(139,92,246,.2);color:#c4b5fd;font-size:11px;padding:1px 7px;border-radius:999px;margin-left:6px;font-weight:600;min-width:18px;text-align:center}
+  .tab .count.zero{background:rgba(156,143,181,.15);color:var(--muted)}
+  .tab .count.has{background:rgba(16,185,129,.25);color:#6ee7b7}
 
   /* ---- SMS section ---- */
   .sms{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
@@ -92,6 +102,7 @@
   .dup-item .row2{margin:1px 0}
   .dup-item b{color:#d1c4e9;font-weight:500;display:inline-block;min-width:70px}
   .dup-item .id{color:#6b5f80;margin-top:5px;font-family:ui-monospace,monospace;font-size:11.5px}
+  .dup-item .amt-warn{color:#fcd34d}
 </style>
 </head>
 <body>
@@ -119,23 +130,42 @@
   <div id="status" class="statusbar"></div>
 
   <div id="panel" style="display:none">
-    <div class="toolbar">
-      <button id="refresh" class="secondary">↻ Refresh</button>
-      <button id="repair" class="secondary">Repair Telegram IDs</button>
-      <button id="diagnose" class="secondary">Diagnose</button>
-      <label class="chk" style="margin-left:auto">
-        <input type="checkbox" id="auto" checked> Auto-refresh
-      </label>
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="pending" role="tab">
+        Pending <span class="count zero" id="pendingCount">0</span>
+      </button>
+      <button class="tab" data-tab="approved" role="tab">
+        Auto-approved <span class="count zero" id="approvedCount">0</span>
+      </button>
     </div>
-    <div id="list"></div>
+
+    <div id="tab-pending" class="tabpanel">
+      <div class="toolbar">
+        <button id="refresh" class="secondary">↻ Refresh</button>
+        <button id="repair" class="secondary">Repair Telegram IDs</button>
+        <button id="diagnose" class="secondary">Diagnose</button>
+        <label class="chk" style="margin-left:auto">
+          <input type="checkbox" id="auto" checked> Auto-refresh
+        </label>
+      </div>
+      <div id="list"></div>
+    </div>
+
+    <div id="tab-approved" class="tabpanel" style="display:none">
+      <div class="toolbar">
+        <button id="clearApproved" class="secondary">Clear history</button>
+        <span style="margin-left:auto;font-size:12px;color:var(--muted)">Saved locally in this browser</span>
+      </div>
+      <div id="approvedList"></div>
+    </div>
   </div>
 
   <!-- ================= AUTO-APPROVE DEPOSITS ================= -->
   <div class="card">
     <h2>Automatic Deposit Approval</h2>
     <div class="subtitle" style="margin:0 0 12px">
-      Compares pending deposit requests against <code>incoming_sms</code> in Firebase.
-      A deposit is approved only when <b>reference</b> and <b>amount</b> both match.
+      A deposit is approved when <b>one</b> SMS carries the reference and the amount matches.
+      Two or more SMS sharing the same reference = duplicate (manual review).
     </div>
 
     <div class="row">
@@ -185,7 +215,7 @@
 <!-- ================= DUPLICATE MODAL ================= -->
 <div id="dupModal" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="modal">
-    <h3><span class="icon">⚠</span> Duplicate match — automatic approval skipped</h3>
+    <h3><span class="icon">⚠</span> Duplicate reference — automatic approval skipped</h3>
     <div id="dupBody"></div>
     <div id="dupDetails" class="dup-list" style="display:none"></div>
     <div class="modal-actions">
@@ -202,8 +232,7 @@
   let serverUrl = '', adminKey = '', autoTimer = null, smsTimer = null, aaTimer = null;
   let currentTxs = [];
 
-  /* Reasons why auto-approval was skipped, keyed by tx.id.
-     Only entries with type:'duplicate' are used by the modal. */
+  /* Reasons why auto-approval was skipped, keyed by tx.id. */
   const aaReasons = new Map();
 
   /* Session guard so we don't spam the server with identical retries. */
@@ -211,6 +240,30 @@
 
   /* Pending tx currently shown in the duplicate modal */
   let dupPendingTx = null;
+
+  /* Auto-approved transaction history — persists across page reloads. */
+  const AA_STORAGE_KEY = 'winzo_auto_approved_v1';
+  let autoApproved = loadAutoApproved();
+
+  function loadAutoApproved(){
+    try{
+      const raw = localStorage.getItem(AA_STORAGE_KEY);
+      if(!raw) return [];
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.slice(0, 300) : [];
+    }catch{ return []; }
+  }
+  function saveAutoApproved(){
+    try{ localStorage.setItem(AA_STORAGE_KEY, JSON.stringify(autoApproved.slice(0, 300))); }catch{}
+  }
+  function recordAutoApproved(entry){
+    autoApproved = autoApproved.filter(e => e.id !== entry.id);
+    autoApproved.unshift(entry);
+    if(autoApproved.length > 300) autoApproved.length = 300;
+    saveAutoApproved();
+    updateCounts();
+    renderApproved();
+  }
 
   /* ===================== status helpers ===================== */
 
@@ -243,6 +296,21 @@
   function esc(s){
     return String(s==null?'':s).replace(/[&<>"']/g, c =>
       ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  /* ===================== tabs ===================== */
+
+  function switchTab(name){
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    $('tab-pending').style.display = (name === 'pending') ? '' : 'none';
+    $('tab-approved').style.display = (name === 'approved') ? '' : 'none';
+  }
+
+  function updateCounts(){
+    const p = currentTxs.length;
+    const a = autoApproved.length;
+    const pc = $('pendingCount'); pc.textContent = p; pc.className = 'count' + (p ? '' : ' zero');
+    const ac = $('approvedCount'); ac.textContent = a; ac.className = 'count' + (a ? ' has' : ' zero');
   }
 
   /* ===================== ADMIN (pending tx) ===================== */
@@ -302,13 +370,14 @@
       const data = await api('/admin/pending');
       currentTxs = data.transactions || [];
 
-      /* Prune reasons for transactions that are no longer pending. */
+      /* Prune reasons for transactions no longer pending. */
       const pendingIds = new Set(currentTxs.map(t => t.id));
       for(const key of Array.from(aaReasons.keys())){
         if(!pendingIds.has(key)) aaReasons.delete(key);
       }
 
       render(currentTxs);
+      updateCounts();
     }catch(e){
       showStatus('Refresh failed: ' + e.message, 'error');
     }
@@ -350,7 +419,7 @@
       if(r && r.type === 'duplicate'){
         const dp = document.createElement('span');
         dp.className = 'pill dup'; dp.textContent = 'duplicate';
-        dp.title = 'Auto-approval skipped: ' + r.matchCount + ' SMS matched this reference';
+        dp.title = 'Duplicate reference: ' + r.matchCount + ' SMS share "' + r.reference + '"';
         dp.style.marginLeft = '6px';
         right.appendChild(dp);
       }
@@ -378,8 +447,7 @@
   }
 
   async function decide(tx, decision, approveBtn, rejectBtn){
-    /* If auto-approval skipped this deposit for duplicate references,
-       show the modal instead of the native confirm dialog. */
+    /* Duplicate reference reason -> open the modal instead of native confirm. */
     if(decision === 'approved' && aaReasons.has(tx.id)){
       const reason = aaReasons.get(tx.id);
       if(reason && reason.type === 'duplicate'){
@@ -422,6 +490,60 @@
       else showStatus('Diagnostic: ' + bad.length + ' unresolved — see browser console.','error');
       console.log('Diagnostic payload:', res);
     }catch(e){ showStatus('Diagnostic failed: ' + e.message,'error'); }
+  }
+
+  /* ===================== AUTO-APPROVED TAB ===================== */
+
+  function renderApproved(){
+    const list = $('approvedList'); list.replaceChildren();
+    if(!autoApproved.length){
+      const d = document.createElement('div'); d.className='empty';
+      d.textContent = 'No auto-approved transactions yet.';
+      list.appendChild(d); return;
+    }
+    for(const e of autoApproved) list.appendChild(renderApprovedItem(e));
+  }
+
+  function renderApprovedItem(e){
+    const box = document.createElement('div'); box.className='tx';
+    const head = document.createElement('div'); head.className='tx-head';
+    const left = document.createElement('div');
+    const type = document.createElement('div');
+    type.className = 'tx-type deposit';
+    type.textContent = 'DEPOSIT';
+    left.appendChild(type);
+    const who = document.createElement('div'); who.className='tx-meta';
+    who.innerHTML = '<b>'+esc(e.displayName || e.username || '—')+'</b>';
+    left.appendChild(who);
+    head.appendChild(left);
+
+    const right = document.createElement('div'); right.style.textAlign='right';
+    const amount = document.createElement('div'); amount.className='tx-amount';
+    amount.textContent = Number(e.amount||0).toFixed(2) + ' Birr';
+    right.appendChild(amount);
+    const pill = document.createElement('span'); pill.className='pill auto'; pill.textContent='auto';
+    right.appendChild(pill);
+    head.appendChild(right);
+    box.appendChild(head);
+
+    const meta = document.createElement('div'); meta.className='tx-meta';
+    const ref = e.reference ? '<b>ref</b> ' + esc(e.reference) : '';
+    const txId = '<b>id</b> <code>' + esc(e.id) + '</code>';
+    const smsId = e.smsId ? '<b>sms</b> <code>' + esc(e.smsId) + '</code>' : '';
+    const when = e.approvedAt ? '<b>at</b> ' + new Date(Number(e.approvedAt)).toLocaleString() : '';
+    meta.innerHTML = [ref, txId, smsId, when].filter(Boolean).join('<br>');
+    box.appendChild(meta);
+
+    return box;
+  }
+
+  function clearApprovedHistory(){
+    if(!autoApproved.length) return;
+    if(!confirm('Clear all ' + autoApproved.length + ' auto-approved records from this browser? (Server data is unaffected.)')) return;
+    autoApproved = [];
+    saveAutoApproved();
+    updateCounts();
+    renderApproved();
   }
 
   /* ===================== SMS parsing ===================== */
@@ -514,7 +636,7 @@
         return;
       }
 
-      /* index: ref -> [{sms, amount}] */
+      /* index: ref -> [{sms, amount}]  (bucket keyed by reference ONLY) */
       const smsByRef = new Map();
       for(const s of smsList){
         const p = parseSms(s.text || s.message || s.body || '');
@@ -541,7 +663,7 @@
         return;
       }
 
-      let approved = 0, skipped = 0, ambiguous = 0, noMatch = 0;
+      let approved = 0, skipped = 0, duplicate = 0, noMatch = 0;
 
       for(const tx of pendingTxs){
         const ref = normalizeRef(tx.reference);
@@ -562,24 +684,18 @@
           continue;
         }
 
-        const exact = bucket.filter(x => Math.abs(x.amount - amt) < 0.009);
-        if(!exact.length){
-          noMatch++;
-          aaLog('tx=' + tx.id + ' ref=' + ref + ' amt=' + amt.toFixed(2)
-              + ' → SMS amounts differ (' + bucket.map(x=>x.amount.toFixed(2)).join(', ') + ')', 'warn');
-          continue;
-        }
-        if(exact.length > 1){
-          ambiguous++;
+        /* -------- DUPLICATE CHECK: 2+ SMS with same reference --------
+           Two similar reference codes ALWAYS means duplicate, regardless
+           of whether the amounts match the deposit request. */
+        if(bucket.length > 1){
+          duplicate++;
 
-          /* Record the duplicate reason so the manual Approve button can
-             surface it in a modal instead of a plain confirm dialog. */
           aaReasons.set(tx.id, {
             type: 'duplicate',
             reference: ref,
             amount: amt,
-            matchCount: exact.length,
-            matches: exact.map(x => ({
+            matchCount: bucket.length,
+            matches: bucket.map(x => ({
               id: x.sms._id,
               amount: x.amount,
               from: x.sms.from || null,
@@ -590,11 +706,22 @@
             }))
           });
 
-          aaLog('tx=' + tx.id + ' ref=' + ref + ' → ' + exact.length + ' SMS matches; left pending (manual review)', 'warn');
+          const amounts = bucket.map(x => x.amount.toFixed(2)).join(', ');
+          aaLog('tx=' + tx.id + ' ref=' + ref + ' → ' + bucket.length
+              + ' SMS share this reference (amounts: ' + amounts + '); duplicate — manual review', 'warn');
           continue;
         }
 
-        /* successful match — clear any stale duplicate reason */
+        /* -------- Single SMS with this reference -------- */
+        const only = bucket[0];
+        if(Math.abs(only.amount - amt) >= 0.009){
+          noMatch++;
+          aaLog('tx=' + tx.id + ' ref=' + ref + ' amt=' + amt.toFixed(2)
+              + ' → single SMS but amount differs (' + only.amount.toFixed(2) + ')', 'warn');
+          continue;
+        }
+
+        /* Clear stale duplicate reason, then attempt approval */
         aaReasons.delete(tx.id);
 
         const guardKey = ref + '|' + amt.toFixed(2);
@@ -609,7 +736,18 @@
           await api(q);
           approved++;
           aaLog('✓ approved tx=' + tx.id + ' ref=' + ref + ' amt=' + amt.toFixed(2)
-              + ' (sms ' + exact[0].sms._id + ')', 'ok');
+              + ' (sms ' + only.sms._id + ')', 'ok');
+
+          /* Record in the auto-approved tab */
+          recordAutoApproved({
+            id: tx.id,
+            username: tx.username || tx.walletUid || tx.uid || '',
+            displayName: tx.displayName || tx.username || tx.walletUid || tx.uid || '—',
+            amount: amt,
+            reference: ref,
+            smsId: only.sms._id,
+            approvedAt: Date.now()
+          });
         }catch(e){
           aaLog('✗ approve failed tx=' + tx.id + ' ref=' + ref + ' → ' + e.message, 'err');
           aaAttempted.delete(guardKey);
@@ -617,7 +755,7 @@
       }
 
       const summary = approved + ' approved · ' + noMatch + ' unmatched · '
-                    + ambiguous + ' duplicate · ' + skipped + ' skipped';
+                    + duplicate + ' duplicate · ' + skipped + ' skipped';
       showStatus('Scan complete: ' + summary, approved ? 'success' : 'info', $('aaStatus'));
       aaLog('Scan complete: ' + summary, approved ? 'ok' : 'skip');
 
@@ -648,12 +786,13 @@
     const amtStr = Number(reason.amount).toFixed(2);
     $('dupBody').innerHTML =
         '<p>Automatic approval skipped this deposit because reference '
-      + '<span class="ref">' + esc(reason.reference) + '</span> matched '
-      + '<b>' + reason.matchCount + ' SMS records</b> with the same amount of '
+      + '<span class="ref">' + esc(reason.reference) + '</span> appears in '
+      + '<b>' + reason.matchCount + ' incoming SMS records</b>.</p>'
+      + '<p>Two or more SMS with the same reference is always treated as a '
+      + '<b>duplicate</b> — even if the amounts differ. The deposit amount is '
       + '<b>' + amtStr + ' Birr</b>.</p>'
-      + '<p>Automatic matching requires exactly <b>one</b> SMS per reference. '
-      + 'Click <b>Show duplicate</b> to view the conflicting SMS records, or '
-      + '<b>Approve anyway</b> to credit the wallet manually.</p>';
+      + '<p>Click <b>Show duplicate</b> to inspect the conflicting SMS records, '
+      + 'or <b>Approve anyway</b> to credit this deposit manually.</p>';
 
     const details = $('dupDetails');
     details.replaceChildren();
@@ -684,13 +823,11 @@
     details.replaceChildren();
 
     try{
-      /* Re-fetch fresh so we see the current state of /incoming_sms. */
       const base = normalizeUrl($('dbUrl').value);
       let items;
       try{
         items = await fetchIncomingSmsWithBase(base);
       }catch(e){
-        /* Fall back to the cached snapshot if the network call fails. */
         items = (reason.matches || []).map(m => ({
           _id: m.id,
           text: m.text,
@@ -702,13 +839,12 @@
         aaLog('Show duplicate: re-fetch failed (' + (e.message||e) + '); showing cached snapshot', 'warn');
       }
 
+      /* Match by reference only — this is what defines a duplicate. */
       const ref = reason.reference;
       const amt = Number(reason.amount);
       const matches = items.filter(s => {
         const p = parseSms(s.text || s.message || s.body || '');
-        if(normalizeRef(p.reference) !== ref) return false;
-        const a = Number(p.amount);
-        return isFinite(a) && Math.abs(a - amt) < 0.009;
+        return normalizeRef(p.reference) === ref;
       });
 
       if(!matches.length){
@@ -719,19 +855,25 @@
       }else{
         const title = document.createElement('div');
         title.className = 'dup-list-title';
-        title.textContent = matches.length + ' matching SMS record' + (matches.length===1?'':'s');
+        title.textContent = matches.length + ' SMS record' + (matches.length===1?'':'s')
+                          + ' with reference ' + ref;
         details.appendChild(title);
 
         matches.forEach((s, i) => {
           const p = parseSms(s.text || s.message || s.body || '');
           const when = stampToDate(s.receivedStamp) || stampToDate(s.sentStamp) || stampToDate(s.timestamp);
+          const smsAmt = Number(p.amount);
+          const differs = isFinite(smsAmt) && Math.abs(smsAmt - amt) >= 0.009;
+
           const item = document.createElement('div');
           item.className = 'dup-item';
           item.innerHTML =
-              '<div class="head">Match #' + (i+1) + '</div>'
+              '<div class="head">Match #' + (i+1) + (differs ? ' — amount differs' : '') + '</div>'
             + '<div class="row2"><b>Reference:</b> <span class="ref">' + esc(p.reference || ref) + '</span></div>'
             + '<div class="row2"><b>From:</b> ' + esc(p.from || s.from || '—') + '</div>'
-            + '<div class="row2"><b>Amount:</b> ' + (p.amount ? Number(p.amount).toFixed(2) + ' Birr' : '—') + '</div>'
+            + '<div class="row2"><b>Amount:</b> ' + (p.amount
+                ? '<span class="' + (differs ? 'amt-warn' : '') + '">' + Number(p.amount).toFixed(2) + ' Birr</span>'
+                : '—') + '</div>'
             + '<div class="row2"><b>Time:</b> ' + (when ? when.toLocaleString() : (p.dateText || '—')) + '</div>'
             + '<div class="id">sms id: ' + esc(s._id) + '</div>';
           details.appendChild(item);
@@ -907,6 +1049,13 @@
   $('smsAuto').onchange = () => { if($('smsAuto').checked){ loadSms(); startSmsAuto(); } else stopSmsAuto(); };
   $('smsDbUrl').addEventListener('keydown', e => { if(e.key === 'Enter') loadSms(); });
 
+  $('clearApproved').onclick = clearApprovedHistory;
+
+  /* tabs */
+  document.querySelectorAll('.tab').forEach(t => {
+    t.onclick = () => switchTab(t.dataset.tab);
+  });
+
   /* duplicate modal wiring */
   $('dupShowBtn').onclick = showDuplicates;
   $('dupApproveBtn').onclick = approveAnyway;
@@ -930,6 +1079,10 @@
       if($('aaAuto').checked) startAutoApprove();
     }
   });
+
+  /* initial render of the approved tab (from localStorage) */
+  renderApproved();
+  updateCounts();
 })();
 </script>
 </body>
