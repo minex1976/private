@@ -1,323 +1,737 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Winzo Admin Dashboard</title>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Winzo Admin</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#21103c,#07121f 65%);color:#f5efff;font-family:Segoe UI,Roboto,system-ui,sans-serif;min-height:100vh}
-.hidden{display:none!important}.wrap{max-width:1250px;margin:auto;padding:18px}.card{background:rgba(20,12,39,.84);border:1px solid rgba(180,120,255,.18);border-radius:22px;box-shadow:0 18px 55px rgba(0,0,0,.35);backdrop-filter:blur(16px)}
-.login{max-width:420px;margin:9vh auto;padding:28px}.login h1{text-align:center;margin:0 0 8px}.sub{text-align:center;color:#a995c3;font-size:13px;margin-bottom:22px}
-input,select{width:100%;padding:12px 14px;border-radius:13px;border:1px solid rgba(180,120,255,.22);background:#100b21;color:#fff;outline:none;margin-bottom:10px}button{border:0;border-radius:12px;padding:10px 15px;font-weight:800;cursor:pointer}
-.primary{background:linear-gradient(135deg,#ffdf6b,#e7951b);color:#241500}.danger{background:#63243b;color:#ffdce6}.ghost{background:rgba(120,80,200,.15);color:#e8ddf8;border:1px solid rgba(180,120,255,.14)}
-header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:15px}.brand{font-size:23px;font-weight:900;letter-spacing:2px}.brand span{color:#ffcc44}.status{font-size:12px;color:#8affb0}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:15px}.stat{padding:15px}.stat small{display:block;color:#9d8bb7}.stat b{font-size:25px;color:#ffcc44}
-.toolbar{padding:12px;display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}.toolbar input,.toolbar select{margin:0;max-width:220px}
-table{width:100%;border-collapse:collapse}.table-wrap{overflow:auto}.card.pad{padding:15px}th,td{text-align:left;padding:11px 9px;border-bottom:1px solid rgba(180,120,255,.09);font-size:13px;white-space:nowrap}th{color:#9d8bb7;font-size:11px;text-transform:uppercase}.pending{color:#ffd866}.approved{color:#8affb0}.rejected{color:#ff8a8a}
-.actions{display:flex;gap:6px}.actions button{padding:7px 10px;font-size:12px}.empty{text-align:center;padding:35px;color:#8f7ea8}
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;padding:18px;z-index:20}.overlay.open{display:flex}.modal{max-width:560px;width:100%;padding:22px;max-height:90vh;overflow:auto}.modal h2{margin-top:0}.kv{display:grid;grid-template-columns:130px 1fr;gap:8px;font-size:13px}.kv div:nth-child(odd){color:#9d8bb7}.proof{max-width:100%;border-radius:14px;margin-top:12px;border:1px solid rgba(255,255,255,.1)}
-.note{margin-top:14px;padding:11px;border-radius:12px;background:rgba(255,204,68,.07);color:#d9c994;font-size:12px;line-height:1.5}
-@media(max-width:800px){.stats{grid-template-columns:repeat(2,1fr)}th,td{font-size:12px}.wrap{padding:10px}.brand{font-size:19px}}
+  :root{--bg:#120b20;--panel:#1e1530;--border:#3a2a55;--fg:#eee;--muted:#9c8fb5;--accent:#8b5cf6;--accent-hover:#7c3aed;--green:#10b981;--red:#ef4444;--amber:#f59e0b}
+  *{box-sizing:border-box}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:20px;min-height:100vh;line-height:1.5}
+  .container{max-width:760px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 4px}
+  h2{font-size:17px;margin:0 0 10px}
+  .subtitle{color:var(--muted);font-size:13px;margin-bottom:20px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  input{width:100%;background:#0d0818;color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:11px 12px;font-size:14px;font-family:inherit}
+  input:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+  .row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+  .row>div{flex:1;min-width:180px}
+  button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:11px 18px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;transition:background .15s, transform .1s, opacity .1s;}
+  button:hover:not(:disabled){background:var(--accent-hover)}
+  button:active:not(:disabled){transform:scale(0.96); opacity:0.85;}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.secondary{background:transparent;color:var(--fg);border:1px solid var(--border)}
+  button.secondary:hover:not(:disabled){background:#2a1d3d}
+  button.approve{background:var(--green)}
+  button.approve:hover:not(:disabled){background:#059669}
+  button.reject{background:var(--red)}
+  button.reject:hover:not(:disabled){background:#dc2626}
+  .statusbar{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none;word-break:break-word}
+  .statusbar.show{display:block}
+  .statusbar.info{background:rgba(139,92,246,.15);color:#c4b5fd;border:1px solid rgba(139,92,246,.3)}
+  .statusbar.error{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+  .statusbar.success{background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.3)}
+  .statusbar.warn{background:rgba(245,158,11,.15);color:#fcd34d;border:1px solid rgba(245,158,11,.3)}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .tx{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
+  .tx-head{display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:8px}
+  .tx-type{font-weight:600;font-size:15px}
+  .tx-type.deposit{color:#6ee7b7}
+  .tx-type.withdraw{color:#fca5a5}
+  .tx-amount{font-size:18px;font-weight:700}
+  .tx-meta{font-size:12px;color:var(--muted);line-height:1.7}
+  .tx-meta b{color:#d1c4e9;font-weight:500}
+  .tx-actions{display:flex;gap:8px;margin-top:12px}
+  .tx-actions button{padding:8px 16px;font-size:13px}
+  .empty{color:var(--muted);text-align:center;padding:40px 20px;font-size:14px}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;background:rgba(245,158,11,.2);color:#fcd34d}
+  .pill.match{background:rgba(16,185,129,.2);color:#6ee7b7}
+  code{background:#0d0818;padding:2px 6px;border-radius:4px;font-size:12px}
+
+  /* ---- SMS section ---- */
+  .sms{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
+  .sms-head{display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:10px}
+  .sms-from{font-weight:600;font-size:15px;color:#c4b5fd;word-break:break-word}
+  .sms-amount{font-size:18px;font-weight:700;color:#6ee7b7;white-space:nowrap}
+  .sms-amount.na{color:var(--muted);font-size:14px;font-weight:500}
+  .sms-meta{font-size:12.5px;color:var(--muted);line-height:2}
+  .sms-meta b{color:#d1c4e9;font-weight:500;display:inline-block;min-width:74px}
+  .sms-ref{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#0d0818;border:1px solid var(--border);padding:3px 9px;border-radius:6px;color:#fcd34d;cursor:pointer;font-size:13px;letter-spacing:.6px;display:inline-block}
+  .sms-ref:hover{background:#1a1030}
+  .sms-raw{margin-top:10px;font-size:11.5px;color:#8b7fa8}
+  .sms-raw summary{cursor:pointer;color:var(--muted);font-size:12px;outline:none}
+  .sms-raw p{margin:8px 0 0;background:#0d0818;border:1px solid var(--border);border-radius:8px;padding:9px;white-space:pre-wrap;word-break:break-word;line-height:1.6}
+
+  /* ---- Auto-approve log ---- */
+  .aa-log{background:#0d0818;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;max-height:220px;overflow-y:auto;line-height:1.7;color:#b8abc9}
+  .aa-log .ok{color:#6ee7b7}
+  .aa-log .skip{color:#9c8fb5}
+  .aa-log .warn{color:#fcd34d}
+  .aa-log .err{color:#fca5a5}
+  .aa-log .ts{color:#6b5f80}
+  .chk{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;margin:0;white-space:nowrap}
+  .chk input{width:auto}
 </style>
 </head>
 <body>
-<div id="loginView" class="wrap">
-  <div class="login card">
-    <h1>WINZO <span style="color:#ffcc44">ADMIN</span></h1>
-    <div class="sub">Transaction control dashboard</div>
-    <input id="adminUser" placeholder="Admin username" autocomplete="username">
-    <input id="adminPass" type="password" placeholder="Admin password" autocomplete="current-password">
-    <button class="primary" style="width:100%" id="loginBtn">Sign in</button>
-    <div id="loginError" style="color:#ff8a8a;text-align:center;margin-top:10px;font-size:13px"></div>
-    <div class="note">Admin credentials are stored only in this browser's local storage. For production security, move authorization to Firebase Authentication + database rules.</div>
-  </div>
-</div>
+<div class="container">
+  <h1>Winzo Admin</h1>
+  <div class="subtitle">HTTP-based admin · auto-approves deposits matched against incoming SMS</div>
 
-<div id="appView" class="wrap hidden">
-<header>
-  <div><div class="brand">WINZO <span>CONTROL</span></div><div class="status" id="connection">Connecting…</div></div>
-  <button class="ghost" id="logoutBtn">Logout</button>
-</header>
-
-<div class="stats">
-  <div class="stat card"><small>Pending deposits</small><b id="pendingDeposits">0</b></div>
-  <div class="stat card"><small>Pending withdrawals</small><b id="pendingWithdrawals">0</b></div>
-  <div class="stat card"><small>Users</small><b id="userCount">0</b></div>
-  <div class="stat card"><small>Live rooms</small><b id="roomCount">0</b></div>
-</div>
-
-<div class="toolbar card">
-  <select id="filter"><option value="pending">Pending requests</option><option value="all">All transactions</option><option value="deposit">Deposits</option><option value="withdraw">Withdrawals</option></select>
-  <input id="search" placeholder="Search username / reference">
-  <button class="ghost" id="refreshBtn">Refresh</button>
-</div>
-
-<div class="card pad" style="margin-bottom:15px">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-    <div>
-      <h2 style="margin:0">📩 SMS Inbox <span id="smsCount" style="font-size:13px;color:#ffcc44">0</span></h2>
-      <div style="color:#9d8bb7;font-size:12px;margin-top:4px">Enter your own sender filter criteria.</div>
+  <div class="card">
+    <div class="row">
+      <div>
+        <label for="url">Server URL</label>
+        <input id="url" value="https://winzo-authoritative-sqlite-fixed-audited.app.aletcloud.com" placeholder="https://...">
+      </div>
+      <div>
+        <label for="key">Admin key</label>
+        <input id="key" type="password" placeholder="ADMIN_KEY">
+      </div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <select id="smsFilterMode" style="margin:0;max-width:145px">
-        <option value="starts">Starts with</option>
-        <option value="contains">Contains</option>
-        <option value="exact">Exact match</option>
-      </select>
-      <input id="smsFilterCriteria" placeholder="Sender filter criteria" style="margin:0;max-width:210px">
-      <button class="primary" id="applySmsFilterBtn">Apply Filter</button>
-      <button class="ghost" id="clearSmsFilterBtn">Clear</button>
+    <div class="row" style="margin-top:12px">
+      <div style="flex:0 0 auto"><button id="connect">Connect</button></div>
+      <div style="flex:0 0 auto"><button id="disconnect" class="secondary" disabled>Disconnect</button></div>
     </div>
   </div>
-  <div class="table-wrap" style="margin-top:12px">
-    <table>
-      <thead><tr><th>Time</th><th>Sender</th><th>Message</th><th>Action</th></tr></thead>
-      <tbody id="smsBody"></tbody>
-    </table>
-    <div id="smsEmpty" class="empty">No matching SMS messages.</div>
+
+  <div id="status" class="statusbar"></div>
+
+  <div id="panel" style="display:none">
+    <div class="toolbar">
+      <button id="refresh" class="secondary">↻ Refresh</button>
+      <button id="repair" class="secondary">Repair Telegram IDs</button>
+      <button id="diagnose" class="secondary">Diagnose</button>
+      <label class="chk" style="margin-left:auto">
+        <input type="checkbox" id="auto" checked> Auto-refresh
+      </label>
+    </div>
+    <div id="list"></div>
   </div>
+
+  <!-- ================= AUTO-APPROVE DEPOSITS ================= -->
+  <div class="card">
+    <h2>Automatic Deposit Approval</h2>
+    <div class="subtitle" style="margin:0 0 12px">
+      Compares pending deposit requests against <code>incoming_sms</code> in Firebase.
+      A deposit is approved only when <b>reference</b> and <b>amount</b> both match.
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="dbUrl">Firebase Realtime DB URL</label>
+        <input id="dbUrl" value="https://render-e9e2d-default-rtdb.firebaseio.com" placeholder="https://....firebaseio.com">
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <div style="flex:0 0 auto"><button id="aaRunNow">Match Now</button></div>
+      <label class="chk" style="margin-left:8px">
+        <input type="checkbox" id="aaAuto"> Auto-match every 15s
+      </label>
+    </div>
+
+    <div id="aaStatus" class="statusbar" style="margin-top:12px"></div>
+
+    <div style="margin-top:12px">
+      <label>Activity log</label>
+      <div id="aaLog" class="aa-log"><span class="ts">—</span> <span class="skip">Ready. Connect and press “Match Now”.</span></div>
+    </div>
+  </div>
+
+  <!-- ================= INCOMING SMS ================= -->
+  <div class="card">
+    <h2>Incoming SMS</h2>
+    <div class="row">
+      <div>
+        <label for="smsDbUrl">Firebase Realtime DB URL</label>
+        <input id="smsDbUrl" value="https://render-e9e2d-default-rtdb.firebaseio.com" placeholder="https://....firebaseio.com">
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div style="flex:0 0 auto"><button id="loadSms">Load SMS</button></div>
+      <div style="flex:0 0 auto"><button id="clearSms" class="secondary">Clear</button></div>
+      <label class="chk" style="margin-left:auto">
+        <input type="checkbox" id="smsAuto"> Auto-refresh (10s)
+      </label>
+    </div>
+  </div>
+
+  <div id="smsStatus" class="statusbar"></div>
+  <div id="smsList"></div>
 </div>
 
-<div class="card pad table-wrap">
-<table>
-<thead><tr><th>Time</th><th>Type</th><th>Player</th><th>Amount</th><th>Reference / Phone</th><th>Status</th><th>Action</th></tr></thead>
-<tbody id="txBody"></tbody>
-</table>
-<div id="empty" class="empty">No transactions found.</div>
-</div>
-</div>
-
-<div id="detailOverlay" class="overlay">
- <div class="modal card">
-  <h2 id="detailTitle">Transaction</h2>
-  <div id="detailBody"></div>
-  <div id="detailActions" class="actions" style="margin-top:18px"></div>
-  <button class="ghost" style="width:100%;margin-top:10px" onclick="closeDetail()">Close</button>
- </div>
-</div>
-
-<div id="firebaseError" style="display:none;margin:12px 0;padding:12px;border-radius:10px;background:#3b1717;color:#ffb0b0;font-weight:700;word-break:break-word"></div>
 <script>
-const firebaseConfig={
- apiKey:"AIzaSyA2VCeCTCx_NAcsxK-es1DCTmRjOD43dt4",
- authDomain:"renewed-8fe38.firebaseapp.com",
- databaseURL:"https://renewed-8fe38-default-rtdb.firebaseio.com",
- projectId:"renewed-8fe38",
- storageBucket:"renewed-8fe38.firebasestorage.app",
- messagingSenderId:"741808375705",
- appId:"1:741808375705:web:c961f1664a0e17ad257508",
- measurementId:"G-04EW1D775E"
-};
+(function(){
+  const $ = id => document.getElementById(id);
+  let serverUrl = '', adminKey = '', autoTimer = null, smsTimer = null, aaTimer = null;
 
-firebase.initializeApp(firebaseConfig);
-const db=firebase.database();
-const storage=firebase.storage();
+  /* In-memory guard so we don't re-attempt the same reference in one session.
+     (Server-side claims are the real dedupe; this just avoids noisy retries.) */
+  const aaAttempted = new Set();
 
-const ADMIN_KEY="winzo_admin_session_v1";
-const DEFAULT_ADMINS={
-  "admin":"winzo-admin",
-  "superadmin":"winzo-super-admin"
-};
-let transactions={};
-let users={};
-let rooms={};
-let selectedId=null;
-let smsMessages={};
-let appliedSmsFilter="";
-let appliedSmsFilterMode="starts";
+  /* ===================== status helpers ===================== */
 
-const $=id=>document.getElementById(id);
-function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
-function money(v){return Number(v||0).toLocaleString()+" Birr";}
-function time(v){return v?new Date(Number(v)).toLocaleString():"—";}
+  function showStatus(msg, kind, el){
+    const s = el || $('status');
+    s.textContent = msg;
+    s.className = 'statusbar show ' + (kind || 'info');
+    if(kind === 'success'){
+      setTimeout(()=>{ if(s.textContent === msg) s.className = 'statusbar show info'; }, 3500);
+    }
+  }
 
-function login(){
- const u=$("adminUser").value.trim(),p=$("adminPass").value;
- if(DEFAULT_ADMINS[u]!==p){$("loginError").textContent="Invalid admin credentials.";return;}
- localStorage.setItem(ADMIN_KEY,JSON.stringify({username:u,at:Date.now()}));
- showApp();
-}
-function showApp(){
- $("loginView").classList.add("hidden");$("appView").classList.remove("hidden");
- startListeners();
-}
-function logout(){localStorage.removeItem(ADMIN_KEY);location.reload();}
-$("loginBtn").onclick=login;$("logoutBtn").onclick=logout;
-$("adminPass").addEventListener("keydown",e=>{if(e.key==="Enter")login();});
+  function aaLog(msg, cls){
+    const box = $('aaLog');
+    const t = new Date().toLocaleTimeString();
+    const line = document.createElement('div');
+    line.innerHTML = '<span class="ts">'+t+'</span> <span class="'+ (cls||'skip') +'">'+esc(msg)+'</span>';
+    box.appendChild(line);
+    box.scrollTop = box.scrollHeight;
+    // trim
+    while(box.childNodes.length > 200) box.removeChild(box.firstChild);
+  }
 
-function startListeners(){
- db.ref(".info/connected").on("value",s=>{
-   $("connection").textContent=s.val()?"● Firebase connected":"● Firebase offline";
-   $("connection").style.color=s.val()?"#8affb0":"#ff8a8a";
- },err=>showFirebaseError("Connection check failed: "+err.message));
- db.ref("transactions").on("value",s=>{transactions=s.val()||{};render();},err=>showFirebaseError("Cannot read /transactions: "+err.message));
- db.ref("users").on("value",s=>{users=s.val()||{};$ ("userCount").textContent=Object.keys(users).length;},err=>showFirebaseError("Cannot read /users: "+err.message));
- db.ref("rooms").on("value",s=>{rooms=s.val()||{};$ ("roomCount").textContent=Object.keys(rooms).length;},err=>showFirebaseError("Cannot read /rooms: "+err.message));
-  db.ref("incoming_sms").on("value",s=>{smsMessages=s.val()||{};renderSms();},err=>showFirebaseError("Cannot read /incoming_sms: "+err.message));
- db.ref("transactions").once("value").then(s=>{transactions=s.val()||{};render();}).catch(err=>showFirebaseError("Initial /transactions read failed: "+err.message));
-}
-function smsSender(x){
-  return String(x?.sender||x?.senderNumber||x?.from||x?.phoneNumber||x?.address||x?.originatingAddress||"").trim();
-}
-function smsText(x){
-  return String(x?.message||x?.text||x?.body||x?.sms||x?.content||"").trim();
-}
-function smsMatches(sender,criteria,mode){
-  if(!criteria)return true;
-  const a=sender.toLowerCase(),b=criteria.toLowerCase();
-  if(mode==="exact")return a===b;
-  if(mode==="contains")return a.includes(b);
-  return a.startsWith(b);
-}
-function renderSms(){
-  const arr=Object.entries(smsMessages).map(([id,x])=>({id,x}))
-    .filter(o=>o.x && smsMatches(smsSender(o.x),appliedSmsFilter,appliedSmsFilterMode))
-    .sort((a,b)=>Number(b.x.timestamp||b.x.receivedAt||0)-Number(a.x.timestamp||a.x.receivedAt||0));
+  function normalizeUrl(u){
+    u = String(u||'').trim().replace(/\/+$/,'');
+    if(!u) return '';
+    if(!/^https?:\/\//i.test(u)) u = 'https://' + u;
+    return u;
+  }
 
-  $("smsCount").textContent=arr.length;
-  $("smsBody").innerHTML=arr.map(o=>{
-    const x=o.x, ts=x.timestamp||x.receivedAt||x.received_at||x.time||x.date;
-    return `<tr>
-      <td>${esc(time(ts))}</td>
-      <td><b>${esc(smsSender(x)||"Unknown")}</b></td>
-      <td style="white-space:normal;min-width:260px">${esc(smsText(x))}</td>
-      <td><button class="ghost" onclick="deleteSms('${esc(o.id)}')">Delete</button></td>
-    </tr>`;
-  }).join("");
-  $("smsEmpty").style.display=arr.length?"none":"block";
-}
-function applySmsFilter(){
-  appliedSmsFilter=$("smsFilterCriteria").value.trim();
-  appliedSmsFilterMode=$("smsFilterMode").value;
-  renderSms();
-}
-function clearSmsFilter(){
-  $("smsFilterCriteria").value="";
-  appliedSmsFilter="";
-  appliedSmsFilterMode="starts";
-  $("smsFilterMode").value="starts";
-  renderSms();
-}
-function deleteSms(id){
-  if(!confirm("Delete this SMS?"))return;
-  db.ref("incoming_sms/"+id).remove().catch(e=>alert("Could not delete SMS: "+e.message));
-}
-$("applySmsFilterBtn").onclick=applySmsFilter;
-$("clearSmsFilterBtn").onclick=clearSmsFilter;
-$("smsFilterCriteria").addEventListener("keydown",e=>{if(e.key==="Enter")applySmsFilter();});
+  function esc(s){
+    return String(s==null?'':s).replace(/[&<>"']/g, c =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
 
-function showFirebaseError(message){
- console.error("WINZO ADMIN FIREBASE:",message);
- const el=$("firebaseError");
- if(el){el.textContent="⚠️ "+message;el.style.display="block";}
-}
-function filtered(){
- let arr=Object.values(transactions).filter(Boolean);
- const f=$("filter").value,q=$("search").value.trim().toLowerCase();
- if(f==="pending")arr=arr.filter(x=>x.status==="pending");
- else if(f==="deposit"||f==="withdraw")arr=arr.filter(x=>x.type===f);
- if(q)arr=arr.filter(x=>String(x.username||"").toLowerCase().includes(q)||String(x.reference||"").toLowerCase().includes(q)||String(x.phoneNumber||"").toLowerCase().includes(q));
- return arr.sort((a,b)=>Number(b.timestamp||0)-Number(a.timestamp||0));
-}
-function render(){
- const arr=filtered();
- const pd=Object.values(transactions).filter(x=>x&&x.status==="pending"&&x.type==="deposit").length;
- const pw=Object.values(transactions).filter(x=>x&&x.status==="pending"&&x.type==="withdraw").length;
- $("pendingDeposits").textContent=pd;$("pendingWithdrawals").textContent=pw;
- $("txBody").innerHTML=arr.map(x=>{
-   const id=x.id||Object.keys(transactions).find(k=>transactions[k]===x);
-   const ref=x.type==="deposit"?(x.reference||"—"):(x.phoneNumber||"—");
-   const action=x.status==="pending"?`<button class="primary" onclick="openDetail('${esc(id)}')">Review</button>`:`<button class="ghost" onclick="openDetail('${esc(id)}')">View</button>`;
-   return `<tr><td>${esc(time(x.timestamp))}</td><td>${x.type==="deposit"?"💰 Deposit":"🏦 Withdraw"}</td><td>${esc(x.username)}</td><td>${esc(money(x.amount))}</td><td>${esc(ref)}</td><td class="${esc(x.status)}">${esc(x.status)}</td><td>${action}</td></tr>`;
- }).join("");
- $("empty").style.display=arr.length?"none":"block";
-}
-$("filter").onchange=render;$("search").oninput=render;$("refreshBtn").onclick=render;
+  /* ===================== ADMIN (pending tx) ===================== */
 
-function openDetail(id){
- selectedId=id;const x=transactions[id];if(!x)return;
- $("detailTitle").textContent=(x.type==="deposit"?"💰 Deposit":"🏦 Withdrawal")+" · "+(x.status||"pending");
- let html=`<div class="kv">
- <div>Player</div><div>${esc(x.username)}</div>
- <div>Amount</div><div><b>${esc(money(x.amount))}</b></div>
- <div>Requested</div><div>${esc(time(x.timestamp))}</div>`;
- if(x.type==="deposit"){
-   html+=`<div>Reference</div><div>${esc(x.reference||"—")}</div>`;
- }else{
-   html+=`<div>Full name</div><div>${esc(x.fullName||"—")}</div><div>Phone</div><div>${esc(x.phoneNumber||"—")}</div>`;
- }
- html+=`<div>Transaction ID</div><div style="word-break:break-all">${esc(x.id||id)}</div></div>`;
- if(x.imageUrl)html+=`<img class="proof" src="${esc(x.imageUrl)}" alt="Deposit proof">`;
- if(x.status==="pending")html+=`<div class="note">Approve applies the wallet change once using a Firebase transaction marker. Reject changes no wallet balance for deposits; for withdrawals it releases the reserved pending amount.</div>`;
- $("detailBody").innerHTML=html;
- $("detailActions").innerHTML=x.status==="pending"
-  ?`<button class="primary" onclick="approveSelected()">Approve</button><button class="danger" onclick="rejectSelected()">Reject</button>`:"";
- $("detailOverlay").classList.add("open");
-}
-function closeDetail(){$("detailOverlay").classList.remove("open");selectedId=null;}
+  async function api(path){
+    const res = await fetch(serverUrl + path, {headers:{'X-Admin-Key': adminKey}});
+    let body; try { body = await res.json(); } catch { body = {ok:false,error:'invalid-json-from-server'}; }
+    if(!res.ok || body.ok === false) throw new Error(body.error || ('http-'+res.status));
+    return body;
+  }
 
-async function settle(id,decision){
- const tx=transactions[id];if(!tx||tx.status!=="pending")return;
- const username=tx.username,amount=Number(tx.amount||0);
- if(!username||!amount||!["deposit","withdraw"].includes(tx.type))return alert("Invalid transaction.");
- try{
-   // First claim the request. This prevents two admin tabs from settling the same request.
-   const claim=await db.ref("transactions/"+id+"/status").transaction(v=>v==="pending"?(decision==="approved"?"processing":"rejecting"):v);
-   if(!claim.committed)return alert("This request was already handled by another admin.");
-   try{
-     const userRef=db.ref("users/"+username);
-     if(decision==="approved"){
-       const result=await userRef.transaction(user=>{
-         if(!user)return user;
-         user.processedTransactions=user.processedTransactions||{};
-         if(user.processedTransactions[id])return user;
-         if(tx.type==="deposit"){
-           user.playWallet=Number(user.playWallet||0)+amount;
-         }else{
-           const main=Number(user.mainWallet||0);
-           if(main<amount)throw new Error("Insufficient main wallet for withdrawal approval.");
-           user.mainWallet=main-amount;
-           user.pendingWithdrawal=Math.max(0,Number(user.pendingWithdrawal||0)-amount);
-         }
-         user.processedTransactions[id]={type:tx.type,amount,timestamp:firebase.database.ServerValue.TIMESTAMP};
-         return user;
-       });
-       if(!result.committed)throw new Error("Wallet update was not committed.");
-     }else if(tx.type==="withdraw"){
-       const result=await userRef.transaction(user=>{
-         if(!user)return user;
-         user.pendingWithdrawal=Math.max(0,Number(user.pendingWithdrawal||0)-amount);
-         return user;
-       });
-       if(!result.committed)throw new Error("Could not release pending withdrawal.");
-     }
-     await db.ref("transactions/"+id).update({
-       status:decision==="approved"?"approved":"rejected",
-       walletApplied:decision==="approved",
-       processedBy:JSON.parse(localStorage.getItem(ADMIN_KEY)||"{}").username||"admin",
-       processedAt:firebase.database.ServerValue.TIMESTAMP
-     });
-     await db.ref("notifications/"+username).push({
-       message: decision==="approved"
-        ? (tx.type==="deposit"?`✅ Your ${amount} Birr deposit was approved.`:`✅ Your ${amount} Birr withdrawal was approved.`)
-        : `❌ Your ${tx.type} request for ${amount} Birr was rejected.`,
-       timestamp:firebase.database.ServerValue.TIMESTAMP,read:false
-     });
-     closeDetail();render();
-   }catch(err){
-     // Return the request to pending so an admin can retry if wallet processing failed.
-     await db.ref("transactions/"+id).update({status:"pending"});
-     alert(err.message||"Settlement failed.");
-   }
- }catch(err){alert(err.message||"Could not claim transaction.");}
-}
-function approveSelected(){if(selectedId)settle(selectedId,"approved")}
-function rejectSelected(){if(selectedId)settle(selectedId,"rejected")}
+  async function connect(){
+    const url = normalizeUrl($('url').value), key = $('key').value;
+    if(!key){ showStatus('Enter the admin key.','error'); return; }
+    $('connect').disabled = true;
+    showStatus('Testing connection…','info');
+    try{
+      const cfg = await (await fetch(url+'/config')).json();
+      if(cfg.database !== 'firebase-realtime-database')
+        throw new Error('wrong-backend ('+(cfg.database||'unknown')+')');
 
-if(localStorage.getItem(ADMIN_KEY))showApp();
+      const test = await fetch(url+'/admin/pending', {headers:{'X-Admin-Key': key}});
+      if(test.status === 403) throw new Error('admin-key-rejected');
+      if(!test.ok) throw new Error('admin endpoint missing (status '+test.status+') — server code not deployed');
+
+      serverUrl = url; adminKey = key;
+      $('disconnect').disabled = false;
+      $('panel').style.display = '';
+      showStatus('Connected to ' + url, 'success');
+      aaLog('Connected to ' + url, 'ok');
+
+      await refresh();
+      startAuto();
+      if($('aaAuto').checked) startAutoApprove();
+    }catch(e){
+      showStatus('Connection failed: ' + (e.message||e), 'error');
+      serverUrl = ''; adminKey = ''; $('panel').style.display = 'none';
+    }finally{ $('connect').disabled = false; }
+  }
+
+  function disconnect(){
+    serverUrl = ''; adminKey = '';
+    stopAuto(); stopAutoApprove();
+    $('panel').style.display = 'none';
+    $('disconnect').disabled = true;
+    $('list').replaceChildren();
+    showStatus('Disconnected.','info');
+    aaLog('Disconnected', 'skip');
+  }
+
+  function startAuto(){ stopAuto(); if($('auto').checked) autoTimer = setInterval(refresh, 6000); }
+  function stopAuto(){ if(autoTimer){ clearInterval(autoTimer); autoTimer = null; } }
+
+  async function refresh(){
+    if(!serverUrl) return;
+    try{
+      const data = await api('/admin/pending');
+      render(data.transactions || []);
+    }catch(e){
+      showStatus('Refresh failed: ' + e.message, 'error');
+    }
+  }
+
+  function render(txs){
+    const list = $('list'); list.replaceChildren();
+    if(!txs.length){
+      const d = document.createElement('div'); d.className='empty';
+      d.textContent = 'No pending transactions.';
+      list.appendChild(d); return;
+    }
+    for(const t of txs) list.appendChild(renderTx(t));
+  }
+
+  function renderTx(t){
+    const box = document.createElement('div'); box.className='tx';
+    const head = document.createElement('div'); head.className='tx-head';
+    const left = document.createElement('div');
+    const type = document.createElement('div');
+    type.className = 'tx-type ' + (t.type||'');
+    type.textContent = (t.type||'').toUpperCase();
+    left.appendChild(type);
+    const who = document.createElement('div'); who.className='tx-meta';
+    who.innerHTML = '<b>'+esc(t.displayName||t.username||'—')+'</b>';
+    left.appendChild(who);
+    head.appendChild(left);
+
+    const right = document.createElement('div'); right.style.textAlign='right';
+    const amount = document.createElement('div'); amount.className='tx-amount';
+    amount.textContent = Number(t.amount||0) + ' Birr';
+    right.appendChild(amount);
+    if(t.status === 'pending'){
+      const p = document.createElement('span'); p.className='pill'; p.textContent='pending';
+      right.appendChild(p);
+    }
+    head.appendChild(right);
+    box.appendChild(head);
+
+    const meta = document.createElement('div'); meta.className='tx-meta';
+    const ref = t.reference ? '<b>ref</b> ' + esc(t.reference) : '';
+    const txId = '<b>id</b> <code>' + esc(t.id) + '</code>';
+    const uid = '<b>uid</b> <code>' + esc(t.walletUid||t.uid||'') + '</code>';
+    const when = t.timestamp ? '<b>at</b> ' + new Date(Number(t.timestamp)).toLocaleString() : '';
+    meta.innerHTML = [ref, txId, uid, when].filter(Boolean).join('<br>');
+    box.appendChild(meta);
+
+    if(t.status === 'pending'){
+      const actions = document.createElement('div'); actions.className='tx-actions';
+      const approve = document.createElement('button'); approve.className='approve'; approve.textContent='Approve';
+      const reject = document.createElement('button'); reject.className='reject'; reject.textContent='Reject';
+      approve.onclick = ()=>decide(t.id,'approved',approve,reject);
+      reject.onclick = ()=>decide(t.id,'rejected',approve,reject);
+      actions.append(approve, reject); box.appendChild(actions);
+    }
+    return box;
+  }
+
+  async function decide(id, decision, approveBtn, rejectBtn){
+    if(!confirm(decision === 'approved' ? 'Approve this transaction?' : 'Reject this transaction?')) return;
+    approveBtn.disabled = true; rejectBtn.disabled = true;
+    try{
+      await api('/admin/decision?id=' + encodeURIComponent(id) + '&decision=' + decision);
+      showStatus('Transaction ' + decision + '.', 'success');
+      await refresh();
+    }catch(e){
+      showStatus('Failed: ' + e.message, 'error');
+      approveBtn.disabled = false; rejectBtn.disabled = false;
+    }
+  }
+
+  async function repair(){
+    if(!confirm('Repair stale telegram_id values on all pending transactions?')) return;
+    try{
+      showStatus('Repairing…','info');
+      const res = await api('/admin/repair-tx-ids');
+      const r = (res.repaired||[]).length, s = (res.skipped||[]).length;
+      showStatus('Repair done: ' + r + ' fixed, ' + s + ' skipped.', 'success');
+      await refresh();
+    }catch(e){ showStatus('Repair failed: ' + e.message, 'error'); }
+  }
+
+  async function diagnose(){
+    try{
+      showStatus('Fetching diagnostic…','info');
+      const res = await api('/admin/diagnose');
+      const txs = res.transactions||[];
+      const bad = txs.filter(t => !t.resolved_uid);
+      if(!bad.length) showStatus('Diagnostic: all ' + txs.length + ' pending transactions resolve correctly.','success');
+      else showStatus('Diagnostic: ' + bad.length + ' unresolved — see browser console.','error');
+      console.log('Diagnostic payload:', res);
+    }catch(e){ showStatus('Diagnostic failed: ' + e.message,'error'); }
+  }
+
+  /* ===================== SMS parsing ===================== */
+
+  function parseSms(text){
+    const t = String(text==null?'':text).replace(/\s+/g,' ').trim();
+    const out = {amount:null, from:null, reference:null, dateText:null};
+    if(!t) return out;
+
+    let m = t.match(/received\s+(?:ETB|Birr)\s*([\d,]+(?:\.\d+)?)/i)
+         || t.match(/(?:ETB|Birr)\s*([\d,]+(?:\.\d+)?)/i);
+    if(m) out.amount = m[1].replace(/,/g,'');
+
+    m = t.match(/\bfrom\s+(.+?)\s*\(/)
+     || t.match(/\bfrom\s+([A-Za-z][A-Za-z\s.'\-]{1,40}?)(?:\s+\d|\s+on\b|$)/i);
+    if(m) out.from = m[1].trim().replace(/[.,;]+$/,'');
+
+    m = t.match(/your\s+transaction\s+number\s+is\s*[:\-]?\s*([A-Za-z0-9]{6,})/i)
+     || t.match(/\breference(?:\s*(?:number|code|no\.?))?\s*[:\-]?\s*([A-Za-z0-9]{6,})/i)
+     || t.match(/\b(?:transaction\s+number|txn\s*(?:id|no\.?))\s*[:\-]?\s*([A-Za-z0-9]{6,})/i);
+    if(m) out.reference = m[1].toUpperCase();
+
+    m = t.match(/\bon\s+(\d{1,2}\/\d{1,2}\/\d{4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?)/);
+    if(m) out.dateText = m[1];
+
+    return out;
+  }
+
+  function normalizeRef(v){
+    return String(v||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,128);
+  }
+
+  function stampToDate(v){
+    let n = Number(v);
+    if(!n || !isFinite(n)) return null;
+    if(n < 1e12) n *= 1000;
+    const d = new Date(n);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  /* ===================== Firebase SMS fetch ===================== */
+
+  async function fetchIncomingSms(){
+    const base = normalizeUrl($('dbUrl').value);
+    if(!base) throw new Error('Enter the Firebase DB URL.');
+    const res = await fetch(base + '/incoming_sms.json', {cache:'no-store'});
+    if(res.status === 401 || res.status === 403) throw new Error('permission-denied');
+    if(res.status === 404) throw new Error('not-found');
+    if(!res.ok) throw new Error('http-' + res.status);
+    const data = await res.json();
+    if(!data || typeof data !== 'object') return [];
+    return Object.keys(data).map(k=>{
+      const v = data[k] || {};
+      const rec = (typeof v === 'object') ? Object.assign({}, v) : {text:String(v)};
+      rec._id = k;
+      rec._ts = Number(rec.receivedStamp || rec.sentStamp || rec.timestamp || 0) || 0;
+      return rec;
+    }).sort((a,b)=> b._ts - a._ts);
+  }
+
+  /* ===================== AUTO-APPROVE ENGINE ===================== */
+
+  /**
+   * Fetch pending deposits + incoming SMS, then approve any deposit whose
+   * (reference, amount) matches exactly one incoming SMS record.
+   *
+   * Server-side /admin/decision is still the source of truth: even if two
+   * clients race, the server wallet-ledger and deposit_reference_claims
+   * prevent double-credits.
+   */
+  async function runAutoMatch(){
+    if(!serverUrl || !adminKey){
+      showStatus('Connect to the server first.', 'warn', $('aaStatus'));
+      return;
+    }
+    const base = normalizeUrl($('dbUrl').value);
+    if(!base){
+      showStatus('Enter the Firebase DB URL.', 'error', $('aaStatus'));
+      return;
+    }
+
+    $('aaRunNow').disabled = true;
+    showStatus('Scanning…', 'info', $('aaStatus'));
+
+    let smsList = [];
+    let pendingTxs = [];
+
+    try{
+      // 1. load SMS
+      try{
+        smsList = await fetchIncomingSms();
+      }catch(e){
+        aaLog('SMS fetch failed: ' + e.message, 'err');
+        showStatus('SMS fetch failed: ' + e.message, 'error', $('aaStatus'));
+        return;
+      }
+
+      // 2. build index: ref -> [{sms, amount}]
+      const smsByRef = new Map();
+      for(const s of smsList){
+        const p = parseSms(s.text || s.message || s.body || '');
+        const ref = normalizeRef(p.reference);
+        if(!ref) continue;
+        const amount = Number(p.amount);
+        if(!isFinite(amount) || amount <= 0) continue;
+        if(!smsByRef.has(ref)) smsByRef.set(ref, []);
+        smsByRef.get(ref).push({sms:s, amount});
+      }
+
+      // 3. load pending deposits
+      try{
+        const data = await api('/admin/pending');
+        pendingTxs = (data.transactions||[]).filter(t => t.type === 'deposit' && t.status === 'pending');
+      }catch(e){
+        aaLog('Pending fetch failed: ' + e.message, 'err');
+        showStatus('Pending fetch failed: ' + e.message, 'error', $('aaStatus'));
+        return;
+      }
+
+      if(!pendingTxs.length){
+        showStatus('No pending deposits to check.', 'info', $('aaStatus'));
+        aaLog('No pending deposits.', 'skip');
+        return;
+      }
+
+      // 4. match
+      let approved = 0, skipped = 0, ambiguous = 0, noMatch = 0;
+
+      for(const tx of pendingTxs){
+        const ref = normalizeRef(tx.reference);
+        const amt = Number(tx.amount);
+
+        if(!ref){
+          noMatch++; aaLog('tx=' + tx.id + ' → no reference on deposit request', 'skip');
+          continue;
+        }
+        if(!isFinite(amt) || amt <= 0){
+          noMatch++; aaLog('tx=' + tx.id + ' → invalid amount', 'skip');
+          continue;
+        }
+
+        const bucket = smsByRef.get(ref);
+        if(!bucket || !bucket.length){
+          noMatch++; aaLog('tx=' + tx.id + ' ref=' + ref + ' → no matching SMS', 'skip');
+          continue;
+        }
+
+        // exact amount match (tolerance 0.009)
+        const exact = bucket.filter(x => Math.abs(x.amount - amt) < 0.009);
+        if(!exact.length){
+          noMatch++;
+          aaLog('tx=' + tx.id + ' ref=' + ref + ' amt=' + amt.toFixed(2)
+              + ' → SMS amounts differ (' + bucket.map(x=>x.amount.toFixed(2)).join(', ') + ')', 'warn');
+          continue;
+        }
+        if(exact.length > 1){
+          ambiguous++;
+          aaLog('tx=' + tx.id + ' ref=' + ref + ' → ' + exact.length + ' SMS matches; left pending', 'warn');
+          continue;
+        }
+
+        // guard against re-attempting the same ref in this session
+        const guardKey = ref + '|' + amt.toFixed(2);
+        if(aaAttempted.has(guardKey)){
+          skipped++;
+          continue;
+        }
+        aaAttempted.add(guardKey);
+
+        // 5. approve
+        try{
+          const q = '/admin/decision?id=' + encodeURIComponent(tx.id) + '&decision=approved';
+          await api(q);
+          approved++;
+          aaLog('✓ approved tx=' + tx.id + ' ref=' + ref + ' amt=' + amt.toFixed(2)
+              + ' (sms ' + exact[0].sms._id + ')', 'ok');
+        }catch(e){
+          aaLog('✗ approve failed tx=' + tx.id + ' ref=' + ref + ' → ' + e.message, 'err');
+          // allow retry on next pass if it was a transient error
+          aaAttempted.delete(guardKey);
+        }
+      }
+
+      const summary = approved + ' approved · ' + noMatch + ' unmatched · '
+                    + ambiguous + ' ambiguous · ' + skipped + ' skipped';
+      showStatus('Scan complete: ' + summary, approved ? 'success' : 'info', $('aaStatus'));
+      aaLog('Scan complete: ' + summary, approved ? 'ok' : 'skip');
+
+      if(approved) await refresh();
+
+    }finally{
+      $('aaRunNow').disabled = false;
+    }
+  }
+
+  function startAutoApprove(){
+    stopAutoApprove();
+    aaTimer = setInterval(()=>{
+      if(document.hidden) return;
+      runAutoMatch().catch(e => aaLog('Auto-match error: ' + (e.message||e), 'err'));
+    }, 15000);
+    aaLog('Auto-match enabled (every 15s).', 'ok');
+  }
+  function stopAutoApprove(){
+    if(aaTimer){ clearInterval(aaTimer); aaTimer = null; }
+  }
+
+  /* ===================== SMS VIEW (unchanged) ===================== */
+
+  async function loadSms(){
+    const base = normalizeUrl($('smsDbUrl').value);
+    if(!base){ showStatus('Enter the Firebase DB URL.','error',$('smsStatus')); return; }
+    $('loadSms').disabled = true;
+    showStatus('Fetching SMS records…','info',$('smsStatus'));
+    try{
+      const items = await fetchIncomingSmsWithBase(base);
+      renderSms(items);
+      showStatus('Loaded ' + items.length + ' SMS record' + (items.length===1?'':'s') + '.','success',$('smsStatus'));
+    }catch(e){
+      showStatus('SMS fetch failed: ' + (e.message||e),'error',$('smsStatus'));
+    }finally{ $('loadSms').disabled = false; }
+  }
+
+  async function fetchIncomingSmsWithBase(base){
+    const res = await fetch(base + '/incoming_sms.json', {cache:'no-store'});
+    if(res.status === 401 || res.status === 403) throw new Error('permission-denied — check Firebase rules');
+    if(!res.ok) throw new Error('http-'+res.status);
+    const data = await res.json();
+    if(!data || typeof data !== 'object') return [];
+    return Object.keys(data).map(k=>{
+      const v = data[k] || {};
+      const rec = (typeof v === 'object') ? Object.assign({}, v) : {text:String(v)};
+      rec._id = k;
+      rec._ts = Number(rec.receivedStamp || rec.sentStamp || rec.timestamp || 0) || 0;
+      return rec;
+    }).sort((a,b)=> b._ts - a._ts);
+  }
+
+  function renderSms(items){
+    const list = $('smsList'); list.replaceChildren();
+    if(!items.length){
+      const d = document.createElement('div'); d.className='empty';
+      d.textContent='No SMS records.'; list.appendChild(d); return;
+    }
+    for(const raw of items) list.appendChild(renderSmsItem(raw));
+  }
+
+  function renderSmsItem(raw){
+    const text = raw.text || raw.message || raw.body || '';
+    const p = parseSms(text);
+
+    const fromName  = p.from || raw.from || '—';
+    const amount    = p.amount;
+    const reference = p.reference;
+    const when      = stampToDate(raw.receivedStamp) || stampToDate(raw.sentStamp) || stampToDate(raw.timestamp);
+    const timeText  = when ? when.toLocaleString() : (p.dateText || '—');
+
+    const box = document.createElement('div'); box.className='sms';
+
+    const head = document.createElement('div'); head.className='sms-head';
+    const left = document.createElement('div');
+    const fromEl = document.createElement('div'); fromEl.className='sms-from';
+    fromEl.textContent = fromName;
+    left.appendChild(fromEl);
+    head.appendChild(left);
+
+    const right = document.createElement('div'); right.style.textAlign='right';
+    const amtEl = document.createElement('div');
+    if(amount){ amtEl.className='sms-amount'; amtEl.textContent = Number(amount).toFixed(2)+' Birr'; }
+    else { amtEl.className='sms-amount na'; amtEl.textContent='amount not found'; }
+    right.appendChild(amtEl);
+    head.appendChild(right);
+    box.appendChild(head);
+
+    const meta = document.createElement('div'); meta.className='sms-meta';
+
+    const rowFrom = document.createElement('div');
+    rowFrom.innerHTML = '<b>From:</b> ';
+    rowFrom.appendChild(document.createTextNode(fromName));
+    meta.appendChild(rowFrom);
+
+    const rowTime = document.createElement('div');
+    rowTime.innerHTML = '<b>Time:</b> ';
+    rowTime.appendChild(document.createTextNode(timeText));
+    meta.appendChild(rowTime);
+
+    const rowAmt = document.createElement('div');
+    rowAmt.innerHTML = '<b>Amount:</b> ';
+    rowAmt.appendChild(document.createTextNode(amount ? Number(amount).toFixed(2)+' Birr' : '—'));
+    meta.appendChild(rowAmt);
+
+    const rowRef = document.createElement('div');
+    rowRef.innerHTML = '<b>Reference:</b> ';
+    if(reference){
+      const chip = document.createElement('span');
+      chip.className='sms-ref'; chip.textContent = reference; chip.title='Click to copy';
+      chip.onclick = ()=>{
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(reference).then(()=>{
+            const old = chip.textContent;
+            chip.textContent = 'copied ✓';
+            setTimeout(()=>{chip.textContent = old;}, 1200);
+          }).catch(()=>{});
+        }
+      };
+      rowRef.appendChild(chip);
+    } else {
+      rowRef.appendChild(document.createTextNode('—'));
+    }
+    meta.appendChild(rowRef);
+
+    if(raw.from && String(raw.from) !== String(fromName)){
+      const rowSender = document.createElement('div');
+      rowSender.innerHTML = '<b>Sender ID:</b> ';
+      rowSender.appendChild(document.createTextNode(String(raw.from)));
+      meta.appendChild(rowSender);
+    }
+
+    box.appendChild(meta);
+
+    if(text){
+      const det = document.createElement('details'); det.className='sms-raw';
+      const sum = document.createElement('summary'); sum.textContent='Raw message';
+      const pre = document.createElement('p'); pre.textContent = text;
+      det.append(sum, pre);
+      box.appendChild(det);
+    }
+
+    return box;
+  }
+
+  function clearSms(){
+    $('smsList').replaceChildren();
+    $('smsStatus').className='statusbar';
+    $('smsStatus').textContent='';
+  }
+
+  function startSmsAuto(){
+    stopSmsAuto();
+    if($('smsAuto').checked) smsTimer = setInterval(loadSms, 10000);
+  }
+  function stopSmsAuto(){ if(smsTimer){clearInterval(smsTimer); smsTimer=null;} }
+
+  /* ===================== WIRING ===================== */
+
+  $('connect').onclick = connect;
+  $('disconnect').onclick = disconnect;
+  $('refresh').onclick = refresh;
+  $('repair').onclick = repair;
+  $('diagnose').onclick = diagnose;
+  $('auto').onchange = () => { if($('auto').checked) startAuto(); else stopAuto(); };
+  $('key').addEventListener('keydown', e => { if(e.key === 'Enter') connect(); });
+
+  $('aaRunNow').onclick = () => runAutoMatch();
+  $('aaAuto').onchange = () => {
+    if($('aaAuto').checked){ runAutoMatch(); startAutoApprove(); }
+    else { stopAutoApprove(); aaLog('Auto-match disabled.', 'skip'); }
+  };
+
+  $('loadSms').onclick = loadSms;
+  $('clearSms').onclick = clearSms;
+  $('smsAuto').onchange = () => { if($('smsAuto').checked){ loadSms(); startSmsAuto(); } else stopSmsAuto(); };
+  $('smsDbUrl').addEventListener('keydown', e => { if(e.key === 'Enter') loadSms(); });
+
+  // keep both Firebase URL inputs in sync
+  $('dbUrl').addEventListener('input', () => { $('smsDbUrl').value = $('dbUrl').value; });
+  $('smsDbUrl').addEventListener('input', () => { $('dbUrl').value = $('smsDbUrl').value; });
+
+  // pause auto-refresh when tab hidden
+  document.addEventListener('visibilitychange', () => {
+    if(document.hidden){ stopAuto(); stopSmsAuto(); stopAutoApprove(); }
+    else {
+      if($('auto').checked) startAuto();
+      if($('smsAuto').checked) startSmsAuto();
+      if($('aaAuto').checked) startAutoApprove();
+    }
+  });
+})();
 </script>
 </body>
 </html>
