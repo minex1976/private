@@ -4,10 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Winzo Admin</title>
+
+<!-- Beautiful typography (Ethiopic for Amharic + Poppins for UI) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
 <style>
   :root{--bg:#120b20;--panel:#1e1530;--border:#3a2a55;--fg:#eee;--muted:#9c8fb5;--accent:#8b5cf6;--accent-hover:#7c3aed;--green:#10b981;--red:#ef4444;--amber:#f59e0b}
   *{box-sizing:border-box}
-  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:20px;min-height:100vh;line-height:1.5}
+  body{font-family:'Poppins','Noto Sans Ethiopic',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:20px;min-height:100vh;line-height:1.5}
   .container{max-width:760px;margin:0 auto}
   h1{font-size:22px;margin:0 0 4px}
   h2{font-size:17px;margin:0 0 10px}
@@ -51,7 +57,6 @@
   .pill.auto{background:rgba(16,185,129,.2);color:#6ee7b7}
   code{background:#0d0818;padding:2px 6px;border-radius:4px;font-size:12px}
 
-  /* tabs */
   .tabs{display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--border)}
   .tab{background:transparent;color:var(--muted);border:none;border-bottom:2px solid transparent;border-radius:0;padding:10px 16px;font-size:14px;font-weight:500;cursor:pointer;transition:color .15s,border-color .15s;margin-bottom:-1px}
   .tab:hover:not(.active){color:var(--fg);background:transparent}
@@ -60,7 +65,6 @@
   .tab .count.zero{background:rgba(156,143,181,.15);color:var(--muted)}
   .tab .count.has{background:rgba(16,185,129,.25);color:#6ee7b7}
 
-  /* ---- SMS section ---- */
   .sms{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
   .sms-head{display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:10px}
   .sms-from{font-weight:600;font-size:15px;color:#c4b5fd;word-break:break-word}
@@ -74,7 +78,6 @@
   .sms-raw summary{cursor:pointer;color:var(--muted);font-size:12px;outline:none}
   .sms-raw p{margin:8px 0 0;background:#0d0818;border:1px solid var(--border);border-radius:8px;padding:9px;white-space:pre-wrap;word-break:break-word;line-height:1.6}
 
-  /* ---- Auto-approve log ---- */
   .aa-log{background:#0d0818;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;max-height:220px;overflow-y:auto;line-height:1.7;color:#b8abc9}
   .aa-log .ok{color:#6ee7b7}
   .aa-log .skip{color:#9c8fb5}
@@ -84,7 +87,6 @@
   .chk{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;margin:0;white-space:nowrap}
   .chk input{width:auto}
 
-  /* ---- Modals ---- */
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:1000;padding:16px}
   .modal-overlay.show{display:flex}
   .modal{background:var(--panel);border:1px solid var(--border);border-radius:14px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
@@ -104,9 +106,66 @@
   .dup-item .id{color:#6b5f80;margin-top:5px;font-family:ui-monospace,monospace;font-size:11.5px}
   .dup-item .amt-warn{color:#fcd34d}
 
-  /* ---- Image Modal ---- */
   .img-content{text-align:center;margin-top:10px;background:#000;border-radius:8px;padding:10px;min-height:200px;display:flex;align-items:center;justify-content:center}
   .img-content img{max-width:100%;max-height:65vh;border-radius:4px;display:none}
+
+  /* ================= BROADCAST ================= */
+  .amharic{font-family:'Noto Sans Ethiopic','Poppins',sans-serif}
+
+  .bc-section{border-top:1px solid var(--border);padding-top:14px;margin-top:16px}
+  .bc-section:first-of-type{border-top:none;padding-top:0;margin-top:16px}
+  .bc-section h3{
+    font-size:14.5px;margin:0 0 8px;color:#d1c4e9;display:flex;align-items:center;gap:8px;font-weight:600;
+    text-shadow:0 0 18px rgba(139,92,246,.35);letter-spacing:.2px;
+  }
+  .bc-section h3 .num{background:rgba(139,92,246,.25);color:#e0d4ff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:0 0 auto;box-shadow:0 0 12px rgba(139,92,246,.4)}
+  .bc-note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.6}
+  .bc-note .live{color:#6ee7b7;font-weight:600}
+  .bc-note .idle{color:#6b5f80}
+  .bc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:620px){.bc-grid{grid-template-columns:1fr}}
+  .bc-item{background:#0d0818;border:1px solid var(--border);border-radius:10px;padding:11px;position:relative;overflow:hidden}
+  .bc-item::after{content:'';position:absolute;inset:0;background:radial-gradient(120px 60px at 100% 0%,rgba(139,92,246,.10),transparent 70%);pointer-events:none}
+  .bc-item-title{font-size:12px;color:#c4b5fd;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:500;position:relative;z-index:1}
+  .bc-item-title .chk{font-size:11px;color:var(--muted)}
+  textarea{width:100%;background:#0d0818;color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13.5px;font-family:inherit;resize:vertical;min-height:58px;line-height:1.55;position:relative;z-index:1}
+  textarea:focus{outline:2px solid var(--accent);border-color:transparent}
+  .bc-item-actions{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;position:relative;z-index:1}
+  .bc-item-actions button{padding:7px 14px;font-size:12.5px;border-radius:7px}
+  .bc-req-default{background:linear-gradient(135deg,#8b5cf6,#ec4899)!important;border:none!important;color:#fff!important;box-shadow:0 4px 14px rgba(236,72,153,.35)}
+  .bc-req-default:hover:not(:disabled){filter:brightness(1.12);background:linear-gradient(135deg,#8b5cf6,#ec4899)!important}
+
+  /* floating admin preview bubble */
+  .bubble{
+    position:fixed;z-index:1200;left:50%;bottom:24px;
+    transform:translateX(-50%) translateY(22px);
+    max-width:min(92vw,440px);display:flex;gap:12px;align-items:flex-start;
+    padding:14px 16px 14px 16px;border-radius:18px;color:var(--fg);font-size:14px;line-height:1.55;
+    background:linear-gradient(135deg,#2a1d45 0%,#1e1530 100%);
+    opacity:0;pointer-events:none;transition:opacity .28s ease, transform .28s ease;
+    box-shadow:0 14px 42px rgba(0,0,0,.6), 0 0 24px rgba(139,92,246,.35);
+    isolation:isolate;
+  }
+  .bubble.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+  .bubble::before{
+    content:'';position:absolute;inset:0;border-radius:inherit;padding:1.5px;
+    background:linear-gradient(135deg,#a78bfa,#8b5cf6,#ec4899,#a78bfa);
+    background-size:300% 300%;animation:bcBorderShift 6s ease infinite;
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;z-index:-1;
+  }
+  @keyframes bcBorderShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+  .bubble .bubble-icon{font-size:18px;line-height:1.25;flex:0 0 auto;filter:drop-shadow(0 0 8px rgba(236,72,153,.6))}
+  .bubble .bubble-body{flex:1;min-width:0}
+  .bubble .bubble-title{
+    font-size:10.5px;text-transform:uppercase;letter-spacing:.9px;margin-bottom:4px;font-weight:600;
+    background:linear-gradient(135deg,#c4b5fd,#f0abfc);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .bubble .bubble-text{word-break:break-word;font-weight:500}
+  .bubble .bubble-text.amharic{font-size:15px;letter-spacing:.1px}
+  .bubble button.bubble-close{background:transparent;border:none;color:var(--muted);font-size:17px;line-height:1;padding:0 2px;cursor:pointer;flex:0 0 auto}
+  .bubble button.bubble-close:hover{background:transparent;color:var(--fg)}
 </style>
 </head>
 <body>
@@ -164,12 +223,128 @@
     </div>
   </div>
 
+  <!-- ================= BROADCAST ================= -->
+  <div class="card">
+    <h2>Broadcast Messages</h2>
+    <div class="subtitle" style="margin:0 0 12px">
+      Floating bubble rendered on the player's <b>game screen</b>. Three delivery modes.
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="bcDbUrl">Firebase Realtime DB URL</label>
+        <input id="bcDbUrl" value="https://render-e9e2d-default-rtdb.firebaseio.com" placeholder="https://....firebaseio.com">
+      </div>
+      <div style="flex:0 0 auto"><button id="bcReload" class="secondary">↻ Reload state</button></div>
+    </div>
+
+    <div id="bcStatus" class="statusbar" style="margin-top:12px"></div>
+
+    <!-- 1 · transient -->
+    <div class="bc-section">
+      <h3><span class="num">1</span> Quick alert — disappears automatically</h3>
+      <div class="row">
+        <div style="flex:2;min-width:220px">
+          <label for="bcTransientText">Message</label>
+          <input id="bcTransientText" maxlength="300" placeholder="e.g. Game starting in 30 seconds">
+        </div>
+        <div style="flex:0 0 120px">
+          <label for="bcTransientSecs">Show for (s)</label>
+          <input id="bcTransientSecs" type="number" min="1" max="300" value="8">
+        </div>
+        <div style="flex:0 0 auto"><button id="bcTransientSend">Broadcast</button></div>
+        <div style="flex:0 0 auto"><button id="bcTransientStop" class="secondary">Stop</button></div>
+      </div>
+      <div class="bc-note" id="bcTransientState">—</div>
+    </div>
+
+    <!-- 2 · persistent -->
+    <div class="bc-section">
+      <h3><span class="num">2</span> Sticky notice — until you remove it</h3>
+      <div class="row">
+        <div style="flex:2;min-width:220px">
+          <label for="bcPersistText">Message</label>
+          <input id="bcPersistText" maxlength="300" placeholder="e.g. Minimum deposit is 50 Birr">
+        </div>
+        <div style="flex:0 0 auto"><button id="bcPersistSend">Publish</button></div>
+        <div style="flex:0 0 auto"><button id="bcPersistStop" class="secondary">Remove</button></div>
+      </div>
+      <div class="bc-note" id="bcPersistState">—</div>
+    </div>
+
+    <!-- 3 · request result messages -->
+    <div class="bc-section">
+      <h3><span class="num">3</span> Request result messages</h3>
+      <div class="subtitle" style="margin:0 0 10px">
+        Shown to the player when a deposit / withdrawal request is approved or rejected.
+        The <b>deposit · approved</b> card can also serve as the default message used
+        automatically when the admin auto-approves a deposit.
+      </div>
+      <div class="bc-grid">
+        <div class="bc-item" data-key="deposit_approval">
+          <div class="bc-item-title">
+            <span>💰 Deposit · approved</span>
+            <label class="chk"><input type="checkbox" class="bc-req-active" checked> enabled</label>
+          </div>
+          <textarea class="bc-req-text amharic" maxlength="300" placeholder="e.g. Deposit approved. Your balance has been credited."></textarea>
+          <div class="bc-item-actions">
+            <button class="bc-req-save">Save</button>
+            <button class="bc-req-clear secondary">Clear</button>
+            <button class="bc-req-default" title="Fill with Winzo's default Amharic thank-you message">✨ Use default</button>
+          </div>
+        </div>
+
+        <div class="bc-item" data-key="deposit_rejection">
+          <div class="bc-item-title">
+            <span>💰 Deposit · rejected</span>
+            <label class="chk"><input type="checkbox" class="bc-req-active" checked> enabled</label>
+          </div>
+          <textarea class="bc-req-text amharic" maxlength="300" placeholder="e.g. Deposit rejected — reference not found."></textarea>
+          <div class="bc-item-actions">
+            <button class="bc-req-save">Save</button>
+            <button class="bc-req-clear secondary">Clear</button>
+          </div>
+        </div>
+
+        <div class="bc-item" data-key="withdraw_approval">
+          <div class="bc-item-title">
+            <span>💸 Withdraw · approved</span>
+            <label class="chk"><input type="checkbox" class="bc-req-active" checked> enabled</label>
+          </div>
+          <textarea class="bc-req-text amharic" maxlength="300" placeholder="e.g. Withdrawal approved. Funds on the way."></textarea>
+          <div class="bc-item-actions">
+            <button class="bc-req-save">Save</button>
+            <button class="bc-req-clear secondary">Clear</button>
+          </div>
+        </div>
+
+        <div class="bc-item" data-key="withdraw_rejection">
+          <div class="bc-item-title">
+            <span>💸 Withdraw · rejected</span>
+            <label class="chk"><input type="checkbox" class="bc-req-active" checked> enabled</label>
+          </div>
+          <textarea class="bc-req-text amharic" maxlength="300" placeholder="e.g. Withdrawal rejected — insufficient balance."></textarea>
+          <div class="bc-item-actions">
+            <button class="bc-req-save">Save</button>
+            <button class="bc-req-clear secondary">Clear</button>
+          </div>
+        </div>
+      </div>
+      <div class="bc-note">
+        The client calls <code>WinzoBroadcast.showRequestResult('deposit'|'withdraw','approval'|'rejection')</code>
+        after a request finishes. If a message is disabled or empty, no bubble appears.
+      </div>
+    </div>
+  </div>
+
   <!-- ================= AUTO-APPROVE DEPOSITS ================= -->
   <div class="card">
     <h2>Automatic Deposit Approval</h2>
     <div class="subtitle" style="margin:0 0 12px">
       A deposit is approved when <b>one</b> SMS carries the reference and the amount matches.
       Two or more SMS sharing the same reference = duplicate (manual review).
+      Every automatic approval also pushes a thank-you bubble to the player's game screen
+      (uses the configured “Deposit · approved” message, or the built-in Amharic default).
     </div>
 
     <div class="row">
@@ -244,6 +419,16 @@
   </div>
 </div>
 
+<!-- ================= ADMIN PREVIEW BUBBLE ================= -->
+<div id="bcPreviewBubble" class="bubble" role="status" aria-live="polite">
+  <span class="bubble-icon">🎉</span>
+  <div class="bubble-body">
+    <div class="bubble-title">Broadcast preview</div>
+    <div class="bubble-text" id="bcPreviewText"></div>
+  </div>
+  <button class="bubble-close" id="bcPreviewClose" title="Close">×</button>
+</div>
+
 <script>
 (function(){
   const $ = id => document.getElementById(id);
@@ -256,6 +441,10 @@
 
   const AA_STORAGE_KEY = 'winzo_auto_approved_v1';
   let autoApproved = loadAutoApproved();
+
+  /* ---------- the default thank-you message sent on auto-approval ---------- */
+  const AUTO_APPROVAL_DEFAULT =
+    'ትአዛዝዎ በትክክል ተፈፅሟል! የዊንዞ ደንበኛ ስለሆኑ እናመሰግናለን።';
 
   function loadAutoApproved(){
     try{
@@ -398,7 +587,6 @@
     for(const t of txs) list.appendChild(renderTx(t));
   }
 
-  /* ===================== RENDER TX ===================== */
   function renderTx(t){
     const box = document.createElement('div'); box.className='tx';
     const head = document.createElement('div'); head.className='tx-head';
@@ -433,29 +621,20 @@
     head.appendChild(right);
     box.appendChild(head);
 
-    /* meta lines */
     const meta = document.createElement('div'); meta.className='tx-meta';
-    
     if(t.reference) meta.innerHTML += '<b>ref</b> ' + esc(t.reference) + '<br>';
-    
-    // Add withdrawal-specific metadata
     if(t.type === 'withdraw') {
         const fn = t.fullName || t.full_name;
         const ph = t.phoneNumber || t.phone_number;
         if (fn) meta.innerHTML += '<b>full name</b> ' + esc(fn) + '<br>';
         if (ph) meta.innerHTML += '<b>phone</b> ' + esc(ph) + '<br>';
     }
-
     meta.innerHTML += '<b>id</b> <code>' + esc(t.id) + '</code><br>';
     meta.innerHTML += '<b>uid</b> <code>' + esc(t.walletUid||t.uid||'') + '</code>';
     if(t.timestamp) meta.innerHTML += '<br><b>at</b> ' + new Date(Number(t.timestamp)).toLocaleString();
-    
     box.appendChild(meta);
 
-    /* actions */
     const actions = document.createElement('div'); actions.className='tx-actions';
-    
-    // Add "View Receipt" button for deposits with image data
     const imgData = t.imageData || t.image_data;
     if (t.type === 'deposit' && imgData) {
         const imgBtn = document.createElement('button');
@@ -464,7 +643,6 @@
         imgBtn.onclick = () => showReceipt(imgData);
         actions.appendChild(imgBtn);
     }
-
     if(t.status === 'pending'){
       const approve = document.createElement('button'); approve.className='approve'; approve.textContent='Approve';
       const reject = document.createElement('button'); reject.className='reject'; reject.textContent='Reject';
@@ -472,11 +650,7 @@
       reject.onclick = ()=>decide(t, 'rejected', approve, reject);
       actions.append(approve, reject);
     }
-
-    if(actions.children.length > 0) {
-        box.appendChild(actions);
-    }
-
+    if(actions.children.length > 0) box.appendChild(actions);
     return box;
   }
 
@@ -488,7 +662,6 @@
         return;
       }
     }
-
     if(!confirm(decision === 'approved' ? 'Approve this transaction?' : 'Reject this transaction?')) return;
     approveBtn.disabled = true; rejectBtn.disabled = true;
     try{
@@ -564,7 +737,6 @@
     const when = e.approvedAt ? '<b>at</b> ' + new Date(Number(e.approvedAt)).toLocaleString() : '';
     meta.innerHTML = [ref, txId, smsId, when].filter(Boolean).join('<br>');
     box.appendChild(meta);
-
     return box;
   }
 
@@ -710,7 +882,6 @@
 
         if(bucket.length > 1){
           duplicate++;
-
           aaReasons.set(tx.id, {
             type: 'duplicate',
             reference: ref,
@@ -726,7 +897,6 @@
               timestamp: x.sms.timestamp || null
             }))
           });
-
           const amounts = bucket.map(x => x.amount.toFixed(2)).join(', ');
           aaLog('tx=' + tx.id + ' ref=' + ref + ' → ' + bucket.length
               + ' SMS share this reference (amounts: ' + amounts + '); duplicate — manual review', 'warn');
@@ -766,6 +936,13 @@
             smsId: only.sms._id,
             approvedAt: Date.now()
           });
+
+          /* Push the thank-you bubble to the player's game screen */
+          const playerUid = tx.walletUid || tx.uid;
+          if(playerUid){
+            publishAutoApprovalEvent(playerUid, tx.id).catch(()=>{});
+            aaLog('🎉 sent thank-you bubble → uid=' + playerUid, 'ok');
+          }
         }catch(e){
           aaLog('✗ approve failed tx=' + tx.id + ' ref=' + ref + ' → ' + e.message, 'err');
           aaAttempted.delete(guardKey);
@@ -784,6 +961,38 @@
     }
   }
 
+  /* ---------- push per-player thank-you event on auto-approval ---------- */
+  async function publishAutoApprovalEvent(uid, txId){
+    if(!uid) return;
+    try{
+      // Use admin's configured Deposit-approved message if it's active, else default Amharic
+      let msg = AUTO_APPROVAL_DEFAULT;
+      try{
+        const cfg = await fbGet('/broadcasts/requests/deposit_approval');
+        if(cfg && cfg.active === true && cfg.text && String(cfg.text).trim()){
+          msg = String(cfg.text).trim();
+        }
+      }catch{ /* ignore, fall back to default */ }
+
+      const now = Date.now();
+      const key = 'evt_' + now + '_' + Math.random().toString(36).slice(2,8);
+      await fbPut('/broadcasts/user_events/' + uid + '/' + key, {
+        type: 'deposit_approval',
+        message: msg,
+        txId: txId || '',
+        createdAt: now,
+        expiresAt: now + 9000
+      });
+
+      // Best-effort cleanup so old events don't pile up
+      setTimeout(() => {
+        fbDelete('/broadcasts/user_events/' + uid + '/' + key).catch(()=>{});
+      }, 15000);
+    }catch(e){
+      aaLog('⚠ user event failed for ' + uid + ' → ' + (e.message||e), 'warn');
+    }
+  }
+
   function startAutoApprove(){
     stopAutoApprove();
     aaTimer = setInterval(()=>{
@@ -798,7 +1007,6 @@
 
   function openDupModal(tx, reason){
     dupPendingTx = tx;
-
     const amtStr = Number(reason.amount).toFixed(2);
     $('dupBody').innerHTML =
         '<p>Automatic approval skipped this deposit because reference '
@@ -809,15 +1017,12 @@
       + '<b>' + amtStr + ' Birr</b>.</p>'
       + '<p>Click <b>Show duplicate</b> to inspect the conflicting SMS records, '
       + 'or <b>Approve anyway</b> to credit this deposit manually.</p>';
-
     const details = $('dupDetails');
     details.replaceChildren();
     details.style.display = 'none';
-
     const showBtn = $('dupShowBtn');
     showBtn.disabled = false;
     showBtn.textContent = 'Show duplicate';
-
     $('dupModal').classList.add('show');
   }
 
@@ -923,13 +1128,10 @@
   }
 
   /* ===================== IMAGE MODAL ===================== */
-  
   function showReceipt(base64Data) {
     const modal = $('imgModal');
     const img = $('receiptImg');
     const loading = $('imgLoading');
-    
-    // Reset UI
     img.style.display = 'none';
     img.src = '';
     loading.style.display = 'block';
@@ -941,7 +1143,6 @@
         return;
     }
 
-    // Ensure the data has a proper mime type prefix
     let src = base64Data.trim();
     if (!src.startsWith('data:image/')) {
         src = 'data:image/jpeg;base64,' + src;
@@ -961,11 +1162,10 @@
 
   function closeImgModal() {
     $('imgModal').classList.remove('show');
-    $('receiptImg').src = ''; // clear memory
+    $('receiptImg').src = '';
   }
 
   /* ===================== SMS VIEW ===================== */
-
   async function loadSms(){
     const base = normalizeUrl($('smsDbUrl').value);
     if(!base){ showStatus('Enter the Firebase DB URL.','error',$('smsStatus')); return; }
@@ -992,7 +1192,6 @@
   function renderSmsItem(raw){
     const text = raw.text || raw.message || raw.body || '';
     const p = parseSms(text);
-
     const fromName  = p.from || raw.from || '—';
     const amount    = p.amount;
     const reference = p.reference;
@@ -1000,7 +1199,6 @@
     const timeText  = when ? when.toLocaleString() : (p.dateText || '—');
 
     const box = document.createElement('div'); box.className='sms';
-
     const head = document.createElement('div'); head.className='sms-head';
     const left = document.createElement('div');
     const fromEl = document.createElement('div'); fromEl.className='sms-from';
@@ -1017,7 +1215,6 @@
     box.appendChild(head);
 
     const meta = document.createElement('div'); meta.className='sms-meta';
-
     const rowFrom = document.createElement('div');
     rowFrom.innerHTML = '<b>From:</b> ';
     rowFrom.appendChild(document.createTextNode(fromName));
@@ -1069,7 +1266,6 @@
       det.append(sum, pre);
       box.appendChild(det);
     }
-
     return box;
   }
 
@@ -1085,6 +1281,248 @@
   }
   function stopSmsAuto(){ if(smsTimer){clearInterval(smsTimer); smsTimer=null;} }
 
+  /* =========================================================
+     ===================== BROADCAST =========================
+     ========================================================= */
+  const BC_REQ_LABELS = {
+    deposit_approval:  'deposit · approved',
+    deposit_rejection: 'deposit · rejected',
+    withdraw_approval: 'withdraw · approved',
+    withdraw_rejection:'withdraw · rejected'
+  };
+  let bcPreviewTimer = null;
+  const AMHARIC_RE = /[\u1200-\u137F]/;
+
+  function bcBase(){
+    const u = normalizeUrl($('bcDbUrl').value);
+    if(!u) throw new Error('Enter the Firebase DB URL.');
+    return u;
+  }
+
+  async function fbRequest(path, method, body){
+    const base = bcBase();
+    const opts = { method, cache:'no-store' };
+    if(body !== undefined){
+      opts.headers = {'Content-Type':'application/json'};
+      opts.body = JSON.stringify(body);
+    }
+    const res = await fetch(base + path + '.json', opts);
+    if(res.status === 401 || res.status === 403)
+      throw new Error('permission-denied — check Firebase rules');
+    if(res.status === 404)
+      throw new Error('not-found — check the database URL');
+    if(!res.ok) throw new Error('http-' + res.status);
+    if(method === 'DELETE') return null;
+    return res.json();
+  }
+  const fbGet    = p      => fbRequest(p, 'GET');
+  const fbPut    = (p, v) => fbRequest(p, 'PUT', v);
+  const fbDelete = p      => fbRequest(p, 'DELETE');
+
+  function previewBubble(text, ms){
+    const el = $('bcPreviewBubble');
+    const icon = el.querySelector('.bubble-icon');
+    const txt  = $('bcPreviewText');
+
+    const isAmharic = AMHARIC_RE.test(text || '');
+    const isApproval = isAmharic || /approv|ተፈፅሟል|success|thank/i.test(text || '');
+
+    icon.textContent = isApproval ? '🎉' : '📢';
+    txt.textContent = text;
+    txt.classList.toggle('amharic', isAmharic);
+
+    el.classList.add('show');
+    clearTimeout(bcPreviewTimer);
+    if(ms) bcPreviewTimer = setTimeout(()=> el.classList.remove('show'), ms);
+  }
+  function hidePreview(){ clearTimeout(bcPreviewTimer); $('bcPreviewBubble').classList.remove('show'); }
+
+  async function bcLoadAll(silent){
+    try{
+      const data = (await fbGet('/broadcasts')) || {};
+
+      const tr = data.transient || {};
+      const stateEl = $('bcTransientState');
+      if(tr.active && tr.text){
+        const expires = Number(tr.expiresAt) || (Number(tr.createdAt||0) + Number(tr.duration||0)*1000);
+        const left = Math.max(0, expires - Date.now());
+        stateEl.innerHTML = left > 0
+          ? '<span class="live">● live</span> — “' + esc(tr.text) + '” · ' + Math.ceil(left/1000) + 's remaining'
+          : '<span class="idle">expired</span> — “' + esc(tr.text) + '”';
+      }else{
+        stateEl.innerHTML = '<span class="idle">No quick alert running.</span>';
+      }
+
+      const pe = data.persistent || {};
+      const pState = $('bcPersistState');
+      if(pe.text) $('bcPersistText').value = pe.text;
+      if(pe.active && pe.text){
+        pState.innerHTML = '<span class="live">● live</span> — “' + esc(pe.text) + '”';
+      }else{
+        pState.innerHTML = '<span class="idle">No sticky notice published.</span>';
+      }
+
+      const rq = data.requests || {};
+      document.querySelectorAll('.bc-item').forEach(card => {
+        const v = rq[card.dataset.key] || {};
+        card.querySelector('.bc-req-text').value = v.text || '';
+        card.querySelector('.bc-req-active').checked = (v.active === true);
+      });
+
+      if(!silent) showStatus('Broadcast state loaded.', 'success', $('bcStatus'));
+    }catch(e){
+      if(!silent) showStatus('Load failed: ' + e.message, 'error', $('bcStatus'));
+    }
+  }
+
+  async function bcSendTransient(){
+    const text = $('bcTransientText').value.trim();
+    if(!text){ showStatus('Enter a message for the quick alert.', 'error', $('bcStatus')); return; }
+    let secs = Math.round(Number($('bcTransientSecs').value) || 8);
+    secs = Math.max(1, Math.min(300, secs));
+
+    const now = Date.now();
+    $('bcTransientSend').disabled = true;
+    try{
+      await fbPut('/broadcasts/transient', {
+        id: String(now),
+        text,
+        duration: secs,
+        createdAt: now,
+        expiresAt: now + secs * 1000,
+        active: true
+      });
+      showStatus('Quick alert sent · visible for ' + secs + 's.', 'success', $('bcStatus'));
+      previewBubble(text, secs * 1000);
+      await bcLoadAll(true);
+    }catch(e){
+      showStatus('Send failed: ' + e.message, 'error', $('bcStatus'));
+    }finally{
+      $('bcTransientSend').disabled = false;
+    }
+  }
+
+  async function bcStopTransient(){
+    try{
+      await fbPut('/broadcasts/transient/active', false);
+      showStatus('Quick alert stopped.', 'success', $('bcStatus'));
+      hidePreview();
+      await bcLoadAll(true);
+    }catch(e){
+      showStatus('Stop failed: ' + e.message, 'error', $('bcStatus'));
+    }
+  }
+
+  async function bcPublishPersistent(){
+    const text = $('bcPersistText').value.trim();
+    if(!text){ showStatus('Enter a message for the sticky notice.', 'error', $('bcStatus')); return; }
+    $('bcPersistSend').disabled = true;
+    try{
+      await fbPut('/broadcasts/persistent', {
+        text,
+        active: true,
+        updatedAt: Date.now()
+      });
+      showStatus('Sticky notice published.', 'success', $('bcStatus'));
+      previewBubble(text, 6000);
+      await bcLoadAll(true);
+    }catch(e){
+      showStatus('Publish failed: ' + e.message, 'error', $('bcStatus'));
+    }finally{
+      $('bcPersistSend').disabled = false;
+    }
+  }
+
+  async function bcRemovePersistent(){
+    if(!confirm('Remove the sticky notice from every player screen?')) return;
+    try{
+      await fbPut('/broadcasts/persistent', {
+        text: '',
+        active: false,
+        updatedAt: Date.now()
+      });
+      showStatus('Sticky notice removed.', 'success', $('bcStatus'));
+      hidePreview();
+      await bcLoadAll(true);
+    }catch(e){
+      showStatus('Remove failed: ' + e.message, 'error', $('bcStatus'));
+    }
+  }
+
+  async function bcSaveRequest(card, btn){
+    const key = card.dataset.key;
+    const text = card.querySelector('.bc-req-text').value.trim();
+    const active = card.querySelector('.bc-req-active').checked;
+
+    if(active && !text){
+      showStatus('Type the message before enabling “' + (BC_REQ_LABELS[key] || key) + '”.', 'error', $('bcStatus'));
+      return;
+    }
+
+    btn.disabled = true;
+    try{
+      await fbPut('/broadcasts/requests/' + key, {
+        text,
+        active: active && !!text,
+        updatedAt: Date.now()
+      });
+      showStatus('Saved: ' + (BC_REQ_LABELS[key] || key) + (active && text ? ' · enabled' : ' · disabled') + '.',
+                  'success', $('bcStatus'));
+      if(active && text) previewBubble(text, 6000);
+      await bcLoadAll(true);
+    }catch(e){
+      showStatus('Save failed: ' + e.message, 'error', $('bcStatus'));
+    }finally{
+      btn.disabled = false;
+    }
+  }
+
+  async function bcClearRequest(card, btn){
+    const key = card.dataset.key;
+    if(!confirm('Clear the message for “' + (BC_REQ_LABELS[key] || key) + '”?')) return;
+    btn.disabled = true;
+    try{
+      await fbPut('/broadcasts/requests/' + key, {
+        text: '',
+        active: false,
+        updatedAt: Date.now()
+      });
+      card.querySelector('.bc-req-text').value = '';
+      card.querySelector('.bc-req-active').checked = false;
+      showStatus('Cleared: ' + (BC_REQ_LABELS[key] || key) + '.', 'success', $('bcStatus'));
+    }catch(e){
+      showStatus('Clear failed: ' + e.message, 'error', $('bcStatus'));
+    }finally{
+      btn.disabled = false;
+    }
+  }
+
+  /* ---- fill Deposit·approved with the built-in Amharic default ---- */
+  async function bcUseDefaultDepositApproval(btn){
+    const card = document.querySelector('.bc-item[data-key="deposit_approval"]');
+    if(!card) return;
+    const ta = card.querySelector('.bc-req-text');
+    const chk = card.querySelector('.bc-req-active');
+    ta.value = AUTO_APPROVAL_DEFAULT;
+    chk.checked = true;
+    previewBubble(AUTO_APPROVAL_DEFAULT, 6000);
+
+    btn.disabled = true;
+    try{
+      await fbPut('/broadcasts/requests/deposit_approval', {
+        text: AUTO_APPROVAL_DEFAULT,
+        active: true,
+        updatedAt: Date.now()
+      });
+      showStatus('Default Amharic approval message saved & enabled.', 'success', $('bcStatus'));
+    }catch(e){
+      showStatus('Save failed: ' + e.message, 'error', $('bcStatus'));
+    }finally{
+      btn.disabled = false;
+    }
+  }
+
+  /* ===================== EVENT WIRING ===================== */
   $('connect').onclick = connect;
   $('disconnect').onclick = disconnect;
   $('refresh').onclick = refresh;
@@ -1110,6 +1548,22 @@
     t.onclick = () => switchTab(t.dataset.tab);
   });
 
+  /* broadcast wiring */
+  $('bcTransientSend').onclick = bcSendTransient;
+  $('bcTransientStop').onclick = bcStopTransient;
+  $('bcPersistSend').onclick   = bcPublishPersistent;
+  $('bcPersistStop').onclick   = bcRemovePersistent;
+  $('bcReload').onclick        = () => bcLoadAll(false);
+  $('bcPreviewClose').onclick  = hidePreview;
+
+  document.querySelectorAll('.bc-item').forEach(card => {
+    card.querySelector('.bc-req-save').onclick  = e => bcSaveRequest(card, e.currentTarget);
+    card.querySelector('.bc-req-clear').onclick = e => bcClearRequest(card, e.currentTarget);
+  });
+
+  const defaultBtn = document.querySelector('.bc-item[data-key="deposit_approval"] .bc-req-default');
+  if(defaultBtn) defaultBtn.onclick = e => bcUseDefaultDepositApproval(e.currentTarget);
+
   /* duplicate modal wiring */
   $('dupShowBtn').onclick = showDuplicates;
   $('dupApproveBtn').onclick = approveAnyway;
@@ -1131,8 +1585,13 @@
     }
   });
 
-  $('dbUrl').addEventListener('input', () => { $('smsDbUrl').value = $('dbUrl').value; });
-  $('smsDbUrl').addEventListener('input', () => { $('dbUrl').value = $('smsDbUrl').value; });
+  const URL_FIELDS = ['dbUrl', 'smsDbUrl', 'bcDbUrl'];
+  URL_FIELDS.forEach(id => {
+    $(id).addEventListener('input', () => {
+      const v = $(id).value;
+      URL_FIELDS.forEach(other => { if(other !== id) $(other).value = v; });
+    });
+  });
 
   document.addEventListener('visibilitychange', () => {
     if(document.hidden){ stopAuto(); stopSmsAuto(); stopAutoApprove(); }
@@ -1145,6 +1604,9 @@
 
   renderApproved();
   updateCounts();
+
+  /* silent initial load of broadcast state */
+  bcLoadAll(true);
 })();
 </script>
 </body>
