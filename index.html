@@ -457,7 +457,7 @@
     'አገልግሎት ላይ የዋለ Reference code ተጠቅመዋል። ጥያቄውን ማስተናገድ አልተቻለም።';
 
   const EVENT_TTL_MS    = 7 * 24 * 60 * 60 * 1000; // 7 days → offline delivery works
-  const NO_SMS_GRACE_MS = 2 * 60 * 1000;           // wait 2 min before "no SMS" fires
+  const NO_SMS_GRACE_MS = 10 * 1000;               // 10 s grace before "no SMS" fires
 
   /* =========================================================
      === LOCAL STORAGE HELPERS ===
