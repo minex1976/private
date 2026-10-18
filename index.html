@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Winzo Admin</title>
 
-<!-- Beautiful typography (Ethiopic for Amharic + Poppins for UI) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -217,13 +216,13 @@
     <div id="tab-approved" class="tabpanel" style="display:none">
       <div class="toolbar">
         <button id="clearApproved" class="secondary">Clear history</button>
-        <span style="margin-left:auto;font-size:12px;color:var(--muted)">Saved locally in this browser</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--muted)">Saved on Firebase · cached locally</span>
       </div>
       <div id="approvedList"></div>
     </div>
   </div>
 
-  <!-- ================= BROADCAST ================= -->
+  <!-- ================= BROADCAST (unchanged UI) ================= -->
   <div class="card">
     <h2>Broadcast Messages</h2>
     <div class="subtitle" style="margin:0 0 12px">
@@ -240,7 +239,6 @@
 
     <div id="bcStatus" class="statusbar" style="margin-top:12px"></div>
 
-    <!-- 1 · transient -->
     <div class="bc-section">
       <h3><span class="num">1</span> Quick alert — disappears automatically</h3>
       <div class="row">
@@ -258,7 +256,6 @@
       <div class="bc-note" id="bcTransientState">—</div>
     </div>
 
-    <!-- 2 · persistent -->
     <div class="bc-section">
       <h3><span class="num">2</span> Sticky notice — until you remove it</h3>
       <div class="row">
@@ -272,7 +269,6 @@
       <div class="bc-note" id="bcPersistState">—</div>
     </div>
 
-    <!-- 3 · request result messages -->
     <div class="bc-section">
       <h3><span class="num">3</span> Request result messages</h3>
       <div class="subtitle" style="margin:0 0 10px">
@@ -343,8 +339,7 @@
     <div class="subtitle" style="margin:0 0 12px">
       A deposit is approved when <b>one</b> SMS carries the reference and the amount matches.
       Two or more SMS sharing the same reference = duplicate (manual review).
-      Every automatic approval also pushes a thank-you bubble to the player's game screen
-      (uses the configured “Deposit · approved” message, or the built-in Amharic default).
+      Every approval / rejection pushes a bubble to the player's game screen (persists for offline players).
     </div>
 
     <div class="row">
@@ -437,15 +432,36 @@
 
   const aaReasons = new Map();
   const aaAttempted = new Set();
+  const firstSeenMap = new Map(); // txId → first-seen timestamp (for no-SMS grace)
   let dupPendingTx = null;
 
-  const AA_STORAGE_KEY = 'winzo_auto_approved_v1';
+  const AA_STORAGE_KEY       = 'winzo_auto_approved_v1';
+  const NOTIFIED_STORAGE_KEY = 'winzo_notified_v1';
   let autoApproved = loadAutoApproved();
+  const notifiedMap = loadNotified();
 
-  /* ---------- the default thank-you message sent on auto-approval ---------- */
+  /* ---------- default + special messages ---------- */
   const AUTO_APPROVAL_DEFAULT =
     'ትአዛዝዎ በትክክል ተፈፅሟል! የዊንዞ ደንበኛ ስለሆኑ እናመሰግናለን።';
 
+  const DEFAULT_MESSAGES = {
+    deposit_approval:   AUTO_APPROVAL_DEFAULT,
+    deposit_rejection:  'ጥያቄዎ አልተስተናገደም።',
+    withdraw_approval:  'የወጪ ጥያቄዎ ጸድቋል።',
+    withdraw_rejection: 'የወጪ ጥያቄዎ አልተስተናገደም።'
+  };
+
+  const NO_SMS_MESSAGE =
+    'ጥያቄዎ አልተስተናገደም።  የከፈሉበት SMS መልእክት  System ላይ አልደረሰም።';
+  const USED_REF_MESSAGE =
+    'አገልግሎት ላይ የዋለ Reference code ተጠቅመዋል። ጥያቄውን ማስተናገድ አልተቻለም።';
+
+  const EVENT_TTL_MS    = 7 * 24 * 60 * 60 * 1000; // 7 days → offline delivery works
+  const NO_SMS_GRACE_MS = 2 * 60 * 1000;           // wait 2 min before "no SMS" fires
+
+  /* =========================================================
+     === LOCAL STORAGE HELPERS ===
+     ========================================================= */
   function loadAutoApproved(){
     try{
       const raw = localStorage.getItem(AA_STORAGE_KEY);
@@ -457,15 +473,155 @@
   function saveAutoApproved(){
     try{ localStorage.setItem(AA_STORAGE_KEY, JSON.stringify(autoApproved.slice(0, 300))); }catch{}
   }
-  function recordAutoApproved(entry){
+  function loadNotified(){
+    try { return new Set(JSON.parse(localStorage.getItem(NOTIFIED_STORAGE_KEY) || '[]')); }
+    catch { return new Set(); }
+  }
+  function saveNotified(){
+    try { localStorage.setItem(NOTIFIED_STORAGE_KEY, JSON.stringify([...notifiedMap])); } catch{}
+  }
+  function wasNotified(txId, kind){ return notifiedMap.has(txId + '|' + kind); }
+  function markNotified(txId, kind){ notifiedMap.add(txId + '|' + kind); saveNotified(); }
+
+  /* =========================================================
+     === AUTO-APPROVED HISTORY (local + firebase) ===
+     ========================================================= */
+  async function recordAutoApproved(entry){
+    if(!entry || !entry.id) return;
     autoApproved = autoApproved.filter(e => e.id !== entry.id);
     autoApproved.unshift(entry);
     if(autoApproved.length > 300) autoApproved.length = 300;
     saveAutoApproved();
+    await saveAutoApprovedToFirebase(entry);
+    if(entry.reference) await markReferenceUsed(entry.reference, entry);
     updateCounts();
     renderApproved();
   }
 
+  async function saveAutoApprovedToFirebase(entry){
+    try { await fbPut('/auto_approved/' + entry.id, entry); }
+    catch(e){ aaLog('⚠ save auto-approve to Firebase failed: ' + (e.message||e), 'warn'); }
+  }
+
+  async function loadAutoApprovedFromFirebase(){
+    try{
+      const data = await fbGet('/auto_approved');
+      if(!data || typeof data !== 'object') return [];
+      return Object.values(data)
+        .filter(e => e && e.id)
+        .sort((a,b) => (Number(b.approvedAt)||0) - (Number(a.approvedAt)||0))
+        .slice(0, 300);
+    }catch{ return []; }
+  }
+
+  /* =========================================================
+     === USED REFERENCE TRACKING ===
+     ========================================================= */
+  async function fetchUsedReferences(){
+    try{
+      const data = await fbGet('/used_references');
+      const set = new Set();
+      if(data && typeof data === 'object'){
+        for(const k of Object.keys(data)) set.add(normalizeRef(k));
+      }
+      return set;
+    }catch{ return new Set(); }
+  }
+
+  async function markReferenceUsed(ref, entry){
+    const norm = normalizeRef(ref);
+    if(!norm) return;
+    try{
+      await fbPut('/used_references/' + norm, {
+        reference:  norm,
+        txId:       entry.id || '',
+        uid:        entry.uid || '',
+        amount:     entry.amount || 0,
+        smsId:      entry.smsId || '',
+        approvedAt: entry.approvedAt || Date.now()
+      });
+    }catch(e){
+      aaLog('⚠ mark ref used failed: ' + (e.message||e), 'warn');
+    }
+  }
+
+  /* =========================================================
+     === UNIFIED PLAYER-MESSAGE PUBLISHER ===
+     ========================================================= */
+  async function publishRequestResult(uid, requestType, decision, txId){
+    // requestType: 'deposit' | 'withdraw'
+    // decision:    'approval' | 'rejection' | 'no_sms' | 'used_ref'
+    if(!uid){
+      aaLog('⚠ no uid on tx=' + txId + ' — cannot push ' + requestType + '/' + decision, 'warn');
+      return;
+    }
+
+    let msg;
+    try{
+      if(decision === 'no_sms'){
+        msg = await loadSpecialMessage('deposit_no_sms', NO_SMS_MESSAGE);
+      } else if(decision === 'used_ref'){
+        msg = await loadSpecialMessage('deposit_used_ref', USED_REF_MESSAGE);
+      } else {
+        const key = requestType + '_' + decision;
+        msg = await loadSpecialMessage(key, DEFAULT_MESSAGES[key] || '');
+      }
+    }catch{
+      msg = DEFAULT_MESSAGES[requestType + '_' + decision] || '';
+    }
+
+    if(!msg){ aaLog('⚠ empty message for ' + requestType + '/' + decision, 'warn'); return; }
+
+    const now = Date.now();
+    const eventKey = 'evt_' + now + '_' + Math.random().toString(36).slice(2,8);
+    const payload = {
+      type:        requestType + '_' + decision,
+      requestType: requestType,
+      decision:    decision,
+      message:     msg,
+      txId:        txId || '',
+      read:        false,
+      createdAt:   now,
+      expiresAt:   now + EVENT_TTL_MS
+    };
+
+    cleanupExpiredEvents(uid).catch(()=>{});
+
+    try{
+      await fbPut('/broadcasts/user_events/' + uid + '/' + eventKey, payload);
+      aaLog('📨 pushed ' + payload.type + ' → uid=' + uid + ' (tx=' + txId + ')', 'ok');
+    }catch(e){
+      aaLog('⚠ event push failed for ' + uid + ' → ' + (e.message||e), 'warn');
+    }
+  }
+
+  async function loadSpecialMessage(key, fallback){
+    try{
+      const cfg = await fbGet('/broadcasts/requests/' + key);
+      if(cfg && cfg.active === true && cfg.text && String(cfg.text).trim()){
+        return String(cfg.text).trim();
+      }
+    }catch{ /* ignore */ }
+    return fallback;
+  }
+
+  async function cleanupExpiredEvents(uid){
+    try{
+      const events = await fbGet('/broadcasts/user_events/' + uid);
+      if(!events || typeof events !== 'object') return;
+      const now = Date.now();
+      for(const k of Object.keys(events)){
+        const ev = events[k];
+        if(ev && ev.expiresAt && Number(ev.expiresAt) < now){
+          await fbDelete('/broadcasts/user_events/' + uid + '/' + k);
+        }
+      }
+    }catch{}
+  }
+
+  /* =========================================================
+     === UI HELPERS ===
+     ========================================================= */
   function showStatus(msg, kind, el){
     const s = el || $('status');
     s.textContent = msg;
@@ -499,7 +655,7 @@
 
   function switchTab(name){
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-    $('tab-pending').style.display = (name === 'pending') ? '' : 'none';
+    $('tab-pending').style.display  = (name === 'pending')  ? '' : 'none';
     $('tab-approved').style.display = (name === 'approved') ? '' : 'none';
   }
 
@@ -510,6 +666,21 @@
     const ac = $('approvedCount'); ac.textContent = a; ac.className = 'count' + (a ? ' has' : ' zero');
   }
 
+  function normalizeRef(v){
+    return String(v||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,128);
+  }
+
+  function stampToDate(v){
+    let n = Number(v);
+    if(!n || !isFinite(n)) return null;
+    if(n < 1e12) n *= 1000;
+    const d = new Date(n);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  /* =========================================================
+     === ADMIN API ===
+     ========================================================= */
   async function api(path){
     const res = await fetch(serverUrl + path, {headers:{'X-Admin-Key': adminKey}});
     let body; try { body = await res.json(); } catch { body = {ok:false,error:'invalid-json-from-server'}; }
@@ -540,6 +711,17 @@
       await refresh();
       startAuto();
       if($('aaAuto').checked) startAutoApprove();
+
+      /* hydrate auto-approved history from Firebase */
+      loadAutoApprovedFromFirebase().then(remote => {
+        if(remote.length){
+          autoApproved = remote;
+          saveAutoApproved();
+          updateCounts();
+          renderApproved();
+          aaLog('Loaded ' + remote.length + ' auto-approved records from Firebase', 'ok');
+        }
+      }).catch(()=>{});
     }catch(e){
       showStatus('Connection failed: ' + (e.message||e), 'error');
       serverUrl = ''; adminKey = ''; $('panel').style.display = 'none';
@@ -566,8 +748,25 @@
       currentTxs = data.transactions || [];
 
       const pendingIds = new Set(currentTxs.map(t => t.id));
+
+      /* prune reasons for txs that no longer exist */
       for(const key of Array.from(aaReasons.keys())){
         if(!pendingIds.has(key)) aaReasons.delete(key);
+      }
+      /* prune notified flags for decided txs */
+      let notifChanged = false;
+      for(const key of Array.from(notifiedMap)){
+        const [txId] = key.split('|');
+        if(!pendingIds.has(txId)){ notifiedMap.delete(key); notifChanged = true; }
+      }
+      if(notifChanged) saveNotified();
+
+      /* first-seen tracking for no-SMS grace */
+      for(const tx of currentTxs){
+        if(!firstSeenMap.has(tx.id)) firstSeenMap.set(tx.id, Date.now());
+      }
+      for(const id of Array.from(firstSeenMap.keys())){
+        if(!pendingIds.has(id)) firstSeenMap.delete(id);
       }
 
       render(currentTxs);
@@ -616,6 +815,12 @@
         dp.title = 'Duplicate reference: ' + r.matchCount + ' SMS share "' + r.reference + '"';
         dp.style.marginLeft = '6px';
         right.appendChild(dp);
+      } else if(r && r.type === 'used_ref'){
+        const up = document.createElement('span');
+        up.className = 'pill dup'; up.textContent = 'used ref';
+        up.title = 'This reference was already used for a prior approved deposit';
+        up.style.marginLeft = '6px';
+        right.appendChild(up);
       }
     }
     head.appendChild(right);
@@ -668,6 +873,19 @@
       await api('/admin/decision?id=' + encodeURIComponent(tx.id) + '&decision=' + decision);
       if(decision === 'approved') aaReasons.delete(tx.id);
       showStatus('Transaction ' + decision + '.', 'success');
+
+      const uid          = tx.walletUid || tx.uid;
+      const requestType  = (tx.type === 'withdraw') ? 'withdraw' : 'deposit';
+      const decisionType = (decision === 'approved') ? 'approval' : 'rejection';
+
+      publishRequestResult(uid, requestType, decisionType, tx.id).catch(()=>{});
+
+      if(decision === 'approved' && requestType === 'deposit' && tx.reference){
+        markReferenceUsed(tx.reference, {
+          id: tx.id, uid: uid, amount: tx.amount, approvedAt: Date.now()
+        }).catch(()=>{});
+      }
+
       await refresh();
     }catch(e){
       showStatus('Failed: ' + e.message, 'error');
@@ -731,24 +949,28 @@
     box.appendChild(head);
 
     const meta = document.createElement('div'); meta.className='tx-meta';
-    const ref = e.reference ? '<b>ref</b> ' + esc(e.reference) : '';
-    const txId = '<b>id</b> <code>' + esc(e.id) + '</code>';
-    const smsId = e.smsId ? '<b>sms</b> <code>' + esc(e.smsId) + '</code>' : '';
-    const when = e.approvedAt ? '<b>at</b> ' + new Date(Number(e.approvedAt)).toLocaleString() : '';
+    const ref   = e.reference  ? '<b>ref</b> ' + esc(e.reference) : '';
+    const txId  = '<b>id</b> <code>' + esc(e.id) + '</code>';
+    const smsId = e.smsId      ? '<b>sms</b> <code>' + esc(e.smsId) + '</code>' : '';
+    const when  = e.approvedAt ? '<b>at</b> ' + new Date(Number(e.approvedAt)).toLocaleString() : '';
     meta.innerHTML = [ref, txId, smsId, when].filter(Boolean).join('<br>');
     box.appendChild(meta);
     return box;
   }
 
-  function clearApprovedHistory(){
+  async function clearApprovedHistory(){
     if(!autoApproved.length) return;
-    if(!confirm('Clear all ' + autoApproved.length + ' auto-approved records from this browser? (Server data is unaffected.)')) return;
+    if(!confirm('Clear all ' + autoApproved.length + ' auto-approved records?\n\nLocal cache will be wiped. Firebase /auto_approved will also be cleared.\n(Used references are kept on the server.)')) return;
     autoApproved = [];
     saveAutoApproved();
     updateCounts();
     renderApproved();
+    try{ await fbPut('/auto_approved', null); }catch{}
   }
 
+  /* =========================================================
+     === SMS PARSING ===
+     ========================================================= */
   function parseSms(text){
     const t = String(text==null?'':text).replace(/\s+/g,' ').trim();
     const out = {amount:null, from:null, reference:null, dateText:null};
@@ -773,18 +995,6 @@
     return out;
   }
 
-  function normalizeRef(v){
-    return String(v||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,128);
-  }
-
-  function stampToDate(v){
-    let n = Number(v);
-    if(!n || !isFinite(n)) return null;
-    if(n < 1e12) n *= 1000;
-    const d = new Date(n);
-    return isNaN(d.getTime()) ? null : d;
-  }
-
   async function fetchIncomingSmsWithBase(base){
     const res = await fetch(base + '/incoming_sms.json', {cache:'no-store'});
     if(res.status === 401 || res.status === 403) throw new Error('permission-denied — check Firebase rules');
@@ -807,6 +1017,9 @@
     return fetchIncomingSmsWithBase(base);
   }
 
+  /* =========================================================
+     === AUTO-MATCH ===
+     ========================================================= */
   async function runAutoMatch(){
     if(!serverUrl || !adminKey){
       showStatus('Connect to the server first.', 'warn', $('aaStatus'));
@@ -825,9 +1038,8 @@
     let pendingTxs = [];
 
     try{
-      try{
-        smsList = await fetchIncomingSms();
-      }catch(e){
+      try{ smsList = await fetchIncomingSms(); }
+      catch(e){
         aaLog('SMS fetch failed: ' + e.message, 'err');
         showStatus('SMS fetch failed: ' + e.message, 'error', $('aaStatus'));
         return;
@@ -859,90 +1071,107 @@
         return;
       }
 
-      let approved = 0, skipped = 0, duplicate = 0, noMatch = 0;
+      const usedRefs = await fetchUsedReferences();
+
+      let approved = 0, skipped = 0, duplicate = 0, noMatch = 0, usedRefCount = 0, notified = 0;
 
       for(const tx of pendingTxs){
         const ref = normalizeRef(tx.reference);
         const amt = Number(tx.amount);
+        const uid = tx.walletUid || tx.uid;
 
+        /* --- 1. missing reference --- */
         if(!ref){
-          noMatch++; aaLog('tx=' + tx.id + ' → no reference on deposit request', 'skip');
+          noMatch++;
+          aaLog('tx=' + tx.id + ' → no reference on deposit request', 'skip');
+          await maybeFireNoSms(tx, uid);
           continue;
         }
         if(!isFinite(amt) || amt <= 0){
-          noMatch++; aaLog('tx=' + tx.id + ' → invalid amount', 'skip');
+          noMatch++;
+          aaLog('tx=' + tx.id + ' → invalid amount', 'skip');
           continue;
         }
 
+        /* --- 2. reference already used in a prior approval --- */
+        if(usedRefs.has(ref)){
+          usedRefCount++;
+          aaReasons.set(tx.id, { type: 'used_ref', reference: ref });
+          aaLog('tx=' + tx.id + ' ref=' + ref + ' → reference already used', 'warn');
+
+          if(!wasNotified(tx.id, 'used_ref')){
+            markNotified(tx.id, 'used_ref');
+            publishRequestResult(uid, 'deposit', 'used_ref', tx.id).catch(()=>{});
+            notified++;
+          }
+          continue;
+        }
+
+        /* --- 3. no SMS at all --- */
         const bucket = smsByRef.get(ref);
         if(!bucket || !bucket.length){
-          noMatch++; aaLog('tx=' + tx.id + ' ref=' + ref + ' → no matching SMS', 'skip');
+          noMatch++;
+          aaLog('tx=' + tx.id + ' ref=' + ref + ' → no matching SMS', 'skip');
+          await maybeFireNoSms(tx, uid);
           continue;
         }
 
+        /* --- 4. multiple SMS with the same reference → duplicate --- */
         if(bucket.length > 1){
           duplicate++;
           aaReasons.set(tx.id, {
-            type: 'duplicate',
-            reference: ref,
-            amount: amt,
+            type: 'duplicate', reference: ref, amount: amt,
             matchCount: bucket.length,
             matches: bucket.map(x => ({
-              id: x.sms._id,
-              amount: x.amount,
-              from: x.sms.from || null,
-              text: x.sms.text || '',
+              id: x.sms._id, amount: x.amount,
+              from: x.sms.from || null, text: x.sms.text || '',
               receivedStamp: x.sms.receivedStamp || null,
-              sentStamp: x.sms.sentStamp || null,
-              timestamp: x.sms.timestamp || null
+              sentStamp:     x.sms.sentStamp || null,
+              timestamp:     x.sms.timestamp || null
             }))
           });
           const amounts = bucket.map(x => x.amount.toFixed(2)).join(', ');
           aaLog('tx=' + tx.id + ' ref=' + ref + ' → ' + bucket.length
-              + ' SMS share this reference (amounts: ' + amounts + '); duplicate — manual review', 'warn');
+              + ' SMS share this reference (amounts: ' + amounts + '); duplicate', 'warn');
           continue;
         }
 
+        /* --- 5. single SMS but amount mismatch --- */
         const only = bucket[0];
         if(Math.abs(only.amount - amt) >= 0.009){
           noMatch++;
-          aaLog('tx=' + tx.id + ' ref=' + ref + ' amt=' + amt.toFixed(2)
-              + ' → single SMS but amount differs (' + only.amount.toFixed(2) + ')', 'warn');
+          aaLog('tx=' + tx.id + ' ref=' + ref + ' → amount differs ('
+              + only.amount.toFixed(2) + ' vs ' + amt.toFixed(2) + ')', 'warn');
+          await maybeFireNoSms(tx, uid);
           continue;
         }
 
+        /* --- 6. auto-approve + notify --- */
         aaReasons.delete(tx.id);
-
         const guardKey = ref + '|' + amt.toFixed(2);
-        if(aaAttempted.has(guardKey)){
-          skipped++;
-          continue;
-        }
+        if(aaAttempted.has(guardKey)){ skipped++; continue; }
         aaAttempted.add(guardKey);
 
         try{
-          const q = '/admin/decision?id=' + encodeURIComponent(tx.id) + '&decision=approved';
-          await api(q);
+          await api('/admin/decision?id=' + encodeURIComponent(tx.id) + '&decision=approved');
           approved++;
-          aaLog('✓ approved tx=' + tx.id + ' ref=' + ref + ' amt=' + amt.toFixed(2)
-              + ' (sms ' + only.sms._id + ')', 'ok');
+          aaLog('✓ approved tx=' + tx.id + ' ref=' + ref
+              + ' amt=' + amt.toFixed(2) + ' (sms ' + only.sms._id + ')', 'ok');
 
-          recordAutoApproved({
-            id: tx.id,
-            username: tx.username || tx.walletUid || tx.uid || '',
+          await recordAutoApproved({
+            id:          tx.id,
+            uid:         uid || '',
+            username:    tx.username || tx.walletUid || tx.uid || '',
             displayName: tx.displayName || tx.username || tx.walletUid || tx.uid || '—',
-            amount: amt,
-            reference: ref,
-            smsId: only.sms._id,
-            approvedAt: Date.now()
+            amount:      amt,
+            reference:   ref,
+            smsId:       only.sms._id,
+            approvedAt:  Date.now()
           });
+          usedRefs.add(ref);
 
-          /* Push the thank-you bubble to the player's game screen */
-          const playerUid = tx.walletUid || tx.uid;
-          if(playerUid){
-            publishAutoApprovalEvent(playerUid, tx.id).catch(()=>{});
-            aaLog('🎉 sent thank-you bubble → uid=' + playerUid, 'ok');
-          }
+          /* push approval bubble (persists for offline players) */
+          await publishRequestResult(uid, 'deposit', 'approval', tx.id);
         }catch(e){
           aaLog('✗ approve failed tx=' + tx.id + ' ref=' + ref + ' → ' + e.message, 'err');
           aaAttempted.delete(guardKey);
@@ -950,47 +1179,25 @@
       }
 
       const summary = approved + ' approved · ' + noMatch + ' unmatched · '
-                    + duplicate + ' duplicate · ' + skipped + ' skipped';
+                    + duplicate + ' duplicate · ' + usedRefCount + ' used-ref · '
+                    + notified + ' notified · ' + skipped + ' skipped';
       showStatus('Scan complete: ' + summary, approved ? 'success' : 'info', $('aaStatus'));
       aaLog('Scan complete: ' + summary, approved ? 'ok' : 'skip');
 
       if(approved) await refresh();
-
     }finally{
       $('aaRunNow').disabled = false;
     }
   }
 
-  /* ---------- push per-player thank-you event on auto-approval ---------- */
-  async function publishAutoApprovalEvent(uid, txId){
-    if(!uid) return;
-    try{
-      // Use admin's configured Deposit-approved message if it's active, else default Amharic
-      let msg = AUTO_APPROVAL_DEFAULT;
-      try{
-        const cfg = await fbGet('/broadcasts/requests/deposit_approval');
-        if(cfg && cfg.active === true && cfg.text && String(cfg.text).trim()){
-          msg = String(cfg.text).trim();
-        }
-      }catch{ /* ignore, fall back to default */ }
-
-      const now = Date.now();
-      const key = 'evt_' + now + '_' + Math.random().toString(36).slice(2,8);
-      await fbPut('/broadcasts/user_events/' + uid + '/' + key, {
-        type: 'deposit_approval',
-        message: msg,
-        txId: txId || '',
-        createdAt: now,
-        expiresAt: now + 9000
-      });
-
-      // Best-effort cleanup so old events don't pile up
-      setTimeout(() => {
-        fbDelete('/broadcasts/user_events/' + uid + '/' + key).catch(()=>{});
-      }, 15000);
-    }catch(e){
-      aaLog('⚠ user event failed for ' + uid + ' → ' + (e.message||e), 'warn');
-    }
+  async function maybeFireNoSms(tx, uid){
+    const txTime = Number(tx.timestamp) || firstSeenMap.get(tx.id) || Date.now();
+    const age    = Date.now() - txTime;
+    if(age < NO_SMS_GRACE_MS) return;
+    if(wasNotified(tx.id, 'no_sms')) return;
+    markNotified(tx.id, 'no_sms');
+    aaLog('📨 "no SMS" notification → uid=' + uid + ' (tx=' + tx.id + ')', 'warn');
+    publishRequestResult(uid, 'deposit', 'no_sms', tx.id).catch(()=>{});
   }
 
   function startAutoApprove(){
@@ -1005,6 +1212,9 @@
     if(aaTimer){ clearInterval(aaTimer); aaTimer = null; }
   }
 
+  /* =========================================================
+     === DUPLICATE MODAL ===
+     ========================================================= */
   function openDupModal(tx, reason){
     dupPendingTx = tx;
     const amtStr = Number(reason.amount).toFixed(2);
@@ -1025,7 +1235,6 @@
     showBtn.textContent = 'Show duplicate';
     $('dupModal').classList.add('show');
   }
-
   function closeDupModal(){
     $('dupModal').classList.remove('show');
     dupPendingTx = null;
@@ -1039,23 +1248,17 @@
     const showBtn = $('dupShowBtn');
     showBtn.disabled = true;
     showBtn.textContent = 'Loading…';
-
     const details = $('dupDetails');
     details.replaceChildren();
 
     try{
       const base = normalizeUrl($('dbUrl').value);
       let items;
-      try{
-        items = await fetchIncomingSmsWithBase(base);
-      }catch(e){
+      try{ items = await fetchIncomingSmsWithBase(base); }
+      catch(e){
         items = (reason.matches || []).map(m => ({
-          _id: m.id,
-          text: m.text,
-          from: m.from,
-          receivedStamp: m.receivedStamp,
-          sentStamp: m.sentStamp,
-          timestamp: m.timestamp
+          _id: m.id, text: m.text, from: m.from,
+          receivedStamp: m.receivedStamp, sentStamp: m.sentStamp, timestamp: m.timestamp
         }));
         aaLog('Show duplicate: re-fetch failed (' + (e.message||e) + '); showing cached snapshot', 'warn');
       }
@@ -1099,7 +1302,6 @@
           details.appendChild(item);
         });
       }
-
       details.style.display = '';
       showBtn.textContent = 'Refresh duplicates';
     }catch(e){
@@ -1120,6 +1322,15 @@
       aaReasons.delete(tx.id);
       showStatus('Transaction approved (duplicate override).', 'success');
       aaLog('✓ manual override approved tx=' + tx.id, 'ok');
+
+      const uid = tx.walletUid || tx.uid;
+      publishRequestResult(uid, 'deposit', 'approval', tx.id).catch(()=>{});
+      if(tx.reference){
+        markReferenceUsed(tx.reference, {
+          id: tx.id, uid: uid, amount: tx.amount, approvedAt: Date.now()
+        }).catch(()=>{});
+      }
+
       await refresh();
     }catch(e){
       showStatus('Failed: ' + e.message, 'error');
@@ -1127,7 +1338,9 @@
     }
   }
 
-  /* ===================== IMAGE MODAL ===================== */
+  /* =========================================================
+     === RECEIPT IMAGE ===
+     ========================================================= */
   function showReceipt(base64Data) {
     const modal = $('imgModal');
     const img = $('receiptImg');
@@ -1142,30 +1355,20 @@
         loading.textContent = 'No image data found.';
         return;
     }
-
     let src = base64Data.trim();
-    if (!src.startsWith('data:image/')) {
-        src = 'data:image/jpeg;base64,' + src;
-    }
-
-    img.onload = () => {
-        loading.style.display = 'none';
-        img.style.display = 'block';
-    };
-
-    img.onerror = () => {
-        loading.textContent = 'Failed to load image. The base64 data might be corrupted or invalid.';
-    };
-
+    if (!src.startsWith('data:image/')) src = 'data:image/jpeg;base64,' + src;
+    img.onload  = () => { loading.style.display = 'none'; img.style.display = 'block'; };
+    img.onerror = () => { loading.textContent = 'Failed to load image. The base64 data might be corrupted or invalid.'; };
     img.src = src;
   }
-
   function closeImgModal() {
     $('imgModal').classList.remove('show');
     $('receiptImg').src = '';
   }
 
-  /* ===================== SMS VIEW ===================== */
+  /* =========================================================
+     === SMS VIEW ===
+     ========================================================= */
   async function loadSms(){
     const base = normalizeUrl($('smsDbUrl').value);
     if(!base){ showStatus('Enter the Firebase DB URL.','error',$('smsStatus')); return; }
@@ -1256,7 +1459,6 @@
       rowSender.appendChild(document.createTextNode(String(raw.from)));
       meta.appendChild(rowSender);
     }
-
     box.appendChild(meta);
 
     if(text){
@@ -1274,7 +1476,6 @@
     $('smsStatus').className='statusbar';
     $('smsStatus').textContent='';
   }
-
   function startSmsAuto(){
     stopSmsAuto();
     if($('smsAuto').checked) smsTimer = setInterval(loadSms, 10000);
@@ -1282,7 +1483,7 @@
   function stopSmsAuto(){ if(smsTimer){clearInterval(smsTimer); smsTimer=null;} }
 
   /* =========================================================
-     ===================== BROADCAST =========================
+     === BROADCAST (admin UI — unchanged) ===
      ========================================================= */
   const BC_REQ_LABELS = {
     deposit_approval:  'deposit · approved',
@@ -1326,7 +1527,6 @@
 
     const isAmharic = AMHARIC_RE.test(text || '');
     const isApproval = isAmharic || /approv|ተፈፅሟል|success|thank/i.test(text || '');
-
     icon.textContent = isApproval ? '🎉' : '📢';
     txt.textContent = text;
     txt.classList.toggle('amharic', isAmharic);
@@ -1365,7 +1565,7 @@
       const rq = data.requests || {};
       document.querySelectorAll('.bc-item').forEach(card => {
         const v = rq[card.dataset.key] || {};
-        card.querySelector('.bc-req-text').value = v.text || '';
+        card.querySelector('.bc-req-text').value   = v.text || '';
         card.querySelector('.bc-req-active').checked = (v.active === true);
       });
 
@@ -1380,37 +1580,27 @@
     if(!text){ showStatus('Enter a message for the quick alert.', 'error', $('bcStatus')); return; }
     let secs = Math.round(Number($('bcTransientSecs').value) || 8);
     secs = Math.max(1, Math.min(300, secs));
-
     const now = Date.now();
     $('bcTransientSend').disabled = true;
     try{
       await fbPut('/broadcasts/transient', {
-        id: String(now),
-        text,
-        duration: secs,
-        createdAt: now,
-        expiresAt: now + secs * 1000,
-        active: true
+        id: String(now), text, duration: secs,
+        createdAt: now, expiresAt: now + secs*1000, active: true
       });
       showStatus('Quick alert sent · visible for ' + secs + 's.', 'success', $('bcStatus'));
       previewBubble(text, secs * 1000);
       await bcLoadAll(true);
     }catch(e){
       showStatus('Send failed: ' + e.message, 'error', $('bcStatus'));
-    }finally{
-      $('bcTransientSend').disabled = false;
-    }
+    }finally{ $('bcTransientSend').disabled = false; }
   }
-
   async function bcStopTransient(){
     try{
       await fbPut('/broadcasts/transient/active', false);
       showStatus('Quick alert stopped.', 'success', $('bcStatus'));
       hidePreview();
       await bcLoadAll(true);
-    }catch(e){
-      showStatus('Stop failed: ' + e.message, 'error', $('bcStatus'));
-    }
+    }catch(e){ showStatus('Stop failed: ' + e.message, 'error', $('bcStatus')); }
   }
 
   async function bcPublishPersistent(){
@@ -1418,35 +1608,21 @@
     if(!text){ showStatus('Enter a message for the sticky notice.', 'error', $('bcStatus')); return; }
     $('bcPersistSend').disabled = true;
     try{
-      await fbPut('/broadcasts/persistent', {
-        text,
-        active: true,
-        updatedAt: Date.now()
-      });
+      await fbPut('/broadcasts/persistent', { text, active: true, updatedAt: Date.now() });
       showStatus('Sticky notice published.', 'success', $('bcStatus'));
       previewBubble(text, 6000);
       await bcLoadAll(true);
-    }catch(e){
-      showStatus('Publish failed: ' + e.message, 'error', $('bcStatus'));
-    }finally{
-      $('bcPersistSend').disabled = false;
-    }
+    }catch(e){ showStatus('Publish failed: ' + e.message, 'error', $('bcStatus')); }
+    finally{ $('bcPersistSend').disabled = false; }
   }
-
   async function bcRemovePersistent(){
     if(!confirm('Remove the sticky notice from every player screen?')) return;
     try{
-      await fbPut('/broadcasts/persistent', {
-        text: '',
-        active: false,
-        updatedAt: Date.now()
-      });
+      await fbPut('/broadcasts/persistent', { text: '', active: false, updatedAt: Date.now() });
       showStatus('Sticky notice removed.', 'success', $('bcStatus'));
       hidePreview();
       await bcLoadAll(true);
-    }catch(e){
-      showStatus('Remove failed: ' + e.message, 'error', $('bcStatus'));
-    }
+    }catch(e){ showStatus('Remove failed: ' + e.message, 'error', $('bcStatus')); }
   }
 
   async function bcSaveRequest(card, btn){
@@ -1458,23 +1634,17 @@
       showStatus('Type the message before enabling “' + (BC_REQ_LABELS[key] || key) + '”.', 'error', $('bcStatus'));
       return;
     }
-
     btn.disabled = true;
     try{
       await fbPut('/broadcasts/requests/' + key, {
-        text,
-        active: active && !!text,
-        updatedAt: Date.now()
+        text, active: active && !!text, updatedAt: Date.now()
       });
       showStatus('Saved: ' + (BC_REQ_LABELS[key] || key) + (active && text ? ' · enabled' : ' · disabled') + '.',
                   'success', $('bcStatus'));
       if(active && text) previewBubble(text, 6000);
       await bcLoadAll(true);
-    }catch(e){
-      showStatus('Save failed: ' + e.message, 'error', $('bcStatus'));
-    }finally{
-      btn.disabled = false;
-    }
+    }catch(e){ showStatus('Save failed: ' + e.message, 'error', $('bcStatus')); }
+    finally{ btn.disabled = false; }
   }
 
   async function bcClearRequest(card, btn){
@@ -1482,47 +1652,35 @@
     if(!confirm('Clear the message for “' + (BC_REQ_LABELS[key] || key) + '”?')) return;
     btn.disabled = true;
     try{
-      await fbPut('/broadcasts/requests/' + key, {
-        text: '',
-        active: false,
-        updatedAt: Date.now()
-      });
+      await fbPut('/broadcasts/requests/' + key, { text:'', active:false, updatedAt: Date.now() });
       card.querySelector('.bc-req-text').value = '';
       card.querySelector('.bc-req-active').checked = false;
       showStatus('Cleared: ' + (BC_REQ_LABELS[key] || key) + '.', 'success', $('bcStatus'));
-    }catch(e){
-      showStatus('Clear failed: ' + e.message, 'error', $('bcStatus'));
-    }finally{
-      btn.disabled = false;
-    }
+    }catch(e){ showStatus('Clear failed: ' + e.message, 'error', $('bcStatus')); }
+    finally{ btn.disabled = false; }
   }
 
-  /* ---- fill Deposit·approved with the built-in Amharic default ---- */
   async function bcUseDefaultDepositApproval(btn){
     const card = document.querySelector('.bc-item[data-key="deposit_approval"]');
     if(!card) return;
-    const ta = card.querySelector('.bc-req-text');
+    const ta  = card.querySelector('.bc-req-text');
     const chk = card.querySelector('.bc-req-active');
     ta.value = AUTO_APPROVAL_DEFAULT;
     chk.checked = true;
     previewBubble(AUTO_APPROVAL_DEFAULT, 6000);
-
     btn.disabled = true;
     try{
       await fbPut('/broadcasts/requests/deposit_approval', {
-        text: AUTO_APPROVAL_DEFAULT,
-        active: true,
-        updatedAt: Date.now()
+        text: AUTO_APPROVAL_DEFAULT, active: true, updatedAt: Date.now()
       });
       showStatus('Default Amharic approval message saved & enabled.', 'success', $('bcStatus'));
-    }catch(e){
-      showStatus('Save failed: ' + e.message, 'error', $('bcStatus'));
-    }finally{
-      btn.disabled = false;
-    }
+    }catch(e){ showStatus('Save failed: ' + e.message, 'error', $('bcStatus')); }
+    finally{ btn.disabled = false; }
   }
 
-  /* ===================== EVENT WIRING ===================== */
+  /* =========================================================
+     === EVENT WIRING ===
+     ========================================================= */
   $('connect').onclick = connect;
   $('disconnect').onclick = disconnect;
   $('refresh').onclick = refresh;
@@ -1544,11 +1702,8 @@
 
   $('clearApproved').onclick = clearApprovedHistory;
 
-  document.querySelectorAll('.tab').forEach(t => {
-    t.onclick = () => switchTab(t.dataset.tab);
-  });
+  document.querySelectorAll('.tab').forEach(t => { t.onclick = () => switchTab(t.dataset.tab); });
 
-  /* broadcast wiring */
   $('bcTransientSend').onclick = bcSendTransient;
   $('bcTransientStop').onclick = bcStopTransient;
   $('bcPersistSend').onclick   = bcPublishPersistent;
@@ -1560,23 +1715,16 @@
     card.querySelector('.bc-req-save').onclick  = e => bcSaveRequest(card, e.currentTarget);
     card.querySelector('.bc-req-clear').onclick = e => bcClearRequest(card, e.currentTarget);
   });
-
   const defaultBtn = document.querySelector('.bc-item[data-key="deposit_approval"] .bc-req-default');
   if(defaultBtn) defaultBtn.onclick = e => bcUseDefaultDepositApproval(e.currentTarget);
 
-  /* duplicate modal wiring */
-  $('dupShowBtn').onclick = showDuplicates;
+  $('dupShowBtn').onclick    = showDuplicates;
   $('dupApproveBtn').onclick = approveAnyway;
-  $('dupCancelBtn').onclick = closeDupModal;
-  $('dupModal').addEventListener('click', e => {
-    if(e.target === $('dupModal')) closeDupModal();
-  });
+  $('dupCancelBtn').onclick  = closeDupModal;
+  $('dupModal').addEventListener('click', e => { if(e.target === $('dupModal')) closeDupModal(); });
 
-  /* image modal wiring */
   $('imgCloseBtn').onclick = closeImgModal;
-  $('imgModal').addEventListener('click', e => {
-    if(e.target === $('imgModal')) closeImgModal();
-  });
+  $('imgModal').addEventListener('click', e => { if(e.target === $('imgModal')) closeImgModal(); });
 
   document.addEventListener('keydown', e => {
     if(e.key === 'Escape'){
@@ -1596,16 +1744,14 @@
   document.addEventListener('visibilitychange', () => {
     if(document.hidden){ stopAuto(); stopSmsAuto(); stopAutoApprove(); }
     else {
-      if($('auto').checked) startAuto();
+      if($('auto').checked)    startAuto();
       if($('smsAuto').checked) startSmsAuto();
-      if($('aaAuto').checked) startAutoApprove();
+      if($('aaAuto').checked)  startAutoApprove();
     }
   });
 
   renderApproved();
   updateCounts();
-
-  /* silent initial load of broadcast state */
   bcLoadAll(true);
 })();
 </script>
