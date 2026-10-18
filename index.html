@@ -446,15 +446,15 @@
 
   const DEFAULT_MESSAGES = {
     deposit_approval:   AUTO_APPROVAL_DEFAULT,
-    deposit_rejection:  'ጥያቄዎ አልተስተናገደም።',
-    withdraw_approval:  'የወጪ ጥያቄዎ ጸድቋል።',
+    deposit_rejection:  'ውድ ደንበኛችን፣ ጥያቄዎት አልተስተናገደም።',
+    withdraw_approval:  'ውድ ደንበኛችን፣ የወጪ ጥያቄዎ ተከናውኗል።',
     withdraw_rejection: 'የወጪ ጥያቄዎ አልተስተናገደም።'
   };
 
   const NO_SMS_MESSAGE =
-    'ጥያቄዎ አልተስተናገደም።  የከፈሉበት SMS መልእክት  System ላይ አልደረሰም።';
+    'ውድ ደንበኛችን፣ ጥያቄዎ አልተስተናገደም። ትክክለኛውን መረጃ ያስገቡና በድጋሚ የሞክሩ።';
   const USED_REF_MESSAGE =
-    'አገልግሎት ላይ የዋለ Reference code ተጠቅመዋል። ጥያቄውን ማስተናገድ አልተቻለም።';
+    'ውድ ደንበኛችን፣ አገልግሎት ላይ የዋለ Reference code ተጠቅመዋል። ጥያቄውን ማስተናገድ አልተቻለም።';
 
   const EVENT_TTL_MS    = 7 * 24 * 60 * 60 * 1000; // 7 days → offline delivery works
   const NO_SMS_GRACE_MS = 10 * 1000;               // 10 s grace before "no SMS" fires
