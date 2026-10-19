@@ -13,7 +13,7 @@
   :root{--bg:#120b20;--panel:#1e1530;--border:#3a2a55;--fg:#eee;--muted:#9c8fb5;--accent:#8b5cf6;--accent-hover:#7c3aed;--green:#10b981;--red:#ef4444;--amber:#f59e0b}
   *{box-sizing:border-box}
   body{font-family:'Poppins','Noto Sans Ethiopic',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:20px;min-height:100vh;line-height:1.5}
-  .container{max-width:760px;margin:0 auto}
+  .container{max-width:900px;margin:0 auto}
   h1{font-size:22px;margin:0 0 4px}
   h2{font-size:17px;margin:0 0 10px}
   .subtitle{color:var(--muted);font-size:13px;margin-bottom:20px}
@@ -56,7 +56,7 @@
   .pill.auto{background:rgba(16,185,129,.2);color:#6ee7b7}
   code{background:#0d0818;padding:2px 6px;border-radius:4px;font-size:12px}
 
-  .tabs{display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--border)}
+  .tabs{display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--border);flex-wrap:wrap}
   .tab{background:transparent;color:var(--muted);border:none;border-bottom:2px solid transparent;border-radius:0;padding:10px 16px;font-size:14px;font-weight:500;cursor:pointer;transition:color .15s,border-color .15s;margin-bottom:-1px}
   .tab:hover:not(.active){color:var(--fg);background:transparent}
   .tab.active{color:var(--fg);border-bottom-color:var(--accent)}
@@ -108,69 +108,46 @@
   .img-content{text-align:center;margin-top:10px;background:#000;border-radius:8px;padding:10px;min-height:200px;display:flex;align-items:center;justify-content:center}
   .img-content img{max-width:100%;max-height:65vh;border-radius:4px;display:none}
 
-  /* ================= BROADCAST ================= */
-  .amharic{font-family:'Noto Sans Ethiopic','Poppins',sans-serif}
-
-  .bc-section{border-top:1px solid var(--border);padding-top:14px;margin-top:16px}
-  .bc-section:first-of-type{border-top:none;padding-top:0;margin-top:16px}
-  .bc-section h3{
-    font-size:14.5px;margin:0 0 8px;color:#d1c4e9;display:flex;align-items:center;gap:8px;font-weight:600;
-    text-shadow:0 0 18px rgba(139,92,246,.35);letter-spacing:.2px;
-  }
-  .bc-section h3 .num{background:rgba(139,92,246,.25);color:#e0d4ff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:0 0 auto;box-shadow:0 0 12px rgba(139,92,246,.4)}
-  .bc-note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.6}
-  .bc-note .live{color:#6ee7b7;font-weight:600}
-  .bc-note .idle{color:#6b5f80}
-  .bc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  @media(max-width:620px){.bc-grid{grid-template-columns:1fr}}
-  .bc-item{background:#0d0818;border:1px solid var(--border);border-radius:10px;padding:11px;position:relative;overflow:hidden}
-  .bc-item::after{content:'';position:absolute;inset:0;background:radial-gradient(120px 60px at 100% 0%,rgba(139,92,246,.10),transparent 70%);pointer-events:none}
-  .bc-item-title{font-size:12px;color:#c4b5fd;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:500;position:relative;z-index:1}
-  .bc-item-title .chk{font-size:11px;color:var(--muted)}
-  textarea{width:100%;background:#0d0818;color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13.5px;font-family:inherit;resize:vertical;min-height:58px;line-height:1.55;position:relative;z-index:1}
-  textarea:focus{outline:2px solid var(--accent);border-color:transparent}
-  .bc-item-actions{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;position:relative;z-index:1}
-  .bc-item-actions button{padding:7px 14px;font-size:12.5px;border-radius:7px}
-  .bc-req-default{background:linear-gradient(135deg,#8b5cf6,#ec4899)!important;border:none!important;color:#fff!important;box-shadow:0 4px 14px rgba(236,72,153,.35)}
-  .bc-req-default:hover:not(:disabled){filter:brightness(1.12);background:linear-gradient(135deg,#8b5cf6,#ec4899)!important}
-
-  /* floating admin preview bubble */
-  .bubble{
-    position:fixed;z-index:1200;left:50%;bottom:24px;
-    transform:translateX(-50%) translateY(22px);
-    max-width:min(92vw,440px);display:flex;gap:12px;align-items:flex-start;
-    padding:14px 16px 14px 16px;border-radius:18px;color:var(--fg);font-size:14px;line-height:1.55;
-    background:linear-gradient(135deg,#2a1d45 0%,#1e1530 100%);
-    opacity:0;pointer-events:none;transition:opacity .28s ease, transform .28s ease;
-    box-shadow:0 14px 42px rgba(0,0,0,.6), 0 0 24px rgba(139,92,246,.35);
-    isolation:isolate;
-  }
-  .bubble.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
-  .bubble::before{
-    content:'';position:absolute;inset:0;border-radius:inherit;padding:1.5px;
-    background:linear-gradient(135deg,#a78bfa,#8b5cf6,#ec4899,#a78bfa);
-    background-size:300% 300%;animation:bcBorderShift 6s ease infinite;
-    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;z-index:-1;
-  }
-  @keyframes bcBorderShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-  .bubble .bubble-icon{font-size:18px;line-height:1.25;flex:0 0 auto;filter:drop-shadow(0 0 8px rgba(236,72,153,.6))}
-  .bubble .bubble-body{flex:1;min-width:0}
-  .bubble .bubble-title{
-    font-size:10.5px;text-transform:uppercase;letter-spacing:.9px;margin-bottom:4px;font-weight:600;
-    background:linear-gradient(135deg,#c4b5fd,#f0abfc);
-    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
-  }
-  .bubble .bubble-text{word-break:break-word;font-weight:500}
-  .bubble .bubble-text.amharic{font-size:15px;letter-spacing:.1px}
-  .bubble button.bubble-close{background:transparent;border:none;color:var(--muted);font-size:17px;line-height:1;padding:0 2px;cursor:pointer;flex:0 0 auto}
-  .bubble button.bubble-close:hover{background:transparent;color:var(--fg)}
+  /* Users table */
+  .utable{width:100%;border-collapse:collapse;font-size:13px;background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  .utable thead th{background:#160f25;color:#c4b5fd;text-align:left;font-weight:600;padding:9px 10px;border-bottom:1px solid var(--border);white-space:nowrap;font-size:12px}
+  .utable thead th.num{text-align:right}
+  .utable tbody tr{border-bottom:1px solid rgba(58,42,85,.6);cursor:pointer;transition:background .12s}
+  .utable tbody tr:last-child{border-bottom:none}
+  .utable tbody tr:hover{background:#251a3d}
+  .utable tbody td{padding:8px 10px;color:var(--fg);vertical-align:middle}
+  .utable tbody td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .utable tbody td.name{font-weight:600;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .utable tbody td.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;color:#b8abc9;white-space:nowrap}
+  .utable tbody td .pill{font-size:10.5px}
+  .utable tbody td .zero{color:#6b5f80}
+  .utable-empty{padding:32px 20px;text-align:center;color:var(--muted);font-size:13px}
+  .utable tr.is-bot td.name{color:#8b7fa8;font-style:italic}
+  .user-search-summary b{color:#d1c4e9}
+  .ud-hero{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .ud-hero .avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#ec4899);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#fff;flex:0 0 auto}
+  .ud-hero .meta{flex:1;min-width:0}
+  .ud-hero .meta .n{font-size:16px;font-weight:700;color:#f0e6ff}
+  .ud-hero .meta .s{font-size:12px;color:var(--muted);font-family:ui-monospace,monospace;word-break:break-all}
+  .ud-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:14px}
+  .ud-grid .cell{background:#0d0818;border:1px solid var(--border);border-radius:10px;padding:9px 12px}
+  .ud-grid .cell .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+  .ud-grid .cell .v{font-size:15px;font-weight:700;color:#f0e6ff;margin-top:2px}
+  .ud-tx-title{font-size:12px;color:#c4b5fd;text-transform:uppercase;letter-spacing:.6px;margin:14px 0 8px}
+  .ud-tx{background:#0d0818;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:12.5px;line-height:1.55;color:#b8abc9}
+  .ud-tx .head{display:flex;justify-content:space-between;gap:8px;margin-bottom:4px}
+  .ud-tx .head .t{font-weight:600;color:#d1c4e9}
+  .ud-tx .head .t.deposit{color:#6ee7b7}
+  .ud-tx .head .t.withdraw{color:#fca5a5}
+  .ud-tx .head .a{font-weight:700;color:#f0e6ff;white-space:nowrap}
+  .ud-tx .meta b{color:#d1c4e9;font-weight:500;display:inline-block;min-width:74px}
+  @media (max-width:620px){ .ud-grid{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
 <div class="container">
   <h1>Winzo Admin</h1>
-  <div class="subtitle">HTTP-based admin · auto-approves deposits matched against incoming SMS</div>
+  <div class="subtitle">HTTP-based admin · all Firebase access proxied through the game server</div>
 
   <div class="card">
     <div class="row">
@@ -199,6 +176,9 @@
       <button class="tab" data-tab="approved" role="tab">
         Auto-approved <span class="count zero" id="approvedCount">0</span>
       </button>
+      <button class="tab" data-tab="users" role="tab">
+        Users <span class="count zero" id="usersCount">0</span>
+      </button>
     </div>
 
     <div id="tab-pending" class="tabpanel">
@@ -220,9 +200,22 @@
       </div>
       <div id="approvedList"></div>
     </div>
+
+    <div id="tab-users" class="tabpanel" style="display:none">
+      <div class="toolbar">
+        <input id="usersSearch" type="search" placeholder="Search name, user id, telegram id, telegram username, referrer…" style="flex:1;min-width:200px">
+        <button id="usersRefresh" class="secondary">↻ Refresh</button>
+        <label class="chk" style="margin-left:auto">
+          <input type="checkbox" id="usersAuto"> Auto-refresh (20s)
+        </label>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
+        <span id="usersSummary">Not loaded yet.</span>
+      </div>
+      <div id="usersTable"></div>
+    </div>
   </div>
 
-  <!-- ================= BROADCAST (unchanged UI) ================= -->
   <div class="card">
     <h2>Broadcast Messages</h2>
     <div class="subtitle" style="margin:0 0 12px">
@@ -230,17 +223,13 @@
     </div>
 
     <div class="row">
-      <div>
-        <label for="bcDbUrl">Firebase Realtime DB URL</label>
-        <input id="bcDbUrl" value="https://render-e9e2d-default-rtdb.firebaseio.com" placeholder="https://....firebaseio.com">
-      </div>
       <div style="flex:0 0 auto"><button id="bcReload" class="secondary">↻ Reload state</button></div>
     </div>
 
     <div id="bcStatus" class="statusbar" style="margin-top:12px"></div>
 
-    <div class="bc-section">
-      <h3><span class="num">1</span> Quick alert — disappears automatically</h3>
+    <div class="bc-section" style="border-top:1px solid var(--border);padding-top:14px;margin-top:16px">
+      <h3 style="font-size:14.5px;margin:0 0 8px;color:#d1c4e9;display:flex;align-items:center;gap:8px;font-weight:600">1. Quick alert — disappears automatically</h3>
       <div class="row">
         <div style="flex:2;min-width:220px">
           <label for="bcTransientText">Message</label>
@@ -253,11 +242,11 @@
         <div style="flex:0 0 auto"><button id="bcTransientSend">Broadcast</button></div>
         <div style="flex:0 0 auto"><button id="bcTransientStop" class="secondary">Stop</button></div>
       </div>
-      <div class="bc-note" id="bcTransientState">—</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.6" id="bcTransientState">—</div>
     </div>
 
-    <div class="bc-section">
-      <h3><span class="num">2</span> Sticky notice — until you remove it</h3>
+    <div class="bc-section" style="border-top:1px solid var(--border);padding-top:14px;margin-top:16px">
+      <h3 style="font-size:14.5px;margin:0 0 8px;color:#d1c4e9;display:flex;align-items:center;gap:8px;font-weight:600">2. Sticky notice — until you remove it</h3>
       <div class="row">
         <div style="flex:2;min-width:220px">
           <label for="bcPersistText">Message</label>
@@ -266,87 +255,69 @@
         <div style="flex:0 0 auto"><button id="bcPersistSend">Publish</button></div>
         <div style="flex:0 0 auto"><button id="bcPersistStop" class="secondary">Remove</button></div>
       </div>
-      <div class="bc-note" id="bcPersistState">—</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.6" id="bcPersistState">—</div>
     </div>
 
-    <div class="bc-section">
-      <h3><span class="num">3</span> Request result messages</h3>
+    <div class="bc-section" style="border-top:1px solid var(--border);padding-top:14px;margin-top:16px">
+      <h3 style="font-size:14.5px;margin:0 0 8px;color:#d1c4e9;display:flex;align-items:center;gap:8px;font-weight:600">3. Request result messages</h3>
       <div class="subtitle" style="margin:0 0 10px">
         Shown to the player when a deposit / withdrawal request is approved or rejected.
-        The <b>deposit · approved</b> card can also serve as the default message used
-        automatically when the admin auto-approves a deposit.
       </div>
-      <div class="bc-grid">
-        <div class="bc-item" data-key="deposit_approval">
-          <div class="bc-item-title">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="bc-item" data-key="deposit_approval" style="background:#0d0818;border:1px solid var(--border);border-radius:10px;padding:11px">
+          <div style="font-size:12px;color:#c4b5fd;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:500">
             <span>💰 Deposit · approved</span>
             <label class="chk"><input type="checkbox" class="bc-req-active" checked> enabled</label>
           </div>
-          <textarea class="bc-req-text amharic" maxlength="300" placeholder="e.g. Deposit approved. Your balance has been credited."></textarea>
-          <div class="bc-item-actions">
-            <button class="bc-req-save">Save</button>
-            <button class="bc-req-clear secondary">Clear</button>
-            <button class="bc-req-default" title="Fill with Winzo's default Amharic thank-you message">✨ Use default</button>
+          <textarea class="bc-req-text amharic" maxlength="300" placeholder="e.g. Deposit approved." style="width:100%;background:#0d0818;color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13.5px;font-family:inherit;resize:vertical;min-height:58px;line-height:1.55"></textarea>
+          <div style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap">
+            <button class="bc-req-save" style="padding:7px 14px;font-size:12.5px;border-radius:7px">Save</button>
+            <button class="bc-req-clear secondary" style="padding:7px 14px;font-size:12.5px;border-radius:7px">Clear</button>
+            <button class="bc-req-default" style="background:linear-gradient(135deg,#8b5cf6,#ec4899);border:none;color:#fff;padding:7px 14px;font-size:12.5px;border-radius:7px;cursor:pointer;box-shadow:0 4px 14px rgba(236,72,153,.35)">✨ Use default</button>
           </div>
         </div>
-
-        <div class="bc-item" data-key="deposit_rejection">
-          <div class="bc-item-title">
+        <div class="bc-item" data-key="deposit_rejection" style="background:#0d0818;border:1px solid var(--border);border-radius:10px;padding:11px">
+          <div style="font-size:12px;color:#c4b5fd;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:500">
             <span>💰 Deposit · rejected</span>
             <label class="chk"><input type="checkbox" class="bc-req-active" checked> enabled</label>
           </div>
-          <textarea class="bc-req-text amharic" maxlength="300" placeholder="e.g. Deposit rejected — reference not found."></textarea>
-          <div class="bc-item-actions">
-            <button class="bc-req-save">Save</button>
-            <button class="bc-req-clear secondary">Clear</button>
+          <textarea class="bc-req-text amharic" maxlength="300" placeholder="e.g. Deposit rejected." style="width:100%;background:#0d0818;color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13.5px;font-family:inherit;resize:vertical;min-height:58px;line-height:1.55"></textarea>
+          <div style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap">
+            <button class="bc-req-save" style="padding:7px 14px;font-size:12.5px;border-radius:7px">Save</button>
+            <button class="bc-req-clear secondary" style="padding:7px 14px;font-size:12.5px;border-radius:7px">Clear</button>
           </div>
         </div>
-
-        <div class="bc-item" data-key="withdraw_approval">
-          <div class="bc-item-title">
+        <div class="bc-item" data-key="withdraw_approval" style="background:#0d0818;border:1px solid var(--border);border-radius:10px;padding:11px">
+          <div style="font-size:12px;color:#c4b5fd;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:500">
             <span>💸 Withdraw · approved</span>
             <label class="chk"><input type="checkbox" class="bc-req-active" checked> enabled</label>
           </div>
-          <textarea class="bc-req-text amharic" maxlength="300" placeholder="e.g. Withdrawal approved. Funds on the way."></textarea>
-          <div class="bc-item-actions">
-            <button class="bc-req-save">Save</button>
-            <button class="bc-req-clear secondary">Clear</button>
+          <textarea class="bc-req-text amharic" maxlength="300" placeholder="e.g. Withdrawal approved." style="width:100%;background:#0d0818;color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13.5px;font-family:inherit;resize:vertical;min-height:58px;line-height:1.55"></textarea>
+          <div style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap">
+            <button class="bc-req-save" style="padding:7px 14px;font-size:12.5px;border-radius:7px">Save</button>
+            <button class="bc-req-clear secondary" style="padding:7px 14px;font-size:12.5px;border-radius:7px">Clear</button>
           </div>
         </div>
-
-        <div class="bc-item" data-key="withdraw_rejection">
-          <div class="bc-item-title">
+        <div class="bc-item" data-key="withdraw_rejection" style="background:#0d0818;border:1px solid var(--border);border-radius:10px;padding:11px">
+          <div style="font-size:12px;color:#c4b5fd;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:500">
             <span>💸 Withdraw · rejected</span>
             <label class="chk"><input type="checkbox" class="bc-req-active" checked> enabled</label>
           </div>
-          <textarea class="bc-req-text amharic" maxlength="300" placeholder="e.g. Withdrawal rejected — insufficient balance."></textarea>
-          <div class="bc-item-actions">
-            <button class="bc-req-save">Save</button>
-            <button class="bc-req-clear secondary">Clear</button>
+          <textarea class="bc-req-text amharic" maxlength="300" placeholder="e.g. Withdrawal rejected." style="width:100%;background:#0d0818;color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13.5px;font-family:inherit;resize:vertical;min-height:58px;line-height:1.55"></textarea>
+          <div style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap">
+            <button class="bc-req-save" style="padding:7px 14px;font-size:12.5px;border-radius:7px">Save</button>
+            <button class="bc-req-clear secondary" style="padding:7px 14px;font-size:12.5px;border-radius:7px">Clear</button>
           </div>
         </div>
-      </div>
-      <div class="bc-note">
-        The client calls <code>WinzoBroadcast.showRequestResult('deposit'|'withdraw','approval'|'rejection')</code>
-        after a request finishes. If a message is disabled or empty, no bubble appears.
       </div>
     </div>
   </div>
 
-  <!-- ================= AUTO-APPROVE DEPOSITS ================= -->
   <div class="card">
     <h2>Automatic Deposit Approval</h2>
     <div class="subtitle" style="margin:0 0 12px">
       A deposit is approved when <b>one</b> SMS carries the reference and the amount matches.
       Two or more SMS sharing the same reference = duplicate (manual review).
-      Every approval / rejection pushes a bubble to the player's game screen (persists for offline players).
-    </div>
-
-    <div class="row">
-      <div>
-        <label for="dbUrl">Firebase Realtime DB URL</label>
-        <input id="dbUrl" value="https://render-e9e2d-default-rtdb.firebaseio.com" placeholder="https://....firebaseio.com">
-      </div>
     </div>
 
     <div class="row" style="margin-top:12px">
@@ -364,15 +335,8 @@
     </div>
   </div>
 
-  <!-- ================= INCOMING SMS ================= -->
   <div class="card">
     <h2>Incoming SMS</h2>
-    <div class="row">
-      <div>
-        <label for="smsDbUrl">Firebase Realtime DB URL</label>
-        <input id="smsDbUrl" value="https://render-e9e2d-default-rtdb.firebaseio.com" placeholder="https://....firebaseio.com">
-      </div>
-    </div>
     <div class="row" style="margin-top:12px">
       <div style="flex:0 0 auto"><button id="loadSms">Load SMS</button></div>
       <div style="flex:0 0 auto"><button id="clearSms" class="secondary">Clear</button></div>
@@ -386,7 +350,6 @@
   <div id="smsList"></div>
 </div>
 
-<!-- ================= DUPLICATE MODAL ================= -->
 <div id="dupModal" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="modal">
     <h3><span class="icon">⚠</span> Duplicate reference — automatic approval skipped</h3>
@@ -400,7 +363,6 @@
   </div>
 </div>
 
-<!-- ================= IMAGE MODAL ================= -->
 <div id="imgModal" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="modal" style="max-width:700px;">
     <h3><span class="icon">🧾</span> Deposit Receipt</h3>
@@ -414,14 +376,23 @@
   </div>
 </div>
 
-<!-- ================= ADMIN PREVIEW BUBBLE ================= -->
-<div id="bcPreviewBubble" class="bubble" role="status" aria-live="polite">
-  <span class="bubble-icon">🎉</span>
-  <div class="bubble-body">
-    <div class="bubble-title">Broadcast preview</div>
-    <div class="bubble-text" id="bcPreviewText"></div>
+<div id="userDetailModal" class="modal-overlay" role="dialog" aria-modal="true">
+  <div class="modal" style="max-width:720px">
+    <h3><span class="icon">👤</span> User detail</h3>
+    <div id="userDetailBody"></div>
+    <div class="modal-actions">
+      <button id="userDetailClose" class="secondary">Close</button>
+    </div>
   </div>
-  <button class="bubble-close" id="bcPreviewClose" title="Close">×</button>
+</div>
+
+<div id="bcPreviewBubble" style="position:fixed;z-index:1200;left:50%;bottom:24px;transform:translateX(-50%) translateY(22px);max-width:min(92vw,440px);display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:18px;color:var(--fg);font-size:14px;line-height:1.55;background:linear-gradient(135deg,#2a1d45,#1e1530);opacity:0;pointer-events:none;transition:opacity .28s ease, transform .28s ease;box-shadow:0 14px 42px rgba(0,0,0,.6), 0 0 24px rgba(139,92,246,.35)" role="status" aria-live="polite">
+  <span class="bubble-icon" style="font-size:18px">🎉</span>
+  <div style="flex:1;min-width:0">
+    <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.9px;margin-bottom:4px;font-weight:600;color:#c4b5fd">Broadcast preview</div>
+    <div id="bcPreviewText" style="word-break:break-word;font-weight:500"></div>
+  </div>
+  <button id="bcPreviewClose" style="background:transparent;border:none;color:var(--muted);font-size:17px;line-height:1;padding:0 2px;cursor:pointer">×</button>
 </div>
 
 <script>
@@ -440,7 +411,6 @@
   let autoApproved = loadAutoApproved();
   const notifiedMap = loadNotified();
 
-  /* ---------- default + special messages ---------- */
   const AUTO_APPROVAL_DEFAULT =
     'ትአዛዝዎ በትክክል ተፈፅሟል! የዊንዞ ደንበኛ ስለሆኑ እናመሰግናለን።';
 
@@ -456,12 +426,8 @@
   const USED_REF_MESSAGE =
     'ውድ ደንበኛችን፣ አገልግሎት ላይ የዋለ Reference code ተጠቅመዋል። ጥያቄውን ማስተናገድ አልተቻለም።';
 
-  const EVENT_TTL_MS    = 7 * 24 * 60 * 60 * 1000; // 7 days → offline delivery works
-  const NO_SMS_GRACE_MS = 10 * 1000;               // 10 s grace before "no SMS" fires
+  const NO_SMS_GRACE_MS = 10 * 1000;
 
-  /* =========================================================
-     === LOCAL STORAGE HELPERS ===
-     ========================================================= */
   function loadAutoApproved(){
     try{
       const raw = localStorage.getItem(AA_STORAGE_KEY);
@@ -483,9 +449,21 @@
   function wasNotified(txId, kind){ return notifiedMap.has(txId + '|' + kind); }
   function markNotified(txId, kind){ notifiedMap.add(txId + '|' + kind); saveNotified(); }
 
-  /* =========================================================
-     === AUTO-APPROVED HISTORY (local + firebase) ===
-     ========================================================= */
+  async function adminApi(path, method = 'GET', body) {
+    if (!serverUrl || !adminKey) throw new Error('not-connected');
+    const opts = { method, cache: 'no-store', headers: { 'X-Admin-Key': adminKey } };
+    if (body !== undefined) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
+    const res = await fetch(serverUrl + path, opts);
+    let data = {};
+    try { data = await res.json(); } catch { data = { ok: false, error: 'invalid-json' }; }
+    if (res.status === 401 || res.status === 403) throw new Error('admin-key-rejected');
+    if (!res.ok || data.ok === false) throw new Error(data.error || ('http-' + res.status));
+    return data;
+  }
+
   async function recordAutoApproved(entry){
     if(!entry || !entry.id) return;
     autoApproved = autoApproved.filter(e => e.id !== entry.id);
@@ -498,41 +476,38 @@
     renderApproved();
   }
 
-  async function saveAutoApprovedToFirebase(entry){
-    try { await fbPut('/auto_approved/' + entry.id, entry); }
-    catch(e){ aaLog('⚠ save auto-approve to Firebase failed: ' + (e.message||e), 'warn'); }
+  async function saveAutoApprovedToFirebase(entry) {
+    try { await adminApi('/admin/auto-approved/' + encodeURIComponent(entry.id), 'PUT', entry); }
+    catch (e) { aaLog('⚠ save auto-approve failed: ' + (e.message || e), 'warn'); }
   }
 
-  async function loadAutoApprovedFromFirebase(){
-    try{
-      const data = await fbGet('/auto_approved');
-      if(!data || typeof data !== 'object') return [];
+  async function loadAutoApprovedFromFirebase() {
+    try {
+      const { data } = await adminApi('/admin/auto-approved');
+      if (!data || typeof data !== 'object') return [];
       return Object.values(data)
         .filter(e => e && e.id)
-        .sort((a,b) => (Number(b.approvedAt)||0) - (Number(a.approvedAt)||0))
+        .sort((a, b) => (Number(b.approvedAt) || 0) - (Number(a.approvedAt) || 0))
         .slice(0, 300);
-    }catch{ return []; }
+    } catch { return []; }
   }
 
-  /* =========================================================
-     === USED REFERENCE TRACKING ===
-     ========================================================= */
-  async function fetchUsedReferences(){
-    try{
-      const data = await fbGet('/used_references');
+  async function fetchUsedReferences() {
+    try {
+      const { data } = await adminApi('/admin/used-references');
       const set = new Set();
-      if(data && typeof data === 'object'){
-        for(const k of Object.keys(data)) set.add(normalizeRef(k));
+      if (data && typeof data === 'object') {
+        for (const k of Object.keys(data)) set.add(normalizeRef(k));
       }
       return set;
-    }catch{ return new Set(); }
+    } catch { return new Set(); }
   }
 
-  async function markReferenceUsed(ref, entry){
+  async function markReferenceUsed(ref, entry) {
     const norm = normalizeRef(ref);
-    if(!norm) return;
-    try{
-      await fbPut('/used_references/' + norm, {
+    if (!norm) return;
+    try {
+      await adminApi('/admin/used-references/' + encodeURIComponent(norm), 'PUT', {
         reference:  norm,
         txId:       entry.id || '',
         uid:        entry.uid || '',
@@ -540,125 +515,31 @@
         smsId:      entry.smsId || '',
         approvedAt: entry.approvedAt || Date.now()
       });
-    }catch(e){
-      aaLog('⚠ mark ref used failed: ' + (e.message||e), 'warn');
-    }
+    } catch (e) { aaLog('⚠ mark ref used failed: ' + (e.message || e), 'warn'); }
   }
 
-  /* =========================================================
-     === UNIFIED PLAYER-MESSAGE PUBLISHER (retry + verify) ===
-     ========================================================= */
-  async function publishRequestResult(uid, requestType, decision, txId){
-    /* requestType: 'deposit' | 'withdraw'
-       decision:    'approval' | 'rejection' | 'no_sms' | 'used_ref' */
-
-    if(!uid){
+  async function publishRequestResult(uid, requestType, decision, txId) {
+    if (!uid) {
       aaLog('⚠ tx=' + txId + ' has no uid — cannot deliver ' + requestType + '/' + decision, 'err');
       showStatus('❌ Cannot deliver notification: transaction has no uid', 'error');
       return;
     }
-
-    /* Pre-flight: make sure the Firebase base URL is set */
-    try{ bcBase(); }
-    catch(e){
-      aaLog('✗ delivery aborted — ' + e.message, 'err');
-      showStatus('❌ Notification delivery aborted: ' + e.message, 'error');
-      return;
+    const typeKey = (decision === 'no_sms')
+      ? 'deposit_no_sms'
+      : (decision === 'used_ref')
+        ? 'deposit_used_ref'
+        : requestType + '_' + decision;
+    try {
+      await adminApi('/admin/user-event', 'POST', {
+        uid, type: typeKey, txId: txId || '', requestType, decision
+      });
+      aaLog('📨 delivered ' + typeKey + ' → uid=' + uid + ' (tx=' + txId + ')', 'ok');
+    } catch (e) {
+      aaLog('✗ DELIVERY FAILED → uid=' + uid + ' type=' + typeKey + ' err=' + (e.message || e), 'err');
+      showStatus('❌ Notification delivery FAILED for uid=' + uid + ' (' + typeKey + '): ' + (e.message || e), 'error');
     }
-
-    /* Resolve the message text */
-    let msg;
-    try{
-      if(decision === 'no_sms'){
-        msg = await loadSpecialMessage('deposit_no_sms', NO_SMS_MESSAGE);
-      } else if(decision === 'used_ref'){
-        msg = await loadSpecialMessage('deposit_used_ref', USED_REF_MESSAGE);
-      } else {
-        const key = requestType + '_' + decision;
-        msg = await loadSpecialMessage(key, DEFAULT_MESSAGES[key] || '');
-      }
-    }catch{
-      msg = DEFAULT_MESSAGES[requestType + '_' + decision] || '';
-    }
-    if(!msg){
-      aaLog('⚠ empty message for ' + requestType + '/' + decision + ' — skipping', 'warn');
-      return;
-    }
-
-    const now = Date.now();
-    const eventKey = 'evt_' + now + '_' + Math.random().toString(36).slice(2,8);
-    const payload = {
-      type:        requestType + '_' + decision,
-      requestType: requestType,
-      decision:    decision,
-      message:     msg,
-      txId:        txId || '',
-      read:        false,
-      createdAt:   now,
-      expiresAt:   now + EVENT_TTL_MS
-    };
-
-    const path = '/broadcasts/user_events/' + uid + '/' + eventKey;
-    let lastErr = null;
-
-    for(let attempt = 1; attempt <= 3; attempt++){
-      try{
-        await fbPut(path, payload);
-
-        /* Verify the write actually landed */
-        const verify = await fbGet(path);
-        if(verify && verify.type === payload.type && verify.message === payload.message){
-          aaLog('📨 delivered ' + payload.type + ' → uid=' + uid
-                + ' (tx=' + txId + ', attempt ' + attempt + ')', 'ok');
-          cleanupExpiredEvents(uid).catch(()=>{});
-          return;
-        }
-        lastErr = new Error('write-verify-failed');
-      }catch(e){
-        lastErr = e;
-      }
-
-      if(attempt < 3){
-        aaLog('↻ delivery retry ' + (attempt+1) + '/3 for uid=' + uid + ' …', 'warn');
-        await new Promise(r => setTimeout(r, 400 * attempt));
-      }
-    }
-
-    /* Give up — but log loudly */
-    const errMsg = (lastErr && lastErr.message) ? lastErr.message : String(lastErr || 'unknown');
-    aaLog('✗ DELIVERY FAILED after 3 attempts → uid=' + uid
-          + ' type=' + payload.type + ' err=' + errMsg, 'err');
-    showStatus('❌ Notification delivery FAILED for uid=' + uid
-               + ' (' + payload.type + '): ' + errMsg, 'error');
   }
 
-  async function loadSpecialMessage(key, fallback){
-    try{
-      const cfg = await fbGet('/broadcasts/requests/' + key);
-      if(cfg && cfg.active === true && cfg.text && String(cfg.text).trim()){
-        return String(cfg.text).trim();
-      }
-    }catch{ /* ignore */ }
-    return fallback;
-  }
-
-  async function cleanupExpiredEvents(uid){
-    try{
-      const events = await fbGet('/broadcasts/user_events/' + uid);
-      if(!events || typeof events !== 'object') return;
-      const now = Date.now();
-      for(const k of Object.keys(events)){
-        const ev = events[k];
-        if(ev && ev.expiresAt && Number(ev.expiresAt) < now){
-          await fbDelete('/broadcasts/user_events/' + uid + '/' + k);
-        }
-      }
-    }catch{}
-  }
-
-  /* =========================================================
-     === UI HELPERS ===
-     ========================================================= */
   function showStatus(msg, kind, el){
     const s = el || $('status');
     s.textContent = msg;
@@ -694,6 +575,10 @@
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
     $('tab-pending').style.display  = (name === 'pending')  ? '' : 'none';
     $('tab-approved').style.display = (name === 'approved') ? '' : 'none';
+    $('tab-users').style.display    = (name === 'users')    ? '' : 'none';
+    if (name === 'users' && !usersData.length) {
+      loadUsers(true).then(startUsersAuto);
+    }
   }
 
   function updateCounts(){
@@ -715,9 +600,6 @@
     return isNaN(d.getTime()) ? null : d;
   }
 
-  /* =========================================================
-     === ADMIN API ===
-     ========================================================= */
   async function api(path){
     const res = await fetch(serverUrl + path, {headers:{'X-Admin-Key': adminKey}});
     let body; try { body = await res.json(); } catch { body = {ok:false,error:'invalid-json-from-server'}; }
@@ -746,6 +628,7 @@
       aaLog('Connected to ' + url, 'ok');
 
       await refresh();
+      bcLoadAll(true);
       startAuto();
       if($('aaAuto').checked) startAutoApprove();
 
@@ -758,6 +641,8 @@
           aaLog('Loaded ' + remote.length + ' auto-approved records from Firebase', 'ok');
         }
       }).catch(()=>{});
+
+      loadUsers(false).catch(() => {});
     }catch(e){
       showStatus('Connection failed: ' + (e.message||e), 'error');
       serverUrl = ''; adminKey = ''; $('panel').style.display = 'none';
@@ -766,10 +651,14 @@
 
   function disconnect(){
     serverUrl = ''; adminKey = '';
-    stopAuto(); stopAutoApprove(); closeDupModal(); closeImgModal();
+    stopAuto(); stopAutoApprove(); stopUsersAuto(); closeDupModal(); closeImgModal(); closeUserDetail();
     $('panel').style.display = 'none';
     $('disconnect').disabled = true;
     $('list').replaceChildren();
+    $('usersTable').replaceChildren();
+    $('usersSummary').textContent = 'Not loaded yet.';
+    usersData = [];
+    const uc = $('usersCount'); uc.textContent = '0'; uc.className = 'count zero';
     showStatus('Disconnected.','info');
     aaLog('Disconnected', 'skip');
   }
@@ -911,7 +800,6 @@
       const requestType  = (tx.type === 'withdraw') ? 'withdraw' : 'deposit';
       const decisionType = (decision === 'approved') ? 'approval' : 'rejection';
 
-      /* Retry+verify publisher now logs its own failures */
       await publishRequestResult(uid, requestType, decisionType, tx.id);
 
       if(decision === 'approved' && requestType === 'deposit' && tx.reference){
@@ -999,12 +887,9 @@
     saveAutoApproved();
     updateCounts();
     renderApproved();
-    try{ await fbPut('/auto_approved', null); }catch{}
+    try{ await adminApi('/admin/auto-approved/__all__', 'PUT', null).catch(()=>{}); }catch{}
   }
 
-  /* =========================================================
-     === SMS PARSING ===
-     ========================================================= */
   function parseSms(text){
     const t = String(text==null?'':text).replace(/\s+/g,' ').trim();
     const out = {amount:null, from:null, reference:null, dateText:null};
@@ -1029,39 +914,25 @@
     return out;
   }
 
-  async function fetchIncomingSmsWithBase(base){
-    const res = await fetch(base + '/incoming_sms.json', {cache:'no-store'});
-    if(res.status === 401 || res.status === 403) throw new Error('permission-denied — check Firebase rules');
-    if(res.status === 404) throw new Error('not-found — check the database URL');
-    if(!res.ok) throw new Error('http-'+res.status);
-    const data = await res.json();
-    if(!data || typeof data !== 'object') return [];
-    return Object.keys(data).map(k=>{
+  async function fetchIncomingSmsWithBase(_unused) {
+    const { data } = await adminApi('/admin/sms');
+    if (!data || typeof data !== 'object') return [];
+    return Object.keys(data).map(k => {
       const v = data[k] || {};
-      const rec = (typeof v === 'object') ? Object.assign({}, v) : {text:String(v)};
-      rec._id = k;
-      rec._ts = Number(rec.receivedStamp || rec.sentStamp || rec.timestamp || 0) || 0;
+      const rec = (typeof v === 'object') ? Object.assign({}, v) : { text: String(v) };
+      rec._id  = k;
+      rec._ts  = Number(rec.receivedStamp || rec.sentStamp || rec.timestamp || 0) || 0;
       return rec;
-    }).sort((a,b)=> b._ts - a._ts);
+    }).sort((a, b) => b._ts - a._ts);
   }
 
-  async function fetchIncomingSms(){
-    const base = normalizeUrl($('dbUrl').value);
-    if(!base) throw new Error('Enter the Firebase DB URL.');
-    return fetchIncomingSmsWithBase(base);
+  async function fetchIncomingSms() {
+    return fetchIncomingSmsWithBase(null);
   }
 
-  /* =========================================================
-     === AUTO-MATCH ===
-     ========================================================= */
   async function runAutoMatch(){
     if(!serverUrl || !adminKey){
       showStatus('Connect to the server first.', 'warn', $('aaStatus'));
-      return;
-    }
-    const base = normalizeUrl($('dbUrl').value);
-    if(!base){
-      showStatus('Enter the Firebase DB URL.', 'error', $('aaStatus'));
       return;
     }
 
@@ -1239,9 +1110,6 @@
     if(aaTimer){ clearInterval(aaTimer); aaTimer = null; }
   }
 
-  /* =========================================================
-     === DUPLICATE MODAL ===
-     ========================================================= */
   function openDupModal(tx, reason){
     dupPendingTx = tx;
     const amtStr = Number(reason.amount).toFixed(2);
@@ -1279,9 +1147,8 @@
     details.replaceChildren();
 
     try{
-      const base = normalizeUrl($('dbUrl').value);
       let items;
-      try{ items = await fetchIncomingSmsWithBase(base); }
+      try{ items = await fetchIncomingSmsWithBase(null); }
       catch(e){
         items = (reason.matches || []).map(m => ({
           _id: m.id, text: m.text, from: m.from,
@@ -1365,9 +1232,6 @@
     }
   }
 
-  /* =========================================================
-     === RECEIPT IMAGE ===
-     ========================================================= */
   function showReceipt(base64Data) {
     const modal = $('imgModal');
     const img = $('receiptImg');
@@ -1393,16 +1257,12 @@
     $('receiptImg').src = '';
   }
 
-  /* =========================================================
-     === SMS VIEW ===
-     ========================================================= */
   async function loadSms(){
-    const base = normalizeUrl($('smsDbUrl').value);
-    if(!base){ showStatus('Enter the Firebase DB URL.','error',$('smsStatus')); return; }
+    if(!serverUrl){ showStatus('Connect first.','error',$('smsStatus')); return; }
     $('loadSms').disabled = true;
     showStatus('Fetching SMS records…','info',$('smsStatus'));
     try{
-      const items = await fetchIncomingSmsWithBase(base);
+      const items = await fetchIncomingSmsWithBase(null);
       renderSms(items);
       showStatus('Loaded ' + items.length + ' SMS record' + (items.length===1?'':'s') + '.','success',$('smsStatus'));
     }catch(e){
@@ -1509,9 +1369,203 @@
   }
   function stopSmsAuto(){ if(smsTimer){clearInterval(smsTimer); smsTimer=null;} }
 
-  /* =========================================================
-     === BROADCAST (admin UI — unchanged) ===
-     ========================================================= */
+  // ---------- Users tab ----------
+  let usersData = [];
+  let usersAutoTimer = null;
+  let usersLoading = false;
+
+  function usersSummaryText(rows) {
+    if (!rows.length) return 'No users.';
+    const total = rows.length;
+    const withTg = rows.filter(r => r.telegram_id).length;
+    const botCount = rows.filter(r => r.is_bot).length;
+    return total + ' user' + (total===1?'':'s') + ' · ' + withTg + ' with Telegram · ' + botCount + ' bot' + (botCount===1?'':'s');
+  }
+
+  function fmtBirr(n) {
+    const x = Number(n);
+    if (!Number.isFinite(x)) return '0';
+    return x.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+
+  function rowMatches(row, q) {
+    if (!q) return true;
+    const hay = [
+      row.uid, row.name, row.username, row.telegram_username,
+      row.telegram_id != null ? String(row.telegram_id) : '',
+      row.referred_by || ''
+    ].join(' ').toLowerCase();
+    return q.toLowerCase().split(/\s+/).every(tok => hay.includes(tok));
+  }
+
+  function renderUsersTable() {
+    const target = $('usersTable');
+    const q = String($('usersSearch').value || '').trim();
+    const filtered = usersData.filter(r => rowMatches(r, q));
+    $('usersSummary').innerHTML =
+      '<span class="user-search-summary">' +
+      (q
+        ? 'Showing <b>' + filtered.length + '</b> of <b>' + usersData.length + '</b> — filter: “' + esc(q) + '”'
+        : usersSummaryText(usersData)) +
+      '</span>';
+
+    if (usersLoading && !usersData.length) {
+      target.innerHTML = '<div class="utable-empty">Loading users…</div>';
+      return;
+    }
+    if (!filtered.length) {
+      target.innerHTML = '<div class="utable-empty">' +
+        (q ? 'No user matches “' + esc(q) + '”.' : 'No users yet.') +
+        '</div>';
+      return;
+    }
+
+    const rows = filtered.slice(0, 1000);
+    let html = '<table class="utable"><thead><tr>' +
+      '<th>Name</th>' +
+      '<th>Telegram ID</th>' +
+      '<th>User ID</th>' +
+      '<th class="num">Deposits</th>' +
+      '<th class="num">Withdraws</th>' +
+      '<th class="num">M-Wallet</th>' +
+      '<th class="num">P-Wallet</th>' +
+      '</tr></thead><tbody>';
+    for (const r of rows) {
+      const dep = r.deposit_count
+        ? '<span class="pill auto">' + r.deposit_count + '</span>'
+        : '<span class="zero">0</span>';
+      const wdr = r.withdraw_count
+        ? '<span class="pill">' + r.withdraw_count + '</span>'
+        : '<span class="zero">0</span>';
+      const tg = r.telegram_id
+        ? '<span class="mono">' + esc(r.telegram_id) + '</span>'
+        : '<span class="zero">—</span>';
+      html += '<tr data-uid="' + esc(r.uid) + '" class="' + (r.is_bot ? 'is-bot' : '') + '">' +
+        '<td class="name" title="' + esc(r.name) + '">' + esc(r.name) + '</td>' +
+        '<td class="mono">' + tg + '</td>' +
+        '<td class="mono">' + esc(r.uid) + '</td>' +
+        '<td class="num">' + dep + '</td>' +
+        '<td class="num">' + wdr + '</td>' +
+        '<td class="num">' + fmtBirr(r.main) + '</td>' +
+        '<td class="num">' + fmtBirr(r.play) + '</td>' +
+        '</tr>';
+    }
+    html += '</tbody></table>';
+    target.innerHTML = html;
+    target.querySelectorAll('tr[data-uid]').forEach(tr => {
+      tr.onclick = () => openUserDetail(tr.getAttribute('data-uid'));
+    });
+  }
+
+  async function loadUsers(showErrors) {
+    if (!serverUrl || !adminKey) {
+      if (showErrors) showStatus('Connect to the server first.', 'warn');
+      return;
+    }
+    if (usersLoading) return;
+    usersLoading = true;
+    if (showErrors) $('usersSummary').textContent = 'Loading…';
+    try {
+      const { users } = await adminApi('/admin/users');
+      usersData = Array.isArray(users) ? users : [];
+      const c = $('usersCount');
+      c.textContent = String(usersData.length);
+      c.className = 'count' + (usersData.length ? ' has' : ' zero');
+      renderUsersTable();
+    } catch (e) {
+      if (showErrors) showStatus('Load users failed: ' + e.message, 'error');
+      $('usersTable').innerHTML = '<div class="utable-empty">Could not load users: ' + esc(e.message) + '</div>';
+    } finally {
+      usersLoading = false;
+    }
+  }
+
+  function startUsersAuto() {
+    stopUsersAuto();
+    if ($('usersAuto').checked) usersAutoTimer = setInterval(() => loadUsers(false), 20000);
+  }
+  function stopUsersAuto() {
+    if (usersAutoTimer) { clearInterval(usersAutoTimer); usersAutoTimer = null; }
+  }
+
+  async function openUserDetail(uid) {
+    const row = usersData.find(r => r.uid === uid);
+    if (!row) return;
+    const body = $('userDetailBody');
+    const initials = (row.name || row.uid || '?').trim().charAt(0).toUpperCase();
+    const tgLine = row.telegram_id
+      ? '@' + esc(row.telegram_username || '—') + ' · <span class="mono">' + esc(row.telegram_id) + '</span>'
+      : 'no Telegram binding';
+    const created = row.created_at ? new Date(Number(row.created_at)).toLocaleString() : '—';
+    const updated = row.updated_at ? new Date(Number(row.updated_at)).toLocaleString() : '—';
+    const referredBy = row.referred_by ? esc(row.referred_by) : '—';
+    const bot = row.is_bot ? ' <span class="pill dup">bot</span>' : '';
+
+    body.innerHTML =
+      '<div class="ud-hero">' +
+         '<div class="avatar">' + esc(initials) + '</div>' +
+         '<div class="meta">' +
+           '<div class="n">' + esc(row.name) + bot + '</div>' +
+           '<div class="s">uid: ' + esc(row.uid) + '</div>' +
+           '<div class="s">' + tgLine + '</div>' +
+         '</div>' +
+       '</div>' +
+      '<div class="ud-grid">' +
+         '<div class="cell"><div class="k">Deposits</div><div class="v">' + row.deposit_count + ' · ' + fmtBirr(row.deposit_total) + ' Birr</div></div>' +
+         '<div class="cell"><div class="k">Withdrawals</div><div class="v">' + row.withdraw_count + ' · ' + fmtBirr(row.withdraw_total) + ' Birr</div></div>' +
+         '<div class="cell"><div class="k">M-Wallet</div><div class="v">' + fmtBirr(row.main) + ' Birr</div></div>' +
+         '<div class="cell"><div class="k">P-Wallet</div><div class="v">' + fmtBirr(row.play) + ' Birr</div></div>' +
+         '<div class="cell"><div class="k">Pending withdrawal</div><div class="v">' + fmtBirr(row.pending) + ' Birr</div></div>' +
+         '<div class="cell"><div class="k">Referral earnings</div><div class="v">' + fmtBirr(row.ref) + ' Birr</div></div>' +
+         '<div class="cell"><div class="k">Referred by</div><div class="v">' + referredBy + '</div></div>' +
+         '<div class="cell"><div class="k">Updated</div><div class="v" style="font-size:13px">' + esc(updated) + '</div></div>' +
+         '<div class="cell" style="grid-column:1/-1"><div class="k">Created</div><div class="v" style="font-size:13px">' + esc(created) + '</div></div>' +
+       '</div>' +
+      '<div class="ud-tx-title">Transaction history</div>' +
+      '<div id="udTxList"><div class="utable-empty">Loading transactions…</div></div>';
+
+    $('userDetailModal').classList.add('show');
+
+    try {
+      const { transactions } = await adminApi('/admin/users/' + encodeURIComponent(uid) + '/transactions');
+      const list = Array.isArray(transactions) ? transactions : [];
+      const holder = $('udTxList');
+      if (!list.length) {
+        holder.innerHTML = '<div class="utable-empty">No transactions recorded for this user.</div>';
+        return;
+      }
+      let html = '';
+      for (const tx of list) {
+        const when = tx.timestamp ? new Date(Number(tx.timestamp)).toLocaleString() : '—';
+        const cls = tx.type === 'withdraw' ? 'withdraw' : 'deposit';
+        html +=
+          '<div class="ud-tx">' +
+             '<div class="head">' +
+               '<span class="t ' + cls + '">' + esc((tx.type || '').toUpperCase()) + ' · ' + esc(tx.status || '') + '</span>' +
+               '<span class="a">' + fmtBirr(tx.amount) + ' Birr</span>' +
+             '</div>' +
+             '<div class="meta">' +
+               (tx.reference ? '<b>ref</b> ' + esc(tx.reference) + '<br>' : '') +
+               (tx.full_name ? '<b>name</b> ' + esc(tx.full_name) + '<br>' : '') +
+               (tx.phone_number ? '<b>phone</b> ' + esc(tx.phone_number) + '<br>' : '') +
+               (tx.reason ? '<b>reason</b> ' + esc(tx.reason) + '<br>' : '') +
+               '<b>at</b> ' + esc(when) + '<br>' +
+               '<b>tx id</b> <code>' + esc(tx.id) + '</code>' +
+             '</div>' +
+           '</div>';
+      }
+      holder.innerHTML = html;
+    } catch (e) {
+      $('udTxList').innerHTML = '<div class="utable-empty">Could not load transactions: ' + esc(e.message) + '</div>';
+    }
+  }
+
+  function closeUserDetail() {
+    $('userDetailModal').classList.remove('show');
+    $('userDetailBody').replaceChildren();
+  }
+
+  // ---------- Broadcast ----------
   const BC_REQ_LABELS = {
     deposit_approval:  'deposit · approved',
     deposit_rejection: 'deposit · rejected',
@@ -1521,31 +1575,143 @@
   let bcPreviewTimer = null;
   const AMHARIC_RE = /[\u1200-\u137F]/;
 
-  function bcBase(){
-    const u = normalizeUrl($('bcDbUrl').value);
-    if(!u) throw new Error('Enter the Firebase DB URL.');
-    return u;
+  async function bcLoadAll(silent) {
+    if (!serverUrl || !adminKey) return;
+    try {
+      const { data } = await adminApi('/admin/broadcasts');
+      const tr = (data && data.transient) || {};
+      const trEl = $('bcTransientState');
+      if (tr.active && tr.text) {
+        const expires = Number(tr.expiresAt) || (Number(tr.createdAt || 0) + Number(tr.duration || 0) * 1000);
+        const left = Math.max(0, expires - Date.now());
+        trEl.innerHTML = left > 0
+          ? '<span style="color:#6ee7b7;font-weight:600">● live</span> — “' + esc(tr.text) + '” · ' + Math.ceil(left / 1000) + 's remaining'
+          : '<span style="color:#6b5f80">expired</span> — “' + esc(tr.text) + '”';
+      } else {
+        trEl.innerHTML = '<span style="color:#6b5f80">No quick alert running.</span>';
+      }
+
+      const pe = (data && data.persistent) || {};
+      const peEl = $('bcPersistState');
+      if (pe.text) $('bcPersistText').value = pe.text;
+      peEl.innerHTML = (pe.active && pe.text)
+        ? '<span style="color:#6ee7b7;font-weight:600">● live</span> — “' + esc(pe.text) + '”'
+        : '<span style="color:#6b5f80">No sticky notice published.</span>';
+
+      const rq = (data && data.requests) || {};
+      document.querySelectorAll('.bc-item').forEach(card => {
+        const v = rq[card.dataset.key] || {};
+        card.querySelector('.bc-req-text').value = v.text || '';
+        card.querySelector('.bc-req-active').checked = (v.active === true);
+      });
+
+      if (!silent) showStatus('Broadcast state loaded.', 'success', $('bcStatus'));
+    } catch (e) {
+      if (!silent) showStatus('Load failed: ' + e.message, 'error', $('bcStatus'));
+    }
   }
 
-  async function fbRequest(path, method, body){
-    const base = bcBase();
-    const opts = { method, cache:'no-store' };
-    if(body !== undefined){
-      opts.headers = {'Content-Type':'application/json'};
-      opts.body = JSON.stringify(body);
-    }
-    const res = await fetch(base + path + '.json', opts);
-    if(res.status === 401 || res.status === 403)
-      throw new Error('permission-denied — check Firebase rules');
-    if(res.status === 404)
-      throw new Error('not-found — check the database URL');
-    if(!res.ok) throw new Error('http-' + res.status);
-    if(method === 'DELETE') return null;
-    return res.json();
+  async function bcSendTransient() {
+    const text = $('bcTransientText').value.trim();
+    if (!text) { showStatus('Enter a message for the quick alert.', 'error', $('bcStatus')); return; }
+    let secs = Math.round(Number($('bcTransientSecs').value) || 8);
+    secs = Math.max(1, Math.min(300, secs));
+    $('bcTransientSend').disabled = true;
+    try {
+      await adminApi('/admin/broadcasts/transient', 'PUT', { text, duration: secs });
+      showStatus('Quick alert sent · visible for ' + secs + 's.', 'success', $('bcStatus'));
+      previewBubble(text, secs * 1000);
+      await bcLoadAll(true);
+    } catch (e) {
+      showStatus('Send failed: ' + e.message, 'error', $('bcStatus'));
+    } finally { $('bcTransientSend').disabled = false; }
   }
-  const fbGet    = p      => fbRequest(p, 'GET');
-  const fbPut    = (p, v) => fbRequest(p, 'PUT', v);
-  const fbDelete = p      => fbRequest(p, 'DELETE');
+
+  async function bcStopTransient() {
+    try {
+      await adminApi('/admin/broadcasts/transient', 'DELETE');
+      showStatus('Quick alert stopped.', 'success', $('bcStatus'));
+      hidePreview();
+      await bcLoadAll(true);
+    } catch (e) { showStatus('Stop failed: ' + e.message, 'error', $('bcStatus')); }
+  }
+
+  async function bcPublishPersistent() {
+    const text = $('bcPersistText').value.trim();
+    if (!text) { showStatus('Enter a message for the sticky notice.', 'error', $('bcStatus')); return; }
+    $('bcPersistSend').disabled = true;
+    try {
+      await adminApi('/admin/broadcasts/persistent', 'PUT', { text, active: true });
+      showStatus('Sticky notice published.', 'success', $('bcStatus'));
+      previewBubble(text, 6000);
+      await bcLoadAll(true);
+    } catch (e) { showStatus('Publish failed: ' + e.message, 'error', $('bcStatus')); }
+    finally { $('bcPersistSend').disabled = false; }
+  }
+
+  async function bcRemovePersistent() {
+    if (!confirm('Remove the sticky notice from every player screen?')) return;
+    try {
+      await adminApi('/admin/broadcasts/persistent', 'DELETE');
+      showStatus('Sticky notice removed.', 'success', $('bcStatus'));
+      hidePreview();
+      await bcLoadAll(true);
+    } catch (e) { showStatus('Remove failed: ' + e.message, 'error', $('bcStatus')); }
+  }
+
+  async function bcSaveRequest(card, btn) {
+    const key = card.dataset.key;
+    const text = card.querySelector('.bc-req-text').value.trim();
+    const active = card.querySelector('.bc-req-active').checked;
+    if (active && !text) {
+      showStatus('Type the message before enabling “' + (BC_REQ_LABELS[key] || key) + '”.', 'error', $('bcStatus'));
+      return;
+    }
+    btn.disabled = true;
+    try {
+      await adminApi('/admin/broadcasts/requests/' + encodeURIComponent(key), 'PUT', {
+        text, active: active && !!text
+      });
+      showStatus('Saved: ' + (BC_REQ_LABELS[key] || key) + (active && text ? ' · enabled' : ' · disabled') + '.',
+                  'success', $('bcStatus'));
+      if (active && text) previewBubble(text, 6000);
+      await bcLoadAll(true);
+    } catch (e) { showStatus('Save failed: ' + e.message, 'error', $('bcStatus')); }
+    finally { btn.disabled = false; }
+  }
+
+  async function bcClearRequest(card, btn) {
+    const key = card.dataset.key;
+    if (!confirm('Clear the message for “' + (BC_REQ_LABELS[key] || key) + '”?')) return;
+    btn.disabled = true;
+    try {
+      await adminApi('/admin/broadcasts/requests/' + encodeURIComponent(key), 'PUT', {
+        text: '', active: false
+      });
+      card.querySelector('.bc-req-text').value = '';
+      card.querySelector('.bc-req-active').checked = false;
+      showStatus('Cleared: ' + (BC_REQ_LABELS[key] || key) + '.', 'success', $('bcStatus'));
+    } catch (e) { showStatus('Clear failed: ' + e.message, 'error', $('bcStatus')); }
+    finally { btn.disabled = false; }
+  }
+
+  async function bcUseDefaultDepositApproval(btn) {
+    const card = document.querySelector('.bc-item[data-key="deposit_approval"]');
+    if (!card) return;
+    const ta = card.querySelector('.bc-req-text');
+    const chk = card.querySelector('.bc-req-active');
+    ta.value = AUTO_APPROVAL_DEFAULT;
+    chk.checked = true;
+    previewBubble(AUTO_APPROVAL_DEFAULT, 6000);
+    btn.disabled = true;
+    try {
+      await adminApi('/admin/broadcasts/requests/deposit_approval', 'PUT', {
+        text: AUTO_APPROVAL_DEFAULT, active: true
+      });
+      showStatus('Default Amharic approval message saved & enabled.', 'success', $('bcStatus'));
+    } catch (e) { showStatus('Save failed: ' + e.message, 'error', $('bcStatus')); }
+    finally { btn.disabled = false; }
+  }
 
   function previewBubble(text, ms){
     const el = $('bcPreviewBubble');
@@ -1556,158 +1722,27 @@
     const isApproval = isAmharic || /approv|ተፈፅሟል|success|thank/i.test(text || '');
     icon.textContent = isApproval ? '🎉' : '📢';
     txt.textContent = text;
-    txt.classList.toggle('amharic', isAmharic);
+    txt.style.fontFamily = isAmharic ? "'Noto Sans Ethiopic','Poppins',sans-serif" : '';
+    txt.style.fontSize = isAmharic ? '15px' : '';
 
-    el.classList.add('show');
+    el.style.opacity = '1';
+    el.style.pointerEvents = 'auto';
+    el.style.transform = 'translateX(-50%) translateY(0)';
     clearTimeout(bcPreviewTimer);
-    if(ms) bcPreviewTimer = setTimeout(()=> el.classList.remove('show'), ms);
+    if(ms) bcPreviewTimer = setTimeout(()=> {
+      el.style.opacity = '0';
+      el.style.pointerEvents = 'none';
+      el.style.transform = 'translateX(-50%) translateY(22px)';
+    }, ms);
   }
-  function hidePreview(){ clearTimeout(bcPreviewTimer); $('bcPreviewBubble').classList.remove('show'); }
-
-  async function bcLoadAll(silent){
-    try{
-      const data = (await fbGet('/broadcasts')) || {};
-
-      const tr = data.transient || {};
-      const stateEl = $('bcTransientState');
-      if(tr.active && tr.text){
-        const expires = Number(tr.expiresAt) || (Number(tr.createdAt||0) + Number(tr.duration||0)*1000);
-        const left = Math.max(0, expires - Date.now());
-        stateEl.innerHTML = left > 0
-          ? '<span class="live">● live</span> — “' + esc(tr.text) + '” · ' + Math.ceil(left/1000) + 's remaining'
-          : '<span class="idle">expired</span> — “' + esc(tr.text) + '”';
-      }else{
-        stateEl.innerHTML = '<span class="idle">No quick alert running.</span>';
-      }
-
-      const pe = data.persistent || {};
-      const pState = $('bcPersistState');
-      if(pe.text) $('bcPersistText').value = pe.text;
-      if(pe.active && pe.text){
-        pState.innerHTML = '<span class="live">● live</span> — “' + esc(pe.text) + '”';
-      }else{
-        pState.innerHTML = '<span class="idle">No sticky notice published.</span>';
-      }
-
-      const rq = data.requests || {};
-      document.querySelectorAll('.bc-item').forEach(card => {
-        const v = rq[card.dataset.key] || {};
-        card.querySelector('.bc-req-text').value   = v.text || '';
-        card.querySelector('.bc-req-active').checked = (v.active === true);
-      });
-
-      if(!silent) showStatus('Broadcast state loaded.', 'success', $('bcStatus'));
-    }catch(e){
-      if(!silent) showStatus('Load failed: ' + e.message, 'error', $('bcStatus'));
-    }
+  function hidePreview(){
+    clearTimeout(bcPreviewTimer);
+    const el = $('bcPreviewBubble');
+    el.style.opacity = '0';
+    el.style.pointerEvents = 'none';
+    el.style.transform = 'translateX(-50%) translateY(22px)';
   }
 
-  async function bcSendTransient(){
-    const text = $('bcTransientText').value.trim();
-    if(!text){ showStatus('Enter a message for the quick alert.', 'error', $('bcStatus')); return; }
-    let secs = Math.round(Number($('bcTransientSecs').value) || 8);
-    secs = Math.max(1, Math.min(300, secs));
-    const now = Date.now();
-    $('bcTransientSend').disabled = true;
-    try{
-      await fbPut('/broadcasts/transient', {
-        id: String(now), text, duration: secs,
-        createdAt: now, expiresAt: now + secs*1000, active: true
-      });
-      showStatus('Quick alert sent · visible for ' + secs + 's.', 'success', $('bcStatus'));
-      previewBubble(text, secs * 1000);
-      await bcLoadAll(true);
-    }catch(e){
-      showStatus('Send failed: ' + e.message, 'error', $('bcStatus'));
-    }finally{ $('bcTransientSend').disabled = false; }
-  }
-  async function bcStopTransient(){
-    try{
-      await fbPut('/broadcasts/transient/active', false);
-      showStatus('Quick alert stopped.', 'success', $('bcStatus'));
-      hidePreview();
-      await bcLoadAll(true);
-    }catch(e){ showStatus('Stop failed: ' + e.message, 'error', $('bcStatus')); }
-  }
-
-  async function bcPublishPersistent(){
-    const text = $('bcPersistText').value.trim();
-    if(!text){ showStatus('Enter a message for the sticky notice.', 'error', $('bcStatus')); return; }
-    $('bcPersistSend').disabled = true;
-    try{
-      await fbPut('/broadcasts/persistent', { text, active: true, updatedAt: Date.now() });
-      showStatus('Sticky notice published.', 'success', $('bcStatus'));
-      previewBubble(text, 6000);
-      await bcLoadAll(true);
-    }catch(e){ showStatus('Publish failed: ' + e.message, 'error', $('bcStatus')); }
-    finally{ $('bcPersistSend').disabled = false; }
-  }
-  async function bcRemovePersistent(){
-    if(!confirm('Remove the sticky notice from every player screen?')) return;
-    try{
-      await fbPut('/broadcasts/persistent', { text: '', active: false, updatedAt: Date.now() });
-      showStatus('Sticky notice removed.', 'success', $('bcStatus'));
-      hidePreview();
-      await bcLoadAll(true);
-    }catch(e){ showStatus('Remove failed: ' + e.message, 'error', $('bcStatus')); }
-  }
-
-  async function bcSaveRequest(card, btn){
-    const key = card.dataset.key;
-    const text = card.querySelector('.bc-req-text').value.trim();
-    const active = card.querySelector('.bc-req-active').checked;
-
-    if(active && !text){
-      showStatus('Type the message before enabling “' + (BC_REQ_LABELS[key] || key) + '”.', 'error', $('bcStatus'));
-      return;
-    }
-    btn.disabled = true;
-    try{
-      await fbPut('/broadcasts/requests/' + key, {
-        text, active: active && !!text, updatedAt: Date.now()
-      });
-      showStatus('Saved: ' + (BC_REQ_LABELS[key] || key) + (active && text ? ' · enabled' : ' · disabled') + '.',
-                  'success', $('bcStatus'));
-      if(active && text) previewBubble(text, 6000);
-      await bcLoadAll(true);
-    }catch(e){ showStatus('Save failed: ' + e.message, 'error', $('bcStatus')); }
-    finally{ btn.disabled = false; }
-  }
-
-  async function bcClearRequest(card, btn){
-    const key = card.dataset.key;
-    if(!confirm('Clear the message for “' + (BC_REQ_LABELS[key] || key) + '”?')) return;
-    btn.disabled = true;
-    try{
-      await fbPut('/broadcasts/requests/' + key, { text:'', active:false, updatedAt: Date.now() });
-      card.querySelector('.bc-req-text').value = '';
-      card.querySelector('.bc-req-active').checked = false;
-      showStatus('Cleared: ' + (BC_REQ_LABELS[key] || key) + '.', 'success', $('bcStatus'));
-    }catch(e){ showStatus('Clear failed: ' + e.message, 'error', $('bcStatus')); }
-    finally{ btn.disabled = false; }
-  }
-
-  async function bcUseDefaultDepositApproval(btn){
-    const card = document.querySelector('.bc-item[data-key="deposit_approval"]');
-    if(!card) return;
-    const ta  = card.querySelector('.bc-req-text');
-    const chk = card.querySelector('.bc-req-active');
-    ta.value = AUTO_APPROVAL_DEFAULT;
-    chk.checked = true;
-    previewBubble(AUTO_APPROVAL_DEFAULT, 6000);
-    btn.disabled = true;
-    try{
-      await fbPut('/broadcasts/requests/deposit_approval', {
-        text: AUTO_APPROVAL_DEFAULT, active: true, updatedAt: Date.now()
-      });
-      showStatus('Default Amharic approval message saved & enabled.', 'success', $('bcStatus'));
-    }catch(e){ showStatus('Save failed: ' + e.message, 'error', $('bcStatus')); }
-    finally{ btn.disabled = false; }
-  }
-
-  /* =========================================================
-     === EVENT WIRING ===
-     ========================================================= */
   $('connect').onclick = connect;
   $('disconnect').onclick = disconnect;
   $('refresh').onclick = refresh;
@@ -1725,7 +1760,6 @@
   $('loadSms').onclick = loadSms;
   $('clearSms').onclick = clearSms;
   $('smsAuto').onchange = () => { if($('smsAuto').checked){ loadSms(); startSmsAuto(); } else stopSmsAuto(); };
-  $('smsDbUrl').addEventListener('keydown', e => { if(e.key === 'Enter') loadSms(); });
 
   $('clearApproved').onclick = clearApprovedHistory;
 
@@ -1753,33 +1787,37 @@
   $('imgCloseBtn').onclick = closeImgModal;
   $('imgModal').addEventListener('click', e => { if(e.target === $('imgModal')) closeImgModal(); });
 
+  $('usersSearch').addEventListener('input', renderUsersTable);
+  $('usersRefresh').onclick = () => loadUsers(true);
+  $('usersAuto').onchange = () => {
+    if ($('usersAuto').checked) { loadUsers(true); startUsersAuto(); }
+    else stopUsersAuto();
+  };
+  $('userDetailClose').onclick = closeUserDetail;
+  $('userDetailModal').addEventListener('click', e => {
+    if (e.target === $('userDetailModal')) closeUserDetail();
+  });
+
   document.addEventListener('keydown', e => {
     if(e.key === 'Escape'){
       if($('dupModal').classList.contains('show')) closeDupModal();
       if($('imgModal').classList.contains('show')) closeImgModal();
+      if($('userDetailModal').classList.contains('show')) closeUserDetail();
     }
   });
 
-  const URL_FIELDS = ['dbUrl', 'smsDbUrl', 'bcDbUrl'];
-  URL_FIELDS.forEach(id => {
-    $(id).addEventListener('input', () => {
-      const v = $(id).value;
-      URL_FIELDS.forEach(other => { if(other !== id) $(other).value = v; });
-    });
-  });
-
   document.addEventListener('visibilitychange', () => {
-    if(document.hidden){ stopAuto(); stopSmsAuto(); stopAutoApprove(); }
+    if(document.hidden){ stopAuto(); stopSmsAuto(); stopAutoApprove(); stopUsersAuto(); }
     else {
       if($('auto').checked)    startAuto();
       if($('smsAuto').checked) startSmsAuto();
       if($('aaAuto').checked)  startAutoApprove();
+      if($('usersAuto').checked) startUsersAuto();
     }
   });
 
   renderApproved();
   updateCounts();
-  bcLoadAll(true);
 })();
 </script>
 </body>
