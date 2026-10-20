@@ -55,6 +55,7 @@
   .pill.dup{background:rgba(239,68,68,.2);color:#fca5a5}
   .pill.auto{background:rgba(16,185,129,.2);color:#6ee7b7}
   .pill.win{background:rgba(255,204,68,.2);color:#ffcc44}
+  .pill.blocked{background:rgba(239,68,68,.3);color:#ffb0b0}
   code{background:#0d0818;padding:2px 6px;border-radius:4px;font-size:12px}
 
   .tabs{display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--border);flex-wrap:wrap}
@@ -89,7 +90,7 @@
 
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:1000;padding:16px}
   .modal-overlay.show{display:flex}
-  .modal{background:var(--panel);border:1px solid var(--border);border-radius:14px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+  .modal{background:var(--panel);border:1px solid var(--border);border-radius:14px;max-width:680px;width:100%;max-height:88vh;overflow-y:auto;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
   .modal h3{margin:0 0 10px;font-size:17px;color:#fcd34d;display:flex;align-items:center;gap:8px}
   .modal h3 .icon{font-size:20px}
   .modal p{margin:0 0 10px;font-size:13.5px;line-height:1.65;color:var(--muted)}
@@ -143,6 +144,9 @@
   .ud-tx .head .a{font-weight:700;color:#f0e6ff;white-space:nowrap}
   .ud-tx .meta b{color:#d1c4e9;font-weight:500;display:inline-block;min-width:74px}
   @media (max-width:620px){ .ud-grid{grid-template-columns:1fr} }
+
+  .an-signal{background:#0d0818;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:12px;color:#b8abc9}
+  .an-signal b{color:#fca5a5}
 </style>
 </head>
 <body>
@@ -180,6 +184,9 @@
       <button class="tab" data-tab="users" role="tab">
         Users <span class="count zero" id="usersCount">0</span>
       </button>
+      <button class="tab" data-tab="analysis" role="tab">
+        Analysis <span class="count zero" id="analysisCount">0</span>
+      </button>
     </div>
 
     <div id="tab-pending" class="tabpanel">
@@ -214,6 +221,15 @@
         <span id="usersSummary">Not loaded yet.</span>
       </div>
       <div id="usersTable"></div>
+    </div>
+
+    <div id="tab-analysis" class="tabpanel" style="display:none">
+      <div class="toolbar">
+        <button id="analysisRun" class="secondary">↻ Run analysis now</button>
+        <button id="analysisBlockAll" class="reject">Block all auto-flagged</button>
+        <span style="margin-left:auto;font-size:12px;color:var(--muted)" id="analysisSummary">No analysis yet.</span>
+      </div>
+      <div id="analysisList"></div>
     </div>
   </div>
 
@@ -570,9 +586,9 @@
     $('tab-pending').style.display  = (name === 'pending')  ? '' : 'none';
     $('tab-approved').style.display = (name === 'approved') ? '' : 'none';
     $('tab-users').style.display    = (name === 'users')    ? '' : 'none';
-    if (name === 'users' && !usersData.length) {
-      loadUsers(true).then(startUsersAuto);
-    }
+    $('tab-analysis').style.display = (name === 'analysis') ? '' : 'none';
+    if (name === 'users' && !usersData.length) loadUsers(true).then(startUsersAuto);
+    if (name === 'analysis') runAnalysisView();
   }
 
   function updateCounts(){
@@ -651,8 +667,11 @@
     $('list').replaceChildren();
     $('usersTable').replaceChildren();
     $('usersSummary').textContent = 'Not loaded yet.';
-    usersData = [];
+    $('analysisList').replaceChildren();
+    $('analysisSummary').textContent = 'No analysis yet.';
+    usersData = []; analysisBatches = [];
     const uc = $('usersCount'); uc.textContent = '0'; uc.className = 'count zero';
+    const anc = $('analysisCount'); anc.textContent = '0'; anc.className = 'count zero';
     showStatus('Disconnected.','info');
     aaLog('Disconnected', 'skip');
   }
@@ -735,10 +754,10 @@
     const meta = document.createElement('div'); meta.className='tx-meta';
     if(t.reference) meta.innerHTML += '<b>ref</b> ' + esc(t.reference) + '<br>';
     if(t.type === 'withdraw') {
-        const fn = t.fullName || t.full_name;
-        const ph = t.phoneNumber || t.phone_number;
-        if (fn) meta.innerHTML += '<b>full name</b> ' + esc(fn) + '<br>';
-        if (ph) meta.innerHTML += '<b>phone</b> ' + esc(ph) + '<br>';
+      const fn = t.fullName || t.full_name;
+      const ph = t.phoneNumber || t.phone_number;
+      if (fn) meta.innerHTML += '<b>full name</b> ' + esc(fn) + '<br>';
+      if (ph) meta.innerHTML += '<b>phone</b> ' + esc(ph) + '<br>';
     }
     meta.innerHTML += '<b>id</b> <code>' + esc(t.id) + '</code><br>';
     meta.innerHTML += '<b>uid</b> <code>' + esc(t.walletUid||t.uid||'') + '</code>';
@@ -748,11 +767,11 @@
     const actions = document.createElement('div'); actions.className='tx-actions';
     const imgData = t.imageData || t.image_data;
     if (t.type === 'deposit' && imgData) {
-        const imgBtn = document.createElement('button');
-        imgBtn.className = 'secondary';
-        imgBtn.textContent = 'View Receipt';
-        imgBtn.onclick = () => showReceipt(imgData);
-        actions.appendChild(imgBtn);
+      const imgBtn = document.createElement('button');
+      imgBtn.className = 'secondary';
+      imgBtn.textContent = 'View Receipt';
+      imgBtn.onclick = () => showReceipt(imgData);
+      actions.appendChild(imgBtn);
     }
     if(t.status === 'pending'){
       const approve = document.createElement('button'); approve.className='approve'; approve.textContent='Approve';
@@ -780,8 +799,8 @@
       if(decision === 'approved') aaReasons.delete(tx.id);
       showStatus('Transaction ' + decision + '.', 'success');
 
-      const uid          = tx.walletUid || tx.uid;
-      const requestType  = (tx.type === 'withdraw') ? 'withdraw' : 'deposit';
+      const uid = tx.walletUid || tx.uid;
+      const requestType = (tx.type === 'withdraw') ? 'withdraw' : 'deposit';
       const decisionType = (decision === 'approved') ? 'approval' : 'rejection';
 
       await publishRequestResult(uid, requestType, decisionType, tx.id);
@@ -910,9 +929,7 @@
     }).sort((a, b) => b._ts - a._ts);
   }
 
-  async function fetchIncomingSms() {
-    return fetchIncomingSmsWithBase(null);
-  }
+  async function fetchIncomingSms() { return fetchIncomingSmsWithBase(null); }
 
   async function runAutoMatch(){
     if(!serverUrl || !adminKey){
@@ -932,7 +949,6 @@
       showStatus('Scan complete: ' + summary, res.approved ? 'success' : 'info', $('aaStatus'));
       aaLog('Scan complete: ' + summary, res.approved ? 'ok' : 'skip');
 
-      // Reload activity feed
       try {
         const { activity } = await adminApi('/admin/auto-activity');
         const box = $('aaLog');
@@ -968,16 +984,6 @@
     }
   }
 
-  async function maybeFireNoSms(tx, uid){
-    const txTime = Number(tx.timestamp) || firstSeenMap.get(tx.id) || Date.now();
-    const age    = Date.now() - txTime;
-    if(age < NO_SMS_GRACE_MS) return;
-    if(wasNotified(tx.id, 'no_sms')) return;
-    markNotified(tx.id, 'no_sms');
-    aaLog('📨 "no SMS" notification → uid=' + uid + ' (tx=' + tx.id + ')', 'warn');
-    await publishRequestResult(uid, 'deposit', 'no_sms', tx.id);
-  }
-
   function startAutoApprove(){
     stopAutoApprove();
     aaTimer = setInterval(()=>{
@@ -986,15 +992,13 @@
     }, 15000);
     aaLog('Auto-match enabled (every 15s).', 'ok');
   }
-  function stopAutoApprove(){
-    if(aaTimer){ clearInterval(aaTimer); aaTimer = null; }
-  }
+  function stopAutoApprove(){ if(aaTimer){ clearInterval(aaTimer); aaTimer = null; } }
 
   function openDupModal(tx, reason){
     dupPendingTx = tx;
     const amtStr = Number(reason.amount).toFixed(2);
     $('dupBody').innerHTML =
-        '<p>Automatic approval skipped this deposit because reference '
+      '<p>Automatic approval skipped this deposit because reference '
       + '<span class="ref">' + esc(reason.reference) + '</span> appears in '
       + '<b>' + reason.matchCount + ' incoming SMS records</b>.</p>'
       + '<p>Two or more SMS with the same reference is always treated as a '
@@ -1052,8 +1056,7 @@
       }else{
         const title = document.createElement('div');
         title.className = 'dup-list-title';
-        title.textContent = matches.length + ' SMS record' + (matches.length===1?'':'s')
-                          + ' with reference ' + ref;
+        title.textContent = matches.length + ' SMS record' + (matches.length===1?'':'s') + ' with reference ' + ref;
         details.appendChild(title);
 
         matches.forEach((s, i) => {
@@ -1123,8 +1126,8 @@
     modal.classList.add('show');
 
     if (!base64Data || base64Data.length < 50) {
-        loading.textContent = 'No image data found.';
-        return;
+      loading.textContent = 'No image data found.';
+      return;
     }
     let src = base64Data.trim();
     if (!src.startsWith('data:image/')) src = 'data:image/jpeg;base64,' + src;
@@ -1219,7 +1222,6 @@
       rowRef.appendChild(document.createTextNode('—'));
     }
     meta.appendChild(rowRef);
-
     box.appendChild(meta);
 
     if(text){
@@ -1253,7 +1255,8 @@
     const total = rows.length;
     const withTg = rows.filter(r => r.telegram_id).length;
     const botCount = rows.filter(r => r.is_bot).length;
-    return total + ' user' + (total===1?'':'s') + ' · ' + withTg + ' with Telegram · ' + botCount + ' bot' + (botCount===1?'':'s');
+    const blocked = rows.filter(r => r.blocked).length;
+    return total + ' user' + (total===1?'':'s') + ' · ' + withTg + ' with Telegram · ' + botCount + ' bots · ' + blocked + ' blocked';
   }
 
   function fmtBirr(n) {
@@ -1264,11 +1267,8 @@
 
   function rowMatches(row, q) {
     if (!q) return true;
-    const hay = [
-      row.uid, row.name, row.username, row.telegram_username,
-      row.telegram_id != null ? String(row.telegram_id) : '',
-      row.referred_by || ''
-    ].join(' ').toLowerCase();
+    const hay = [row.uid, row.name, row.username, row.telegram_username,
+      row.telegram_id != null ? String(row.telegram_id) : '', row.referred_by || ''].join(' ').toLowerCase();
     return q.toLowerCase().split(/\s+/).every(tok => hay.includes(tok));
   }
 
@@ -1283,14 +1283,10 @@
         : usersSummaryText(usersData)) +
       '</span>';
 
-    if (usersLoading && !usersData.length) {
-      target.innerHTML = '<div class="utable-empty">Loading users…</div>';
-      return;
-    }
+    if (usersLoading && !usersData.length) { target.innerHTML = '<div class="utable-empty">Loading users…</div>'; return; }
     if (!filtered.length) {
       target.innerHTML = '<div class="utable-empty">' +
-        (q ? 'No user matches “' + esc(q) + '”.' : 'No users yet.') +
-        '</div>';
+        (q ? 'No user matches “' + esc(q) + '”.' : 'No users yet.') + '</div>';
       return;
     }
 
@@ -1307,23 +1303,14 @@
       '<th class="num">P-Wallet</th>' +
       '</tr></thead><tbody>';
     for (const r of rows) {
-      const dep = r.deposit_count
-        ? '<span class="pill auto">' + r.deposit_count + '</span>'
-        : '<span class="zero">0</span>';
-      const wdr = r.withdraw_count
-        ? '<span class="pill">' + r.withdraw_count + '</span>'
-        : '<span class="zero">0</span>';
-      const wins = r.wins_count
-        ? '<span class="pill win">' + r.wins_count + '</span>'
-        : '<span class="zero">0</span>';
-      const winAmt = r.wins_total
-        ? fmtBirr(r.wins_total)
-        : '<span class="zero">0</span>';
-      const tg = r.telegram_id
-        ? '<span class="mono">' + esc(r.telegram_id) + '</span>'
-        : '<span class="zero">—</span>';
+      const dep = r.deposit_count ? '<span class="pill auto">' + r.deposit_count + '</span>' : '<span class="zero">0</span>';
+      const wdr = r.withdraw_count ? '<span class="pill">' + r.withdraw_count + '</span>' : '<span class="zero">0</span>';
+      const wins = r.wins_count ? '<span class="pill win">' + r.wins_count + '</span>' : '<span class="zero">0</span>';
+      const winAmt = r.wins_total ? fmtBirr(r.wins_total) : '<span class="zero">0</span>';
+      const tg = r.telegram_id ? '<span class="mono">' + esc(r.telegram_id) + '</span>' : '<span class="zero">—</span>';
+      const blockBadge = r.blocked ? ' <span class="pill blocked">blocked</span>' : '';
       html += '<tr data-uid="' + esc(r.uid) + '" class="' + (r.is_bot ? 'is-bot' : '') + '">' +
-        '<td class="name" title="' + esc(r.name) + '">' + esc(r.name) + '</td>' +
+        '<td class="name" title="' + esc(r.name) + '">' + esc(r.name) + blockBadge + '</td>' +
         '<td class="mono">' + tg + '</td>' +
         '<td class="mono">' + esc(r.uid) + '</td>' +
         '<td class="num">' + dep + '</td>' +
@@ -1342,10 +1329,7 @@
   }
 
   async function loadUsers(showErrors) {
-    if (!serverUrl || !adminKey) {
-      if (showErrors) showStatus('Connect to the server first.', 'warn');
-      return;
-    }
+    if (!serverUrl || !adminKey) { if (showErrors) showStatus('Connect to the server first.', 'warn'); return; }
     if (usersLoading) return;
     usersLoading = true;
     if (showErrors) $('usersSummary').textContent = 'Loading…';
@@ -1359,18 +1343,11 @@
     } catch (e) {
       if (showErrors) showStatus('Load users failed: ' + e.message, 'error');
       $('usersTable').innerHTML = '<div class="utable-empty">Could not load users: ' + esc(e.message) + '</div>';
-    } finally {
-      usersLoading = false;
-    }
+    } finally { usersLoading = false; }
   }
 
-  function startUsersAuto() {
-    stopUsersAuto();
-    if ($('usersAuto').checked) usersAutoTimer = setInterval(() => loadUsers(false), 20000);
-  }
-  function stopUsersAuto() {
-    if (usersAutoTimer) { clearInterval(usersAutoTimer); usersAutoTimer = null; }
-  }
+  function startUsersAuto(){ stopUsersAuto(); if ($('usersAuto').checked) usersAutoTimer = setInterval(() => loadUsers(false), 20000); }
+  function stopUsersAuto(){ if (usersAutoTimer) { clearInterval(usersAutoTimer); usersAutoTimer = null; } }
 
   async function openUserDetail(uid) {
     const row = usersData.find(r => r.uid === uid);
@@ -1384,43 +1361,69 @@
     const updated = row.updated_at ? new Date(Number(row.updated_at)).toLocaleString() : '—';
     const referredBy = row.referred_by ? esc(row.referred_by) : '—';
     const bot = row.is_bot ? ' <span class="pill dup">bot</span>' : '';
+    const blockedBadge = row.blocked ? ' <span class="pill blocked">blocked</span>' : '';
 
     body.innerHTML =
       '<div class="ud-hero">' +
-         '<div class="avatar">' + esc(initials) + '</div>' +
-         '<div class="meta">' +
-           '<div class="n">' + esc(row.name) + bot + '</div>' +
-           '<div class="s">uid: ' + esc(row.uid) + '</div>' +
-           '<div class="s">' + tgLine + '</div>' +
-         '</div>' +
-       '</div>' +
+        '<div class="avatar">' + esc(initials) + '</div>' +
+        '<div class="meta">' +
+          '<div class="n">' + esc(row.name) + bot + blockedBadge + '</div>' +
+          '<div class="s">uid: ' + esc(row.uid) + '</div>' +
+          '<div class="s">' + tgLine + '</div>' +
+        '</div>' +
+      '</div>' +
+      (row.blocked ? '<div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:10px;margin-bottom:12px;color:#fca5a5;font-size:13px"><b>Blocked:</b> ' + esc(row.block_reason || 'policy violation') + '</div>' : '') +
       '<div class="ud-grid">' +
-         '<div class="cell"><div class="k">Deposits</div><div class="v">' + row.deposit_count + ' · ' + fmtBirr(row.deposit_total) + ' Birr</div></div>' +
-         '<div class="cell"><div class="k">Withdrawals</div><div class="v">' + row.withdraw_count + ' · ' + fmtBirr(row.withdraw_total) + ' Birr</div></div>' +
-         '<div class="cell"><div class="k">Wins</div><div class="v">' + row.wins_count + ' · ' + fmtBirr(row.wins_total) + ' Birr</div></div>' +
-         '<div class="cell"><div class="k">M-Wallet</div><div class="v">' + fmtBirr(row.main) + ' Birr</div></div>' +
-         '<div class="cell"><div class="k">P-Wallet</div><div class="v">' + fmtBirr(row.play) + ' Birr</div></div>' +
-         '<div class="cell"><div class="k">Pending withdrawal</div><div class="v">' + fmtBirr(row.pending) + ' Birr</div></div>' +
-         '<div class="cell"><div class="k">Referral earnings</div><div class="v">' + fmtBirr(row.ref) + ' Birr</div></div>' +
-         '<div class="cell"><div class="k">Referred by</div><div class="v">' + referredBy + '</div></div>' +
-         '<div class="cell"><div class="k">Updated</div><div class="v" style="font-size:13px">' + esc(updated) + '</div></div>' +
-         '<div class="cell"><div class="k">Created</div><div class="v" style="font-size:13px">' + esc(created) + '</div></div>' +
-       '</div>' +
+        '<div class="cell"><div class="k">Deposits</div><div class="v">' + row.deposit_count + ' · ' + fmtBirr(row.deposit_total) + ' Birr</div></div>' +
+        '<div class="cell"><div class="k">Withdrawals</div><div class="v">' + row.withdraw_count + ' · ' + fmtBirr(row.withdraw_total) + ' Birr</div></div>' +
+        '<div class="cell"><div class="k">Wins</div><div class="v">' + row.wins_count + ' · ' + fmtBirr(row.wins_total) + ' Birr</div></div>' +
+        '<div class="cell"><div class="k">M-Wallet</div><div class="v">' + fmtBirr(row.main) + ' Birr</div></div>' +
+        '<div class="cell"><div class="k">P-Wallet</div><div class="v">' + fmtBirr(row.play) + ' Birr</div></div>' +
+        '<div class="cell"><div class="k">Pending withdrawal</div><div class="v">' + fmtBirr(row.pending) + ' Birr</div></div>' +
+        '<div class="cell"><div class="k">Referral earnings</div><div class="v">' + fmtBirr(row.ref) + ' Birr</div></div>' +
+        '<div class="cell"><div class="k">Referred by</div><div class="v">' + referredBy + '</div></div>' +
+        '<div class="cell"><div class="k">Updated</div><div class="v" style="font-size:13px">' + esc(updated) + '</div></div>' +
+        '<div class="cell"><div class="k">Created</div><div class="v" style="font-size:13px">' + esc(created) + '</div></div>' +
+      '</div>' +
       '<div class="ud-tx-title">Win history</div>' +
       '<div id="udWinList"><div class="utable-empty">Loading wins…</div></div>' +
       '<div class="ud-tx-title">Transaction history</div>' +
-      '<div id="udTxList"><div class="utable-empty">Loading transactions…</div></div>';
+      '<div id="udTxList"><div class="utable-empty">Loading transactions…</div></div>' +
+      '<div class="toolbar" style="margin-top:16px">' +
+        (row.blocked
+          ? '<button id="udUnblockBtn" class="approve">Unblock</button>'
+          : '<button id="udBlockBtn" class="reject">Block user</button>') +
+      '</div>';
 
     $('userDetailModal').classList.add('show');
 
-    // Load wins
+    const blockBtn = document.getElementById('udBlockBtn');
+    if (blockBtn) blockBtn.onclick = async () => {
+      if (!confirm('Block ' + row.name + ' (' + row.uid + ')?')) return;
+      try {
+        await adminApi('/admin/analysis/block', 'POST', { uid: row.uid, reason: 'manual-admin-block' });
+        showStatus('Blocked ' + row.uid, 'success');
+        closeUserDetail();
+        await loadUsers(false);
+      } catch (e) { showStatus('Block failed: ' + e.message, 'error'); }
+    };
+    const unblockBtn = document.getElementById('udUnblockBtn');
+    if (unblockBtn) unblockBtn.onclick = async () => {
+      if (!confirm('Unblock ' + row.name + '?')) return;
+      try {
+        await adminApi('/admin/analysis/unblock', 'POST', { uid: row.uid });
+        showStatus('Unblocked ' + row.uid, 'success');
+        closeUserDetail();
+        await loadUsers(false);
+      } catch (e) { showStatus('Unblock failed: ' + e.message, 'error'); }
+    };
+
     try {
       const { wins } = await adminApi('/admin/users/' + encodeURIComponent(uid) + '/wins');
       const list = Array.isArray(wins) ? wins : [];
       const holder = $('udWinList');
-      if (!list.length) {
-        holder.innerHTML = '<div class="utable-empty">No wins recorded for this user.</div>';
-      } else {
+      if (!list.length) { holder.innerHTML = '<div class="utable-empty">No wins recorded for this user.</div>'; }
+      else {
         let html = '';
         for (const w of list) {
           const when = w.at ? new Date(Number(w.at)).toLocaleString() : '—';
@@ -1439,48 +1442,168 @@
         }
         holder.innerHTML = html;
       }
-    } catch (e) {
-      $('udWinList').innerHTML = '<div class="utable-empty">Could not load wins: ' + esc(e.message) + '</div>';
-    }
+    } catch (e) { $('udWinList').innerHTML = '<div class="utable-empty">Could not load wins: ' + esc(e.message) + '</div>'; }
 
-    // Load transactions
     try {
       const { transactions } = await adminApi('/admin/users/' + encodeURIComponent(uid) + '/transactions');
       const list = Array.isArray(transactions) ? transactions : [];
       const holder = $('udTxList');
-      if (!list.length) {
-        holder.innerHTML = '<div class="utable-empty">No transactions recorded for this user.</div>';
-      } else {
+      if (!list.length) { holder.innerHTML = '<div class="utable-empty">No transactions recorded for this user.</div>'; }
+      else {
         let html = '';
         for (const tx of list) {
           const when = tx.timestamp ? new Date(Number(tx.timestamp)).toLocaleString() : '—';
           const cls = tx.type === 'withdraw' ? 'withdraw' : 'deposit';
           html +=
             '<div class="ud-tx">' +
-               '<div class="head">' +
-                 '<span class="t ' + cls + '">' + esc((tx.type || '').toUpperCase()) + ' · ' + esc(tx.status || '') + '</span>' +
-                 '<span class="a">' + fmtBirr(tx.amount) + ' Birr</span>' +
-               '</div>' +
-               '<div class="meta">' +
-                 (tx.reference ? '<b>ref</b> ' + esc(tx.reference) + '<br>' : '') +
-                 (tx.full_name ? '<b>name</b> ' + esc(tx.full_name) + '<br>' : '') +
-                 (tx.phone_number ? '<b>phone</b> ' + esc(tx.phone_number) + '<br>' : '') +
-                 (tx.reason ? '<b>reason</b> ' + esc(tx.reason) + '<br>' : '') +
-                 '<b>at</b> ' + esc(when) + '<br>' +
-                 '<b>tx id</b> <code>' + esc(tx.id) + '</code>' +
-               '</div>' +
-             '</div>';
+              '<div class="head">' +
+                '<span class="t ' + cls + '">' + esc((tx.type || '').toUpperCase()) + ' · ' + esc(tx.status || '') + '</span>' +
+                '<span class="a">' + fmtBirr(tx.amount) + ' Birr</span>' +
+              '</div>' +
+              '<div class="meta">' +
+                (tx.reference ? '<b>ref</b> ' + esc(tx.reference) + '<br>' : '') +
+                (tx.full_name ? '<b>name</b> ' + esc(tx.full_name) + '<br>' : '') +
+                (tx.phone_number ? '<b>phone</b> ' + esc(tx.phone_number) + '<br>' : '') +
+                (tx.reason ? '<b>reason</b> ' + esc(tx.reason) + '<br>' : '') +
+                '<b>at</b> ' + esc(when) + '<br>' +
+                '<b>tx id</b> <code>' + esc(tx.id) + '</code>' +
+              '</div>' +
+            '</div>';
         }
         holder.innerHTML = html;
       }
-    } catch (e) {
-      $('udTxList').innerHTML = '<div class="utable-empty">Could not load transactions: ' + esc(e.message) + '</div>';
-    }
+    } catch (e) { $('udTxList').innerHTML = '<div class="utable-empty">Could not load transactions: ' + esc(e.message) + '</div>'; }
   }
 
   function closeUserDetail() {
     $('userDetailModal').classList.remove('show');
     $('userDetailBody').replaceChildren();
+  }
+
+  // ---------- Analysis tab ----------
+  let analysisBatches = [];
+
+  function renderAnalysis() {
+    const list = $('analysisList');
+    list.replaceChildren();
+    if (!analysisBatches.length) {
+      const d = document.createElement('div');
+      d.className = 'empty';
+      d.textContent = 'No analysis run yet. Click “Run analysis now”.';
+      list.appendChild(d);
+      return;
+    }
+    const latest = analysisBatches[0];
+    $('analysisSummary').textContent =
+      'Last run: ' + new Date(latest.at).toLocaleString() + ' · ' +
+      latest.total + ' users · ' + latest.clean + ' clean · ' +
+      latest.suspect + ' suspect · ' + latest.block + ' block';
+    const c = $('analysisCount');
+    c.textContent = String((latest.suspect || 0) + (latest.block || 0));
+    c.className = 'count' + (((latest.suspect || 0) + (latest.block || 0)) ? ' has' : ' zero');
+
+    if (!latest.results.length) {
+      const d = document.createElement('div');
+      d.className = 'empty';
+      d.textContent = 'No suspicious accounts in the latest run.';
+      list.appendChild(d);
+      return;
+    }
+    for (const r of latest.results) {
+      const box = document.createElement('div');
+      box.className = 'tx';
+      const head = document.createElement('div');
+      head.className = 'tx-head';
+      const left = document.createElement('div');
+      const name = document.createElement('div');
+      name.className = 'tx-type';
+      name.textContent = r.name;
+      left.appendChild(name);
+      const meta = document.createElement('div');
+      meta.className = 'tx-meta';
+      meta.innerHTML = '<b>' + esc(r.uid) + '</b>' +
+        (r.telegram_id ? ' · tg ' + esc(r.telegram_id) : '') +
+        ' · deposit ' + (r.deposit_count || 0) + ' (' + (r.deposit_total || 0).toFixed(2) + ' Birr)' +
+        ' · withdraw ' + (r.withdraw_count || 0) + ' (' + (r.withdraw_total || 0).toFixed(2) + ' Birr)';
+      left.appendChild(meta);
+      head.appendChild(left);
+      const right = document.createElement('div');
+      right.style.textAlign = 'right';
+      const score = document.createElement('div');
+      score.className = 'tx-amount';
+      score.textContent = 'score ' + r.score;
+      right.appendChild(score);
+      const lvl = document.createElement('span');
+      lvl.className = 'pill ' + (r.level === 'block' ? 'dup' : '');
+      lvl.textContent = r.level;
+      right.appendChild(lvl);
+      head.appendChild(right);
+      box.appendChild(head);
+
+      for (const s of (r.signals || [])) {
+        const sig = document.createElement('div');
+        sig.className = 'an-signal';
+        sig.innerHTML = '<b>' + esc(s.code) + '</b> <span style="color:var(--muted)">+' + s.weight + '</span> — ' + esc(s.detail || '');
+        box.appendChild(sig);
+      }
+
+      const actions = document.createElement('div');
+      actions.className = 'tx-actions';
+      const blockBtn = document.createElement('button');
+      blockBtn.className = 'reject';
+      blockBtn.textContent = 'Block';
+      blockBtn.onclick = async () => {
+        if (!confirm('Block ' + r.name + ' (' + r.uid + ')?')) return;
+        try {
+          await adminApi('/admin/analysis/block', 'POST', { uid: r.uid, reason: 'fake-account', signals: r.signals });
+          showStatus('Blocked ' + r.uid, 'success');
+          await loadUsers(false);
+          await runAnalysisView();
+        } catch (e) { showStatus('Block failed: ' + e.message, 'error'); }
+      };
+      actions.appendChild(blockBtn);
+      box.appendChild(actions);
+      list.appendChild(box);
+    }
+  }
+
+  async function runAnalysisView() {
+    if (!serverUrl) return;
+    try {
+      const res = await adminApi('/admin/analysis');
+      analysisBatches = res.batches || [];
+      renderAnalysis();
+    } catch (e) {
+      showStatus('Load analysis failed: ' + e.message, 'error');
+    }
+  }
+
+  async function triggerAnalysis() {
+    if (!serverUrl) { showStatus('Connect first.', 'error'); return; }
+    $('analysisRun').disabled = true;
+    try {
+      const res = await adminApi('/admin/analysis/run', 'POST', {});
+      analysisBatches = [res.batch, ...analysisBatches].slice(0, 10);
+      renderAnalysis();
+      showStatus('Analysis complete.', 'success');
+    } catch (e) {
+      showStatus('Analysis failed: ' + e.message, 'error');
+    } finally { $('analysisRun').disabled = false; }
+  }
+
+  async function blockAllFlagged() {
+    if (!serverUrl) { showStatus('Connect first.', 'error'); return; }
+    if (!confirm('Run analysis and block every account with level=block?')) return;
+    $('analysisBlockAll').disabled = true;
+    try {
+      const res = await adminApi('/admin/analysis/block-all-suspects', 'POST', {});
+      analysisBatches = [res.batch, ...analysisBatches].slice(0, 10);
+      renderAnalysis();
+      showStatus('Blocked ' + res.blocked + ' account(s).', 'success');
+      await loadUsers(false);
+    } catch (e) {
+      showStatus('Block-all failed: ' + e.message, 'error');
+    } finally { $('analysisBlockAll').disabled = false; }
   }
 
   // ---------- Broadcast ----------
@@ -1679,6 +1802,8 @@
   $('clearSms').onclick = clearSms;
   $('smsAuto').onchange = () => { if($('smsAuto').checked){ loadSms(); startSmsAuto(); } else stopSmsAuto(); };
 
+  $('clearApproved').onclick = clearApprovedHistory;
+
   document.querySelectorAll('.tab').forEach(t => { t.onclick = () => switchTab(t.dataset.tab); });
 
   $('bcTransientSend').onclick = bcSendTransient;
@@ -1713,6 +1838,9 @@
   $('userDetailModal').addEventListener('click', e => {
     if (e.target === $('userDetailModal')) closeUserDetail();
   });
+
+  $('analysisRun').onclick = triggerAnalysis;
+  $('analysisBlockAll').onclick = blockAllFlagged;
 
   document.addEventListener('keydown', e => {
     if(e.key === 'Escape'){
