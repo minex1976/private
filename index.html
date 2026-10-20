@@ -13,7 +13,7 @@
   :root{--bg:#120b20;--panel:#1e1530;--border:#3a2a55;--fg:#eee;--muted:#9c8fb5;--accent:#8b5cf6;--accent-hover:#7c3aed;--green:#10b981;--red:#ef4444;--amber:#f59e0b}
   *{box-sizing:border-box}
   body{font-family:'Poppins','Noto Sans Ethiopic',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:20px;min-height:100vh;line-height:1.5}
-  .container{max-width:900px;margin:0 auto}
+  .container{max-width:1000px;margin:0 auto}
   h1{font-size:22px;margin:0 0 4px}
   h2{font-size:17px;margin:0 0 10px}
   .subtitle{color:var(--muted);font-size:13px;margin-bottom:20px}
@@ -54,6 +54,7 @@
   .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;background:rgba(245,158,11,.2);color:#fcd34d}
   .pill.dup{background:rgba(239,68,68,.2);color:#fca5a5}
   .pill.auto{background:rgba(16,185,129,.2);color:#6ee7b7}
+  .pill.win{background:rgba(255,204,68,.2);color:#ffcc44}
   code{background:#0d0818;padding:2px 6px;border-radius:4px;font-size:12px}
 
   .tabs{display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--border);flex-wrap:wrap}
@@ -108,7 +109,6 @@
   .img-content{text-align:center;margin-top:10px;background:#000;border-radius:8px;padding:10px;min-height:200px;display:flex;align-items:center;justify-content:center}
   .img-content img{max-width:100%;max-height:65vh;border-radius:4px;display:none}
 
-  /* Users table */
   .utable{width:100%;border-collapse:collapse;font-size:13px;background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden}
   .utable thead th{background:#160f25;color:#c4b5fd;text-align:left;font-weight:600;padding:9px 10px;border-bottom:1px solid var(--border);white-space:nowrap;font-size:12px}
   .utable thead th.num{text-align:right}
@@ -139,6 +139,7 @@
   .ud-tx .head .t{font-weight:600;color:#d1c4e9}
   .ud-tx .head .t.deposit{color:#6ee7b7}
   .ud-tx .head .t.withdraw{color:#fca5a5}
+  .ud-tx .head .t.win{color:#ffcc44}
   .ud-tx .head .a{font-weight:700;color:#f0e6ff;white-space:nowrap}
   .ud-tx .meta b{color:#d1c4e9;font-weight:500;display:inline-block;min-width:74px}
   @media (max-width:620px){ .ud-grid{grid-template-columns:1fr} }
@@ -147,7 +148,7 @@
 <body>
 <div class="container">
   <h1>Winzo Admin</h1>
-  <div class="subtitle">HTTP-based admin · all Firebase access proxied through the game server</div>
+  <div class="subtitle">HTTP-based admin · automatic SMS deposit approval · all Firebase access proxied through the game server</div>
 
   <div class="card">
     <div class="row">
@@ -316,8 +317,8 @@
   <div class="card">
     <h2>Automatic Deposit Approval</h2>
     <div class="subtitle" style="margin:0 0 12px">
-      A deposit is approved when <b>one</b> SMS carries the reference and the amount matches.
-      Two or more SMS sharing the same reference = duplicate (manual review).
+      A Telebirr (sender <b>127</b>) SMS approves a deposit when the reference and amount match exactly.
+      Two distinct SMS sharing the same reference are treated as a duplicate and held for manual review.
     </div>
 
     <div class="row" style="margin-top:12px">
@@ -377,7 +378,7 @@
 </div>
 
 <div id="userDetailModal" class="modal-overlay" role="dialog" aria-modal="true">
-  <div class="modal" style="max-width:720px">
+  <div class="modal" style="max-width:760px">
     <h3><span class="icon">👤</span> User detail</h3>
     <div id="userDetailBody"></div>
     <div class="modal-actions">
@@ -413,13 +414,6 @@
 
   const AUTO_APPROVAL_DEFAULT =
     'ትአዛዝዎ በትክክል ተፈፅሟል! የዊንዞ ደንበኛ ስለሆኑ እናመሰግናለን።';
-
-  const DEFAULT_MESSAGES = {
-    deposit_approval:   AUTO_APPROVAL_DEFAULT,
-    deposit_rejection:  'ውድ ደንበኛችን፣ ጥያቄዎት አልተስተናገደም።',
-    withdraw_approval:  'ውድ ደንበኛችን፣ የወጪ ጥያቄዎ ተከናውኗል።',
-    withdraw_rejection: 'የወጪ ጥያቄዎ አልተስተናገደም።'
-  };
 
   const NO_SMS_MESSAGE =
     'ውድ ደንበኛችን፣ ጥያቄዎ አልተስተናገደም። ትክክለኛውን መረጃ ያስገቡና በድጋሚ የሞክሩ።';
@@ -671,26 +665,16 @@
     try{
       const data = await api('/admin/pending');
       currentTxs = data.transactions || [];
-
       const pendingIds = new Set(currentTxs.map(t => t.id));
-
-      for(const key of Array.from(aaReasons.keys())){
-        if(!pendingIds.has(key)) aaReasons.delete(key);
-      }
+      for(const key of Array.from(aaReasons.keys())) if(!pendingIds.has(key)) aaReasons.delete(key);
       let notifChanged = false;
       for(const key of Array.from(notifiedMap)){
         const [txId] = key.split('|');
         if(!pendingIds.has(txId)){ notifiedMap.delete(key); notifChanged = true; }
       }
       if(notifChanged) saveNotified();
-
-      for(const tx of currentTxs){
-        if(!firstSeenMap.has(tx.id)) firstSeenMap.set(tx.id, Date.now());
-      }
-      for(const id of Array.from(firstSeenMap.keys())){
-        if(!pendingIds.has(id)) firstSeenMap.delete(id);
-      }
-
+      for(const tx of currentTxs) if(!firstSeenMap.has(tx.id)) firstSeenMap.set(tx.id, Date.now());
+      for(const id of Array.from(firstSeenMap.keys())) if(!pendingIds.has(id)) firstSeenMap.delete(id);
       render(currentTxs);
       updateCounts();
     }catch(e){
@@ -882,12 +866,11 @@
 
   async function clearApprovedHistory(){
     if(!autoApproved.length) return;
-    if(!confirm('Clear all ' + autoApproved.length + ' auto-approved records?\n\nLocal cache will be wiped. Firebase /auto_approved will also be cleared.\n(Used references are kept on the server.)')) return;
+    if(!confirm('Clear all ' + autoApproved.length + ' auto-approved records?\n\nLocal cache will be wiped. Used references are kept on the server.')) return;
     autoApproved = [];
     saveAutoApproved();
     updateCounts();
     renderApproved();
-    try{ await adminApi('/admin/auto-approved/__all__', 'PUT', null).catch(()=>{}); }catch{}
   }
 
   function parseSms(text){
@@ -896,7 +879,7 @@
     if(!t) return out;
 
     let m = t.match(/received\s+(?:ETB|Birr)\s*([\d,]+(?:\.\d+)?)/i)
-         || t.match(/(?:ETB|Birr)\s*([\d,]+(?:\.\d+)?)/i);
+         || t.match(/(?:ETB|Birr|ብር|Br\b|Amt|Amount)\s*[:\-]?\s*([\d,]+(?:\.\d+)?)/i);
     if(m) out.amount = m[1].replace(/,/g,'');
 
     m = t.match(/\bfrom\s+(.+?)\s*\(/)
@@ -904,8 +887,9 @@
     if(m) out.from = m[1].trim().replace(/[.,;]+$/,'');
 
     m = t.match(/your\s+transaction\s+number\s+is\s*[:\-]?\s*([A-Za-z0-9]{6,})/i)
-     || t.match(/\breference(?:\s*(?:number|code|no\.?))?\s*[:\-]?\s*([A-Za-z0-9]{6,})/i)
-     || t.match(/\b(?:transaction\s+number|txn\s*(?:id|no\.?))\s*[:\-]?\s*([A-Za-z0-9]{6,})/i);
+     || t.match(/\btransaction\s+(?:number|no\.?|id)\s*(?:is|:|\-)?\s*([A-Za-z0-9]{6,})/i)
+     || t.match(/\btxn\s*(?:id|no\.?|number)?\s*(?:is|:|\-)?\s*([A-Za-z0-9]{6,})/i)
+     || t.match(/\bref(?:erence)?\s*(?:number|code|no\.?|id)?\s*(?:is|:|\-)?\s*([A-Za-z0-9]{6,})/i);
     if(m) out.reference = m[1].toUpperCase();
 
     m = t.match(/\bon\s+(\d{1,2}\/\d{1,2}\/\d{4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?)/);
@@ -939,150 +923,46 @@
     $('aaRunNow').disabled = true;
     showStatus('Scanning…', 'info', $('aaStatus'));
 
-    let smsList = [];
-    let pendingTxs = [];
-
     try{
-      try{ smsList = await fetchIncomingSms(); }
-      catch(e){
-        aaLog('SMS fetch failed: ' + e.message, 'err');
-        showStatus('SMS fetch failed: ' + e.message, 'error', $('aaStatus'));
-        return;
-      }
+      const res = await adminApi('/admin/auto-match', 'POST', {});
+      const summary = res.approved + ' approved · '
+                    + res.skipped + ' skipped · '
+                    + res.errors + ' error · '
+                    + res.scanned + ' scanned';
+      showStatus('Scan complete: ' + summary, res.approved ? 'success' : 'info', $('aaStatus'));
+      aaLog('Scan complete: ' + summary, res.approved ? 'ok' : 'skip');
 
-      const smsByRef = new Map();
-      for(const s of smsList){
-        const p = parseSms(s.text || s.message || s.body || '');
-        const ref = normalizeRef(p.reference);
-        if(!ref) continue;
-        const amount = Number(p.amount);
-        if(!isFinite(amount) || amount <= 0) continue;
-        if(!smsByRef.has(ref)) smsByRef.set(ref, []);
-        smsByRef.get(ref).push({sms:s, amount});
-      }
-
-      try{
-        const data = await api('/admin/pending');
-        pendingTxs = (data.transactions||[]).filter(t => t.type === 'deposit' && t.status === 'pending');
-      }catch(e){
-        aaLog('Pending fetch failed: ' + e.message, 'err');
-        showStatus('Pending fetch failed: ' + e.message, 'error', $('aaStatus'));
-        return;
-      }
-
-      if(!pendingTxs.length){
-        showStatus('No pending deposits to check.', 'info', $('aaStatus'));
-        aaLog('No pending deposits.', 'skip');
-        return;
-      }
-
-      const usedRefs = await fetchUsedReferences();
-
-      let approved = 0, skipped = 0, duplicate = 0, noMatch = 0, usedRefCount = 0, notified = 0;
-
-      for(const tx of pendingTxs){
-        const ref = normalizeRef(tx.reference);
-        const amt = Number(tx.amount);
-        const uid = tx.walletUid || tx.uid;
-
-        if(!ref){
-          noMatch++;
-          aaLog('tx=' + tx.id + ' → no reference on deposit request', 'skip');
-          await maybeFireNoSms(tx, uid);
-          continue;
+      // Reload activity feed
+      try {
+        const { activity } = await adminApi('/admin/auto-activity');
+        const box = $('aaLog');
+        box.innerHTML = '';
+        for (const a of (activity || []).slice().reverse()) {
+          const cls = a.kind === 'approved' ? 'ok' : a.kind === 'error' ? 'err' : 'skip';
+          const t = new Date(Number(a.at) || Date.now()).toLocaleTimeString();
+          const line = document.createElement('div');
+          line.innerHTML = '<span class="ts">' + t + '</span> <span class="' + cls + '">'
+            + esc(a.kind) + ' · sms=' + esc(a.smsId) + ' · ref=' + esc(a.reference)
+            + ' · amt=' + (Number(a.amount) || 0).toFixed(2) + ' · ' + esc(a.reason)
+            + '</span>';
+          box.appendChild(line);
         }
-        if(!isFinite(amt) || amt <= 0){
-          noMatch++;
-          aaLog('tx=' + tx.id + ' → invalid amount', 'skip');
-          continue;
-        }
+      } catch (_) {}
 
-        if(usedRefs.has(ref)){
-          usedRefCount++;
-          aaReasons.set(tx.id, { type: 'used_ref', reference: ref });
-          aaLog('tx=' + tx.id + ' ref=' + ref + ' → reference already used', 'warn');
-
-          if(!wasNotified(tx.id, 'used_ref')){
-            markNotified(tx.id, 'used_ref');
-            await publishRequestResult(uid, 'deposit', 'used_ref', tx.id);
-            notified++;
+      if(res.approved) {
+        await refresh();
+        loadAutoApprovedFromFirebase().then(remote => {
+          if(remote.length){
+            autoApproved = remote;
+            saveAutoApproved();
+            updateCounts();
+            renderApproved();
           }
-          continue;
-        }
-
-        const bucket = smsByRef.get(ref);
-        if(!bucket || !bucket.length){
-          noMatch++;
-          aaLog('tx=' + tx.id + ' ref=' + ref + ' → no matching SMS', 'skip');
-          await maybeFireNoSms(tx, uid);
-          continue;
-        }
-
-        if(bucket.length > 1){
-          duplicate++;
-          aaReasons.set(tx.id, {
-            type: 'duplicate', reference: ref, amount: amt,
-            matchCount: bucket.length,
-            matches: bucket.map(x => ({
-              id: x.sms._id, amount: x.amount,
-              from: x.sms.from || null, text: x.sms.text || '',
-              receivedStamp: x.sms.receivedStamp || null,
-              sentStamp:     x.sms.sentStamp || null,
-              timestamp:     x.sms.timestamp || null
-            }))
-          });
-          const amounts = bucket.map(x => x.amount.toFixed(2)).join(', ');
-          aaLog('tx=' + tx.id + ' ref=' + ref + ' → ' + bucket.length
-              + ' SMS share this reference (amounts: ' + amounts + '); duplicate', 'warn');
-          continue;
-        }
-
-        const only = bucket[0];
-        if(Math.abs(only.amount - amt) >= 0.009){
-          noMatch++;
-          aaLog('tx=' + tx.id + ' ref=' + ref + ' → amount differs ('
-              + only.amount.toFixed(2) + ' vs ' + amt.toFixed(2) + ')', 'warn');
-          await maybeFireNoSms(tx, uid);
-          continue;
-        }
-
-        aaReasons.delete(tx.id);
-        const guardKey = ref + '|' + amt.toFixed(2);
-        if(aaAttempted.has(guardKey)){ skipped++; continue; }
-        aaAttempted.add(guardKey);
-
-        try{
-          await api('/admin/decision?id=' + encodeURIComponent(tx.id) + '&decision=approved');
-          approved++;
-          aaLog('✓ approved tx=' + tx.id + ' ref=' + ref
-              + ' amt=' + amt.toFixed(2) + ' (sms ' + only.sms._id + ')', 'ok');
-
-          await recordAutoApproved({
-            id:          tx.id,
-            uid:         uid || '',
-            username:    tx.username || tx.walletUid || tx.uid || '',
-            displayName: tx.displayName || tx.username || tx.walletUid || tx.uid || '—',
-            amount:      amt,
-            reference:   ref,
-            smsId:       only.sms._id,
-            approvedAt:  Date.now()
-          });
-          usedRefs.add(ref);
-
-          await publishRequestResult(uid, 'deposit', 'approval', tx.id);
-        }catch(e){
-          aaLog('✗ approve failed tx=' + tx.id + ' ref=' + ref + ' → ' + e.message, 'err');
-          aaAttempted.delete(guardKey);
-        }
+        }).catch(()=>{});
       }
-
-      const summary = approved + ' approved · ' + noMatch + ' unmatched · '
-                    + duplicate + ' duplicate · ' + usedRefCount + ' used-ref · '
-                    + notified + ' notified · ' + skipped + ' skipped';
-      showStatus('Scan complete: ' + summary, approved ? 'success' : 'info', $('aaStatus'));
-      aaLog('Scan complete: ' + summary, approved ? 'ok' : 'skip');
-
-      if(approved) await refresh();
+    }catch(e){
+      aaLog('Auto-match error: ' + (e.message||e), 'err');
+      showStatus('Auto-match failed: ' + e.message, 'error', $('aaStatus'));
     }finally{
       $('aaRunNow').disabled = false;
     }
@@ -1282,7 +1162,7 @@
   function renderSmsItem(raw){
     const text = raw.text || raw.message || raw.body || '';
     const p = parseSms(text);
-    const fromName  = p.from || raw.from || '—';
+    const fromName  = raw.from || raw.sender || p.from || '—';
     const amount    = p.amount;
     const reference = p.reference;
     const when      = stampToDate(raw.receivedStamp) || stampToDate(raw.sentStamp) || stampToDate(raw.timestamp);
@@ -1340,12 +1220,6 @@
     }
     meta.appendChild(rowRef);
 
-    if(raw.from && String(raw.from) !== String(fromName)){
-      const rowSender = document.createElement('div');
-      rowSender.innerHTML = '<b>Sender ID:</b> ';
-      rowSender.appendChild(document.createTextNode(String(raw.from)));
-      meta.appendChild(rowSender);
-    }
     box.appendChild(meta);
 
     if(text){
@@ -1427,6 +1301,8 @@
       '<th>User ID</th>' +
       '<th class="num">Deposits</th>' +
       '<th class="num">Withdraws</th>' +
+      '<th class="num">Wins</th>' +
+      '<th class="num">Win Amount</th>' +
       '<th class="num">M-Wallet</th>' +
       '<th class="num">P-Wallet</th>' +
       '</tr></thead><tbody>';
@@ -1437,6 +1313,12 @@
       const wdr = r.withdraw_count
         ? '<span class="pill">' + r.withdraw_count + '</span>'
         : '<span class="zero">0</span>';
+      const wins = r.wins_count
+        ? '<span class="pill win">' + r.wins_count + '</span>'
+        : '<span class="zero">0</span>';
+      const winAmt = r.wins_total
+        ? fmtBirr(r.wins_total)
+        : '<span class="zero">0</span>';
       const tg = r.telegram_id
         ? '<span class="mono">' + esc(r.telegram_id) + '</span>'
         : '<span class="zero">—</span>';
@@ -1446,6 +1328,8 @@
         '<td class="mono">' + esc(r.uid) + '</td>' +
         '<td class="num">' + dep + '</td>' +
         '<td class="num">' + wdr + '</td>' +
+        '<td class="num">' + wins + '</td>' +
+        '<td class="num">' + winAmt + '</td>' +
         '<td class="num">' + fmtBirr(r.main) + '</td>' +
         '<td class="num">' + fmtBirr(r.play) + '</td>' +
         '</tr>';
@@ -1513,48 +1397,82 @@
       '<div class="ud-grid">' +
          '<div class="cell"><div class="k">Deposits</div><div class="v">' + row.deposit_count + ' · ' + fmtBirr(row.deposit_total) + ' Birr</div></div>' +
          '<div class="cell"><div class="k">Withdrawals</div><div class="v">' + row.withdraw_count + ' · ' + fmtBirr(row.withdraw_total) + ' Birr</div></div>' +
+         '<div class="cell"><div class="k">Wins</div><div class="v">' + row.wins_count + ' · ' + fmtBirr(row.wins_total) + ' Birr</div></div>' +
          '<div class="cell"><div class="k">M-Wallet</div><div class="v">' + fmtBirr(row.main) + ' Birr</div></div>' +
          '<div class="cell"><div class="k">P-Wallet</div><div class="v">' + fmtBirr(row.play) + ' Birr</div></div>' +
          '<div class="cell"><div class="k">Pending withdrawal</div><div class="v">' + fmtBirr(row.pending) + ' Birr</div></div>' +
          '<div class="cell"><div class="k">Referral earnings</div><div class="v">' + fmtBirr(row.ref) + ' Birr</div></div>' +
          '<div class="cell"><div class="k">Referred by</div><div class="v">' + referredBy + '</div></div>' +
          '<div class="cell"><div class="k">Updated</div><div class="v" style="font-size:13px">' + esc(updated) + '</div></div>' +
-         '<div class="cell" style="grid-column:1/-1"><div class="k">Created</div><div class="v" style="font-size:13px">' + esc(created) + '</div></div>' +
+         '<div class="cell"><div class="k">Created</div><div class="v" style="font-size:13px">' + esc(created) + '</div></div>' +
        '</div>' +
+      '<div class="ud-tx-title">Win history</div>' +
+      '<div id="udWinList"><div class="utable-empty">Loading wins…</div></div>' +
       '<div class="ud-tx-title">Transaction history</div>' +
       '<div id="udTxList"><div class="utable-empty">Loading transactions…</div></div>';
 
     $('userDetailModal').classList.add('show');
 
+    // Load wins
+    try {
+      const { wins } = await adminApi('/admin/users/' + encodeURIComponent(uid) + '/wins');
+      const list = Array.isArray(wins) ? wins : [];
+      const holder = $('udWinList');
+      if (!list.length) {
+        holder.innerHTML = '<div class="utable-empty">No wins recorded for this user.</div>';
+      } else {
+        let html = '';
+        for (const w of list) {
+          const when = w.at ? new Date(Number(w.at)).toLocaleString() : '—';
+          html +=
+            '<div class="ud-tx">' +
+              '<div class="head">' +
+                '<span class="t win">🏆 ' + esc(w.room || '') + ' · round ' + esc(w.round || 0) + '</span>' +
+                '<span class="a">' + fmtBirr(w.amount) + ' Birr</span>' +
+              '</div>' +
+              '<div class="meta">' +
+                '<b>winning #</b> ' + esc(w.winningNumber || '—') + '<br>' +
+                '<b>winners</b> ' + esc((w.winners || []).join(', ')) + '<br>' +
+                '<b>at</b> ' + esc(when) +
+              '</div>' +
+            '</div>';
+        }
+        holder.innerHTML = html;
+      }
+    } catch (e) {
+      $('udWinList').innerHTML = '<div class="utable-empty">Could not load wins: ' + esc(e.message) + '</div>';
+    }
+
+    // Load transactions
     try {
       const { transactions } = await adminApi('/admin/users/' + encodeURIComponent(uid) + '/transactions');
       const list = Array.isArray(transactions) ? transactions : [];
       const holder = $('udTxList');
       if (!list.length) {
         holder.innerHTML = '<div class="utable-empty">No transactions recorded for this user.</div>';
-        return;
+      } else {
+        let html = '';
+        for (const tx of list) {
+          const when = tx.timestamp ? new Date(Number(tx.timestamp)).toLocaleString() : '—';
+          const cls = tx.type === 'withdraw' ? 'withdraw' : 'deposit';
+          html +=
+            '<div class="ud-tx">' +
+               '<div class="head">' +
+                 '<span class="t ' + cls + '">' + esc((tx.type || '').toUpperCase()) + ' · ' + esc(tx.status || '') + '</span>' +
+                 '<span class="a">' + fmtBirr(tx.amount) + ' Birr</span>' +
+               '</div>' +
+               '<div class="meta">' +
+                 (tx.reference ? '<b>ref</b> ' + esc(tx.reference) + '<br>' : '') +
+                 (tx.full_name ? '<b>name</b> ' + esc(tx.full_name) + '<br>' : '') +
+                 (tx.phone_number ? '<b>phone</b> ' + esc(tx.phone_number) + '<br>' : '') +
+                 (tx.reason ? '<b>reason</b> ' + esc(tx.reason) + '<br>' : '') +
+                 '<b>at</b> ' + esc(when) + '<br>' +
+                 '<b>tx id</b> <code>' + esc(tx.id) + '</code>' +
+               '</div>' +
+             '</div>';
+        }
+        holder.innerHTML = html;
       }
-      let html = '';
-      for (const tx of list) {
-        const when = tx.timestamp ? new Date(Number(tx.timestamp)).toLocaleString() : '—';
-        const cls = tx.type === 'withdraw' ? 'withdraw' : 'deposit';
-        html +=
-          '<div class="ud-tx">' +
-             '<div class="head">' +
-               '<span class="t ' + cls + '">' + esc((tx.type || '').toUpperCase()) + ' · ' + esc(tx.status || '') + '</span>' +
-               '<span class="a">' + fmtBirr(tx.amount) + ' Birr</span>' +
-             '</div>' +
-             '<div class="meta">' +
-               (tx.reference ? '<b>ref</b> ' + esc(tx.reference) + '<br>' : '') +
-               (tx.full_name ? '<b>name</b> ' + esc(tx.full_name) + '<br>' : '') +
-               (tx.phone_number ? '<b>phone</b> ' + esc(tx.phone_number) + '<br>' : '') +
-               (tx.reason ? '<b>reason</b> ' + esc(tx.reason) + '<br>' : '') +
-               '<b>at</b> ' + esc(when) + '<br>' +
-               '<b>tx id</b> <code>' + esc(tx.id) + '</code>' +
-             '</div>' +
-           '</div>';
-      }
-      holder.innerHTML = html;
     } catch (e) {
       $('udTxList').innerHTML = '<div class="utable-empty">Could not load transactions: ' + esc(e.message) + '</div>';
     }
@@ -1760,8 +1678,6 @@
   $('loadSms').onclick = loadSms;
   $('clearSms').onclick = clearSms;
   $('smsAuto').onchange = () => { if($('smsAuto').checked){ loadSms(); startSmsAuto(); } else stopSmsAuto(); };
-
-  $('clearApproved').onclick = clearApprovedHistory;
 
   document.querySelectorAll('.tab').forEach(t => { t.onclick = () => switchTab(t.dataset.tab); });
 
