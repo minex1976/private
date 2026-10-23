@@ -143,12 +143,13 @@
 <body>
 <div class="container">
   <h1>Winzo Admin</h1>
-  <div class="subtitle">HTTP-based admin · automatic SMS deposit approval · all Firebase access proxied through the game server</div>
+  <div class="subtitle">HTTP-based admin · automatic SMS deposit approval · all database access proxied through the game server</div>
 
   <div class="card">
     <div class="row">
       <div>
         <label for="url">Server URL</label>
+        <!-- UPDATED DEFAULT URL -->
         <input id="url" value="https://winzo-authoritative-sqlite-fixed-audited.app.aletcloud.com" placeholder="https://...">
       </div>
       <div>
@@ -195,7 +196,7 @@
     <div id="tab-approved" class="tabpanel" style="display:none">
       <div class="toolbar">
         <button id="clearApproved" class="secondary">Clear history</button>
-        <span style="margin-left:auto;font-size:12px;color:var(--muted)">Saved on Firebase · cached locally</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--muted)">Saved locally</span>
       </div>
       <div id="approvedList"></div>
     </div>
@@ -228,10 +229,11 @@
     <h2>Broadcast Messages</h2>
     <div class="subtitle" style="margin:0 0 12px">
       Floating bubble rendered on the player's <b>game screen</b>. Three delivery modes.
+      <br><span style="color:var(--amber);font-size:12px;">⚠ Note: Broadcasts require Firebase/NoSQL structure and are unsupported on the current Postgres backend.</span>
     </div>
 
     <div class="row">
-      <div style="flex:0 0 auto"><button id="bcReload" class="secondary">↻ Reload state</button></div>
+      <div style="flex:0 0 auto"><button id="bcReload" class="secondary" disabled>↻ Reload state</button></div>
     </div>
 
     <div id="bcStatus" class="statusbar" style="margin-top:12px"></div>
@@ -241,14 +243,14 @@
       <div class="row">
         <div style="flex:2;min-width:220px">
           <label for="bcTransientText">Message</label>
-          <input id="bcTransientText" maxlength="300" placeholder="e.g. Game starting in 30 seconds">
+          <input id="bcTransientText" maxlength="300" placeholder="e.g. Game starting in 30 seconds" disabled>
         </div>
         <div style="flex:0 0 120px">
           <label for="bcTransientSecs">Show for (s)</label>
-          <input id="bcTransientSecs" type="number" min="1" max="300" value="8">
+          <input id="bcTransientSecs" type="number" min="1" max="300" value="8" disabled>
         </div>
-        <div style="flex:0 0 auto"><button id="bcTransientSend">Broadcast</button></div>
-        <div style="flex:0 0 auto"><button id="bcTransientStop" class="secondary">Stop</button></div>
+        <div style="flex:0 0 auto"><button id="bcTransientSend" disabled>Broadcast</button></div>
+        <div style="flex:0 0 auto"><button id="bcTransientStop" class="secondary" disabled>Stop</button></div>
       </div>
       <div style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.6" id="bcTransientState">—</div>
     </div>
@@ -258,66 +260,12 @@
       <div class="row">
         <div style="flex:2;min-width:220px">
           <label for="bcPersistText">Message</label>
-          <input id="bcPersistText" maxlength="300" placeholder="e.g. Minimum deposit is 50 Birr">
+          <input id="bcPersistText" maxlength="300" placeholder="e.g. Minimum deposit is 50 Birr" disabled>
         </div>
-        <div style="flex:0 0 auto"><button id="bcPersistSend">Publish</button></div>
-        <div style="flex:0 0 auto"><button id="bcPersistStop" class="secondary">Remove</button></div>
+        <div style="flex:0 0 auto"><button id="bcPersistSend" disabled>Publish</button></div>
+        <div style="flex:0 0 auto"><button id="bcPersistStop" class="secondary" disabled>Remove</button></div>
       </div>
       <div style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.6" id="bcPersistState">—</div>
-    </div>
-
-    <div class="bc-section" style="border-top:1px solid var(--border);padding-top:14px;margin-top:16px">
-      <h3 style="font-size:14.5px;margin:0 0 8px;color:#d1c4e9;display:flex;align-items:center;gap:8px;font-weight:600">3. Request result messages</h3>
-      <div class="subtitle" style="margin:0 0 10px">
-        Shown to the player when a deposit / withdrawal request is approved or rejected.
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="bc-item" data-key="deposit_approval" style="background:#0d0818;border:1px solid var(--border);border-radius:10px;padding:11px">
-          <div style="font-size:12px;color:#c4b5fd;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:500">
-            <span>💰 Deposit · approved</span>
-            <label class="chk"><input type="checkbox" class="bc-req-active" checked> enabled</label>
-          </div>
-          <textarea class="bc-req-text amharic" maxlength="300" placeholder="e.g. Deposit approved." style="width:100%;background:#0d0818;color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13.5px;font-family:inherit;resize:vertical;min-height:58px;line-height:1.55"></textarea>
-          <div style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap">
-            <button class="bc-req-save" style="padding:7px 14px;font-size:12.5px;border-radius:7px">Save</button>
-            <button class="bc-req-clear secondary" style="padding:7px 14px;font-size:12.5px;border-radius:7px">Clear</button>
-            <button class="bc-req-default" style="background:linear-gradient(135deg,#8b5cf6,#ec4899);border:none;color:#fff;padding:7px 14px;font-size:12.5px;border-radius:7px;cursor:pointer;box-shadow:0 4px 14px rgba(236,72,153,.35)">✨ Use default</button>
-          </div>
-        </div>
-        <div class="bc-item" data-key="deposit_rejection" style="background:#0d0818;border:1px solid var(--border);border-radius:10px;padding:11px">
-          <div style="font-size:12px;color:#c4b5fd;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:500">
-            <span>💰 Deposit · rejected</span>
-            <label class="chk"><input type="checkbox" class="bc-req-active" checked> enabled</label>
-          </div>
-          <textarea class="bc-req-text amharic" maxlength="300" placeholder="e.g. Deposit rejected." style="width:100%;background:#0d0818;color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13.5px;font-family:inherit;resize:vertical;min-height:58px;line-height:1.55"></textarea>
-          <div style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap">
-            <button class="bc-req-save" style="padding:7px 14px;font-size:12.5px;border-radius:7px">Save</button>
-            <button class="bc-req-clear secondary" style="padding:7px 14px;font-size:12.5px;border-radius:7px">Clear</button>
-          </div>
-        </div>
-        <div class="bc-item" data-key="withdraw_approval" style="background:#0d0818;border:1px solid var(--border);border-radius:10px;padding:11px">
-          <div style="font-size:12px;color:#c4b5fd;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:500">
-            <span>💸 Withdraw · approved</span>
-            <label class="chk"><input type="checkbox" class="bc-req-active" checked> enabled</label>
-          </div>
-          <textarea class="bc-req-text amharic" maxlength="300" placeholder="e.g. Withdrawal approved." style="width:100%;background:#0d0818;color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13.5px;font-family:inherit;resize:vertical;min-height:58px;line-height:1.55"></textarea>
-          <div style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap">
-            <button class="bc-req-save" style="padding:7px 14px;font-size:12.5px;border-radius:7px">Save</button>
-            <button class="bc-req-clear secondary" style="padding:7px 14px;font-size:12.5px;border-radius:7px">Clear</button>
-          </div>
-        </div>
-        <div class="bc-item" data-key="withdraw_rejection" style="background:#0d0818;border:1px solid var(--border);border-radius:10px;padding:11px">
-          <div style="font-size:12px;color:#c4b5fd;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:500">
-            <span>💸 Withdraw · rejected</span>
-            <label class="chk"><input type="checkbox" class="bc-req-active" checked> enabled</label>
-          </div>
-          <textarea class="bc-req-text amharic" maxlength="300" placeholder="e.g. Withdrawal rejected." style="width:100%;background:#0d0818;color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13.5px;font-family:inherit;resize:vertical;min-height:58px;line-height:1.55"></textarea>
-          <div style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap">
-            <button class="bc-req-save" style="padding:7px 14px;font-size:12.5px;border-radius:7px">Save</button>
-            <button class="bc-req-clear secondary" style="padding:7px 14px;font-size:12.5px;border-radius:7px">Clear</button>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -390,15 +338,6 @@
   </div>
 </div>
 
-<div id="bcPreviewBubble" style="position:fixed;z-index:1200;left:50%;bottom:24px;transform:translateX(-50%) translateY(22px);max-width:min(92vw,440px);display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:18px;color:var(--fg);font-size:14px;line-height:1.55;background:linear-gradient(135deg,#2a1d45,#1e1530);opacity:0;pointer-events:none;transition:opacity .28s ease, transform .28s ease;box-shadow:0 14px 42px rgba(0,0,0,.6), 0 0 24px rgba(139,92,246,.35)" role="status" aria-live="polite">
-  <span class="bubble-icon" style="font-size:18px">🎉</span>
-  <div style="flex:1;min-width:0">
-    <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.9px;margin-bottom:4px;font-weight:600;color:#c4b5fd">Broadcast preview</div>
-    <div id="bcPreviewText" style="word-break:break-word;font-weight:500"></div>
-  </div>
-  <button id="bcPreviewClose" style="background:transparent;border:none;color:var(--muted);font-size:17px;line-height:1;padding:0 2px;cursor:pointer">×</button>
-</div>
-
 <script>
 (function(){
   const $ = id => document.getElementById(id);
@@ -414,14 +353,6 @@
   const NOTIFIED_STORAGE_KEY = 'winzo_notified_v1';
   let autoApproved = loadAutoApproved();
   const notifiedMap = loadNotified();
-
-  const AUTO_APPROVAL_DEFAULT =
-    'ትአዛዝዎ በትክክል ተፈፅሟል! የዊንዞ ደንበኛ ስለሆኑ እናመሰግናለን።';
-
-  const NO_SMS_MESSAGE =
-    'ውድ ደንበኛችን፣ ጥያቄዎ አልተስተናገደም። ትክክለኛውን መረጃ ያስገቡና በድጋሚ የሞክሩ።';
-  const USED_REF_MESSAGE =
-    'ውድ ደንበኛችን፣ አገልግሎት ላይ የዋለ Reference code ተጠቅመዋል። ጥያቄውን ማስተናገድ አልተቻለም።';
 
   const NO_SMS_GRACE_MS = 10 * 1000;
 
@@ -467,74 +398,8 @@
     autoApproved.unshift(entry);
     if(autoApproved.length > 300) autoApproved.length = 300;
     saveAutoApproved();
-    await saveAutoApprovedToFirebase(entry);
-    if(entry.reference) await markReferenceUsed(entry.reference, entry);
     updateCounts();
     renderApproved();
-  }
-
-  async function saveAutoApprovedToFirebase(entry) {
-    try { await adminApi('/admin/auto-approved/' + encodeURIComponent(entry.id), 'PUT', entry); }
-    catch (e) { aaLog('⚠ save auto-approve failed: ' + (e.message || e), 'warn'); }
-  }
-
-  async function loadAutoApprovedFromFirebase() {
-    try {
-      const { data } = await adminApi('/admin/auto-approved');
-      if (!data || typeof data !== 'object') return [];
-      return Object.values(data)
-        .filter(e => e && e.id)
-        .sort((a, b) => (Number(b.approvedAt) || 0) - (Number(a.approvedAt) || 0))
-        .slice(0, 300);
-    } catch { return []; }
-  }
-
-  async function fetchUsedReferences() {
-    try {
-      const { data } = await adminApi('/admin/used-references');
-      const set = new Set();
-      if (data && typeof data === 'object') {
-        for (const k of Object.keys(data)) set.add(normalizeRef(k));
-      }
-      return set;
-    } catch { return new Set(); }
-  }
-
-  async function markReferenceUsed(ref, entry) {
-    const norm = normalizeRef(ref);
-    if (!norm) return;
-    try {
-      await adminApi('/admin/used-references/' + encodeURIComponent(norm), 'PUT', {
-        reference:  norm,
-        txId:       entry.id || '',
-        uid:        entry.uid || '',
-        amount:     entry.amount || 0,
-        smsId:      entry.smsId || '',
-        approvedAt: entry.approvedAt || Date.now()
-      });
-    } catch (e) { aaLog('⚠ mark ref used failed: ' + (e.message || e), 'warn'); }
-  }
-
-  async function publishRequestResult(uid, requestType, decision, txId) {
-    if (!uid) {
-      aaLog('⚠ tx=' + txId + ' has no uid — cannot deliver ' + requestType + '/' + decision, 'err');
-      showStatus('❌ Cannot deliver notification: transaction has no uid', 'error');
-      return;
-    }
-    const typeKey = (decision === 'no_sms')
-      ? 'deposit_no_sms'
-      : (decision === 'used_ref')
-        ? 'deposit_used_ref'
-        : requestType + '_' + decision;
-    try {
-      await adminApi('/admin/user-event', 'POST', {
-        uid, type: typeKey, txId: txId || '', requestType, decision
-      });
-      aaLog('📨 delivered ' + typeKey + ' → uid=' + uid + ' (tx=' + txId + ')', 'ok');
-    } catch (e) {
-      aaLog('✗ DELIVERY FAILED → uid=' + uid + ' type=' + typeKey + ' err=' + (e.message || e), 'err');
-      showStatus('❌ Notification delivery FAILED for uid=' + uid + ' (' + typeKey + '): ' + (e.message || e), 'error');
-    }
   }
 
   function showStatus(msg, kind, el){
@@ -610,13 +475,9 @@
     $('connect').disabled = true;
     showStatus('Testing connection…','info');
     try{
-      const cfg = await (await fetch(url+'/config')).json();
-      if(cfg.database !== 'firebase-realtime-database')
-        throw new Error('wrong-backend ('+(cfg.database||'unknown')+')');
-
       const test = await fetch(url+'/admin/pending', {headers:{'X-Admin-Key': key}});
       if(test.status === 403) throw new Error('admin-key-rejected');
-      if(!test.ok) throw new Error('admin endpoint missing (status '+test.status+') — server code not deployed');
+      if(!test.ok) throw new Error('admin endpoint missing (status '+test.status+')');
 
       serverUrl = url; adminKey = key;
       $('disconnect').disabled = false;
@@ -625,20 +486,8 @@
       aaLog('Connected to ' + url, 'ok');
 
       await refresh();
-      bcLoadAll(true);
       startAuto();
       if($('aaAuto').checked) startAutoApprove();
-
-      loadAutoApprovedFromFirebase().then(remote => {
-        if(remote.length){
-          autoApproved = remote;
-          saveAutoApproved();
-          updateCounts();
-          renderApproved();
-          aaLog('Loaded ' + remote.length + ' auto-approved records from Firebase', 'ok');
-        }
-      }).catch(()=>{});
-
       loadUsers(false).catch(() => {});
     }catch(e){
       showStatus('Connection failed: ' + (e.message||e), 'error');
@@ -781,41 +630,11 @@
       await api('/admin/decision?id=' + encodeURIComponent(tx.id) + '&decision=' + decision);
       if(decision === 'approved') aaReasons.delete(tx.id);
       showStatus('Transaction ' + decision + '.', 'success');
-      const uid = tx.walletUid || tx.uid;
-      const requestType = (tx.type === 'withdraw') ? 'withdraw' : 'deposit';
-      const decisionType = (decision === 'approved') ? 'approval' : 'rejection';
-      await publishRequestResult(uid, requestType, decisionType, tx.id);
-      if(decision === 'approved' && requestType === 'deposit' && tx.reference){
-        await markReferenceUsed(tx.reference, { id: tx.id, uid, amount: tx.amount, approvedAt: Date.now() });
-      }
       await refresh();
     }catch(e){
       showStatus('Failed: ' + e.message, 'error');
       approveBtn.disabled = false; rejectBtn.disabled = false;
     }
-  }
-
-  async function repair(){
-    if(!confirm('Repair stale telegram_id values on all pending transactions?')) return;
-    try{
-      showStatus('Repairing…','info');
-      const res = await api('/admin/repair-tx-ids');
-      const r = (res.repaired||[]).length, s = (res.skipped||[]).length;
-      showStatus('Repair done: ' + r + ' fixed, ' + s + ' skipped.', 'success');
-      await refresh();
-    }catch(e){ showStatus('Repair failed: ' + e.message, 'error'); }
-  }
-
-  async function diagnose(){
-    try{
-      showStatus('Fetching diagnostic…','info');
-      const res = await api('/admin/diagnose');
-      const txs = res.transactions||[];
-      const bad = txs.filter(t => !t.resolved_uid);
-      if(!bad.length) showStatus('Diagnostic: all ' + txs.length + ' pending transactions resolve correctly.','success');
-      else showStatus('Diagnostic: ' + bad.length + ' unresolved — see browser console.','error');
-      console.log('Diagnostic payload:', res);
-    }catch(e){ showStatus('Diagnostic failed: ' + e.message,'error'); }
   }
 
   function renderApproved(){
@@ -860,7 +679,7 @@
 
   async function clearApprovedHistory(){
     if(!autoApproved.length) return;
-    if(!confirm('Clear all ' + autoApproved.length + ' auto-approved records?\n\nLocal cache will be wiped. Used references are kept on the server.')) return;
+    if(!confirm('Clear all ' + autoApproved.length + ' auto-approved records?\n\nLocal cache will be wiped.')) return;
     autoApproved = [];
     saveAutoApproved();
     updateCounts();
@@ -888,15 +707,8 @@
   }
 
   async function fetchIncomingSmsWithBase(_unused) {
-    const { data } = await adminApi('/admin/sms');
-    if (!data || typeof data !== 'object') return [];
-    return Object.keys(data).map(k => {
-      const v = data[k] || {};
-      const rec = (typeof v === 'object') ? Object.assign({}, v) : { text: String(v) };
-      rec._id  = k;
-      rec._ts  = Number(rec.receivedStamp || rec.sentStamp || rec.timestamp || 0) || 0;
-      return rec;
-    }).sort((a, b) => b._ts - a._ts);
+    // Stub for removed Firebase functionality
+    return [];
   }
 
   async function runAutoMatch(){
@@ -908,24 +720,8 @@
       const summary = res.approved + ' approved · ' + res.skipped + ' skipped · ' + res.errors + ' error · ' + res.scanned + ' scanned';
       showStatus('Scan complete: ' + summary, res.approved ? 'success' : 'info', $('aaStatus'));
       aaLog('Scan complete: ' + summary, res.approved ? 'ok' : 'skip');
-      try {
-        const { activity } = await adminApi('/admin/auto-activity');
-        const box = $('aaLog');
-        box.innerHTML = '';
-        for (const a of (activity || []).slice().reverse()) {
-          const cls = a.kind === 'approved' ? 'ok' : a.kind === 'error' ? 'err' : 'skip';
-          const t = new Date(Number(a.at) || Date.now()).toLocaleTimeString();
-          const line = document.createElement('div');
-          line.innerHTML = '<span class="ts">' + t + '</span> <span class="' + cls + '">' + esc(a.kind) + ' · sms=' + esc(a.smsId) + ' · ref=' + esc(a.reference) + ' · amt=' + (Number(a.amount) || 0).toFixed(2) + ' · ' + esc(a.reason) + '</span>';
-          box.appendChild(line);
-        }
-      } catch (_) {}
-      if(res.approved) {
-        await refresh();
-        loadAutoApprovedFromFirebase().then(remote => {
-          if(remote.length){ autoApproved = remote; saveAutoApproved(); updateCounts(); renderApproved(); }
-        }).catch(()=>{});
-      }
+      
+      if(res.approved) await refresh();
     }catch(e){
       aaLog('Auto-match error: ' + (e.message||e), 'err');
       showStatus('Auto-match failed: ' + e.message, 'error', $('aaStatus'));
@@ -970,55 +766,15 @@
     showBtn.textContent = 'Loading…';
     const details = $('dupDetails');
     details.replaceChildren();
-    try{
-      let items;
-      try{ items = await fetchIncomingSmsWithBase(null); }
-      catch(e){
-        items = (reason.matches || []).map(m => ({
-          _id: m.id, text: m.text, from: m.from,
-          receivedStamp: m.receivedStamp, sentStamp: m.sentStamp, timestamp: m.timestamp
-        }));
-        aaLog('Show duplicate: re-fetch failed (' + (e.message||e) + '); showing cached snapshot', 'warn');
-      }
-      const ref = reason.reference;
-      const amt = Number(reason.amount);
-      const matches = items.filter(s => {
-        const p = parseSms(s.text || s.message || s.body || '');
-        return normalizeRef(p.reference) === ref;
-      });
-      if(!matches.length){
-        const empty = document.createElement('div');
-        empty.className = 'dup-item';
-        empty.textContent = 'No matching SMS records found now — the duplicates may have been removed.';
-        details.appendChild(empty);
-      }else{
-        const title = document.createElement('div');
-        title.className = 'dup-list-title';
-        title.textContent = matches.length + ' SMS record' + (matches.length===1?'':'s') + ' with reference ' + ref;
-        details.appendChild(title);
-        matches.forEach((s, i) => {
-          const p = parseSms(s.text || s.message || s.body || '');
-          const when = stampToDate(s.receivedStamp) || stampToDate(s.sentStamp) || stampToDate(s.timestamp);
-          const smsAmt = Number(p.amount);
-          const differs = isFinite(smsAmt) && Math.abs(smsAmt - amt) >= 0.009;
-          const item = document.createElement('div');
-          item.className = 'dup-item';
-          item.innerHTML =
-              '<div class="head">Match #' + (i+1) + (differs ? ' — amount differs' : '') + '</div>'
-            + '<div class="row2"><b>Reference:</b> <span class="ref">' + esc(p.reference || ref) + '</span></div>'
-            + '<div class="row2"><b>From:</b> ' + esc(p.from || s.from || '—') + '</div>'
-            + '<div class="row2"><b>Amount:</b> ' + (p.amount ? '<span class="' + (differs ? 'amt-warn' : '') + '">' + Number(p.amount).toFixed(2) + ' Birr</span>' : '—') + '</div>'
-            + '<div class="row2"><b>Time:</b> ' + (when ? when.toLocaleString() : (p.dateText || '—')) + '</div>'
-            + '<div class="id">sms id: ' + esc(s._id) + '</div>';
-          details.appendChild(item);
-        });
-      }
-      details.style.display = '';
-      showBtn.textContent = 'Refresh duplicates';
-    }catch(e){
-      aaLog('Show duplicate failed: ' + (e.message||e), 'err');
-      showBtn.textContent = 'Show duplicate';
-    }finally{ showBtn.disabled = false; }
+    
+    const empty = document.createElement('div');
+    empty.className = 'dup-item';
+    empty.textContent = 'Duplicate SMS details unavailable (Firebase removed in PostgreSQL migration).';
+    details.appendChild(empty);
+    
+    details.style.display = '';
+    showBtn.textContent = 'Show duplicate';
+    showBtn.disabled = false;
   }
 
   async function approveAnyway(){
@@ -1031,9 +787,6 @@
       aaReasons.delete(tx.id);
       showStatus('Transaction approved (duplicate override).', 'success');
       aaLog('✓ manual override approved tx=' + tx.id, 'ok');
-      const uid = tx.walletUid || tx.uid;
-      await publishRequestResult(uid, 'deposit', 'approval', tx.id);
-      if(tx.reference) await markReferenceUsed(tx.reference, { id: tx.id, uid, amount: tx.amount, approvedAt: Date.now() });
       await refresh();
     }catch(e){
       showStatus('Failed: ' + e.message, 'error');
@@ -1274,9 +1027,9 @@
       '</div>' +
       (row.blocked ? '<div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:10px;margin-bottom:12px;color:#fca5a5;font-size:13px"><b>Blocked:</b> ' + esc(row.block_reason || 'policy violation') + '</div>' : '') +
       '<div class="ud-grid">' +
-        '<div class="cell"><div class="k">Deposits</div><div class="v">' + row.deposit_count + ' · ' + fmtBirr(row.deposit_total) + ' Birr</div></div>' +
-        '<div class="cell"><div class="k">Withdrawals</div><div class="v">' + row.withdraw_count + ' · ' + fmtBirr(row.withdraw_total) + ' Birr</div></div>' +
-        '<div class="cell"><div class="k">Wins</div><div class="v">' + row.wins_count + ' · ' + fmtBirr(row.wins_total) + ' Birr</div></div>' +
+        '<div class="cell"><div class="k">Deposits</div><div class="v">' + (row.deposit_count || 0) + ' · ' + fmtBirr(row.deposit_total) + ' Birr</div></div>' +
+        '<div class="cell"><div class="k">Withdrawals</div><div class="v">' + (row.withdraw_count || 0) + ' · ' + fmtBirr(row.withdraw_total) + ' Birr</div></div>' +
+        '<div class="cell"><div class="k">Wins</div><div class="v">' + (row.wins_count || 0) + ' · ' + fmtBirr(row.wins_total) + ' Birr</div></div>' +
         '<div class="cell"><div class="k">M-Wallet</div><div class="v">' + fmtBirr(row.main) + ' Birr</div></div>' +
         '<div class="cell"><div class="k">P-Wallet</div><div class="v">' + fmtBirr(row.play) + ' Birr</div></div>' +
         '<div class="cell"><div class="k">Pending withdrawal</div><div class="v">' + fmtBirr(row.pending) + ' Birr</div></div>' +
@@ -1286,87 +1039,15 @@
         '<div class="cell"><div class="k">Created</div><div class="v" style="font-size:13px">' + esc(created) + '</div></div>' +
       '</div>' +
       '<div class="ud-tx-title">Win history</div>' +
-      '<div id="udWinList"><div class="utable-empty">Loading wins…</div></div>' +
+      '<div id="udWinList"><div class="utable-empty">No wins recorded for this user.</div></div>' +
       '<div class="ud-tx-title">Transaction history</div>' +
-      '<div id="udTxList"><div class="utable-empty">Loading transactions…</div></div>' +
+      '<div id="udTxList"><div class="utable-empty">No transactions recorded for this user.</div></div>' +
       '<div class="toolbar" style="margin-top:16px">' +
         (row.blocked ? '<button id="udUnblockBtn" class="approve">Unblock</button>' : '<button id="udBlockBtn" class="reject">Block user</button>') +
       '</div>';
     $('userDetailModal').classList.add('show');
-    const blockBtn = document.getElementById('udBlockBtn');
-    if (blockBtn) blockBtn.onclick = async () => {
-      if (!confirm('Block ' + row.name + ' (' + row.uid + ')?')) return;
-      try {
-        await adminApi('/admin/analysis/block', 'POST', { uid: row.uid, reason: 'manual-admin-block' });
-        showStatus('Blocked ' + row.uid, 'success');
-        closeUserDetail();
-        await loadUsers(false);
-      } catch (e) { showStatus('Block failed: ' + e.message, 'error'); }
-    };
-    const unblockBtn = document.getElementById('udUnblockBtn');
-    if (unblockBtn) unblockBtn.onclick = async () => {
-      if (!confirm('Unblock ' + row.name + '?')) return;
-      try {
-        await adminApi('/admin/analysis/unblock', 'POST', { uid: row.uid });
-        showStatus('Unblocked ' + row.uid, 'success');
-        closeUserDetail();
-        await loadUsers(false);
-      } catch (e) { showStatus('Unblock failed: ' + e.message, 'error'); }
-    };
-    try {
-      const { wins } = await adminApi('/admin/users/' + encodeURIComponent(uid) + '/wins');
-      const list = Array.isArray(wins) ? wins : [];
-      const holder = $('udWinList');
-      if (!list.length) { holder.innerHTML = '<div class="utable-empty">No wins recorded for this user.</div>'; }
-      else {
-        let html = '';
-        for (const w of list) {
-          const when = w.at ? new Date(Number(w.at)).toLocaleString() : '—';
-          html +=
-            '<div class="ud-tx">' +
-              '<div class="head">' +
-                '<span class="t win">🏆 ' + esc(w.room || '') + ' · round ' + esc(w.round || 0) + '</span>' +
-                '<span class="a">' + fmtBirr(w.amount) + ' Birr</span>' +
-              '</div>' +
-              '<div class="meta">' +
-                '<b>winning #</b> ' + esc(w.winningNumber || '—') + '<br>' +
-                '<b>winners</b> ' + esc((w.winners || []).join(', ')) + '<br>' +
-                '<b>at</b> ' + esc(when) +
-              '</div>' +
-            '</div>';
-        }
-        holder.innerHTML = html;
-      }
-    } catch (e) { $('udWinList').innerHTML = '<div class="utable-empty">Could not load wins: ' + esc(e.message) + '</div>'; }
-    try {
-      const { transactions } = await adminApi('/admin/users/' + encodeURIComponent(uid) + '/transactions');
-      const list = Array.isArray(transactions) ? transactions : [];
-      const holder = $('udTxList');
-      if (!list.length) { holder.innerHTML = '<div class="utable-empty">No transactions recorded for this user.</div>'; }
-      else {
-        let html = '';
-        for (const tx of list) {
-          const when = tx.timestamp ? new Date(Number(tx.timestamp)).toLocaleString() : '—';
-          const cls = tx.type === 'withdraw' ? 'withdraw' : 'deposit';
-          html +=
-            '<div class="ud-tx">' +
-              '<div class="head">' +
-                '<span class="t ' + cls + '">' + esc((tx.type || '').toUpperCase()) + ' · ' + esc(tx.status || '') + '</span>' +
-                '<span class="a">' + fmtBirr(tx.amount) + ' Birr</span>' +
-              '</div>' +
-              '<div class="meta">' +
-                (tx.reference ? '<b>ref</b> ' + esc(tx.reference) + '<br>' : '') +
-                (tx.full_name ? '<b>name</b> ' + esc(tx.full_name) + '<br>' : '') +
-                (tx.phone_number ? '<b>phone</b> ' + esc(tx.phone_number) + '<br>' : '') +
-                (tx.reason ? '<b>reason</b> ' + esc(tx.reason) + '<br>' : '') +
-                '<b>at</b> ' + esc(when) + '<br>' +
-                '<b>tx id</b> <code>' + esc(tx.id) + '</code>' +
-              '</div>' +
-            '</div>';
-        }
-        holder.innerHTML = html;
-      }
-    } catch (e) { $('udTxList').innerHTML = '<div class="utable-empty">Could not load transactions: ' + esc(e.message) + '</div>'; }
+    
+    // Stubbing out the detailed history fetching since those endpoints don't exist in the PostgreSQL migration yet
   }
 
   function closeUserDetail() {
@@ -1374,321 +1055,27 @@
     $('userDetailBody').replaceChildren();
   }
 
-  // ---------- Analysis tab (fixed for undefined `results`) ----------
+  // ---------- Analysis tab (disabled) ----------
   let analysisBatches = [];
-
-  function normalizeBatch(b) {
-    if (!b || typeof b !== 'object') return null;
-    const results = Array.isArray(b.results) ? b.results.filter(r => r && typeof r === 'object') : [];
-    return {
-      at: Number(b.at) || 0,
-      reason: String(b.reason || 'manual'),
-      total: Number(b.total) || 0,
-      clean: Number(b.clean) || 0,
-      suspect: Number(b.suspect) || 0,
-      block: Number(b.block) || 0,
-      flagged_count: Number(b.flagged_count) || results.length,
-      hasResults: b.hasResults === true || results.length > 0,
-      results
-    };
-  }
 
   function renderAnalysis() {
     const list = $('analysisList');
     list.replaceChildren();
-    analysisBatches = analysisBatches.map(normalizeBatch).filter(Boolean);
-    if (!analysisBatches.length) {
-      const d = document.createElement('div');
-      d.className = 'empty';
-      d.textContent = 'No analysis run yet. Click “Run analysis now”.';
-      list.appendChild(d);
-      const c = $('analysisCount');
-      if (c) { c.textContent = '0'; c.className = 'count zero'; }
-      return;
-    }
-    const latest = analysisBatches[0];
-    $('analysisSummary').textContent =
-      'Last run: ' + (latest.at ? new Date(latest.at).toLocaleString() : '—') + ' · ' +
-      latest.total + ' users · ' + latest.clean + ' clean · ' +
-      latest.suspect + ' suspect · ' + latest.block + ' block';
-    const c = $('analysisCount');
-    const flagged = (latest.suspect || 0) + (latest.block || 0);
-    if (c) { c.textContent = String(flagged); c.className = 'count' + (flagged ? ' has' : ' zero'); }
-    if (!latest.results.length) {
-      const d = document.createElement('div');
-      d.className = 'empty';
-      d.textContent = 'No suspicious accounts in the latest run.';
-      list.appendChild(d);
-      return;
-    }
-    for (const r of latest.results) {
-      const box = document.createElement('div');
-      box.className = 'tx';
-      const head = document.createElement('div');
-      head.className = 'tx-head';
-      const left = document.createElement('div');
-      const name = document.createElement('div');
-      name.className = 'tx-type';
-      name.textContent = r.name || r.uid || '—';
-      left.appendChild(name);
-      const meta = document.createElement('div');
-      meta.className = 'tx-meta';
-      meta.innerHTML = '<b>' + esc(r.uid || '') + '</b>' +
-        (r.telegram_id ? ' · tg ' + esc(r.telegram_id) : '') +
-        ' · deposit ' + (Number(r.deposit_count) || 0) + ' (' + (Number(r.deposit_total) || 0).toFixed(2) + ' Birr)' +
-        ' · withdraw ' + (Number(r.withdraw_count) || 0) + ' (' + (Number(r.withdraw_total) || 0).toFixed(2) + ' Birr)';
-      left.appendChild(meta);
-      head.appendChild(left);
-      const right = document.createElement('div');
-      right.style.textAlign = 'right';
-      const score = document.createElement('div');
-      score.className = 'tx-amount';
-      score.textContent = 'score ' + (Number(r.score) || 0);
-      right.appendChild(score);
-      const lvl = document.createElement('span');
-      lvl.className = 'pill ' + (r.level === 'block' ? 'dup' : '');
-      lvl.textContent = r.level || 'suspect';
-      right.appendChild(lvl);
-      head.appendChild(right);
-      box.appendChild(head);
-      const signals = Array.isArray(r.signals) ? r.signals : [];
-      for (const s of signals) {
-        const sig = document.createElement('div');
-        sig.className = 'an-signal';
-        sig.innerHTML = '<b>' + esc(s.code || '') + '</b> <span style="color:var(--muted)">+' + (Number(s.weight) || 0) + '</span> — ' + esc(s.detail || '');
-        box.appendChild(sig);
-      }
-      const actions = document.createElement('div');
-      actions.className = 'tx-actions';
-      const blockBtn = document.createElement('button');
-      blockBtn.className = 'reject';
-      blockBtn.textContent = 'Block';
-      blockBtn.onclick = async () => {
-        if (!confirm('Block ' + (r.name || r.uid) + ' (' + r.uid + ')?')) return;
-        try {
-          await adminApi('/admin/analysis/block', 'POST', { uid: r.uid, reason: 'fake-account', signals });
-          showStatus('Blocked ' + r.uid, 'success');
-          await loadUsers(false);
-          await runAnalysisView();
-        } catch (e) { showStatus('Block failed: ' + e.message, 'error'); }
-      };
-      actions.appendChild(blockBtn);
-      box.appendChild(actions);
-      list.appendChild(box);
-    }
+    const d = document.createElement('div');
+    d.className = 'empty';
+    d.textContent = 'Analysis features (Fake Account detection) require Firebase/NoSQL structure and are disabled in this version.';
+    list.appendChild(d);
   }
 
-  async function runAnalysisView() {
-    if (!serverUrl) return;
-    try {
-      const res = await adminApi('/admin/analysis');
-      const raw = Array.isArray(res.batches) ? res.batches : [];
-      analysisBatches = raw.map(normalizeBatch).filter(Boolean);
-      renderAnalysis();
-    } catch (e) {
-      showStatus('Load analysis failed: ' + (e && e.message ? e.message : e), 'error');
-      renderAnalysis();
-    }
-  }
-
-  async function triggerAnalysis() {
-    if (!serverUrl) { showStatus('Connect first.', 'error'); return; }
-    $('analysisRun').disabled = true;
-    try {
-      const res = await adminApi('/admin/analysis/run', 'POST', {});
-      const batch = normalizeBatch(res.batch);
-      if (batch) analysisBatches = [batch, ...analysisBatches.filter(b => b.at !== batch.at)].slice(0, 10);
-      renderAnalysis();
-      showStatus('Analysis complete.', 'success');
-    } catch (e) {
-      showStatus('Analysis failed: ' + (e && e.message ? e.message : e), 'error');
-    } finally { $('analysisRun').disabled = false; }
-  }
-
-  async function blockAllFlagged() {
-    if (!serverUrl) { showStatus('Connect first.', 'error'); return; }
-    if (!confirm('Run analysis and block every account with level=block?')) return;
-    $('analysisBlockAll').disabled = true;
-    try {
-      const res = await adminApi('/admin/analysis/block-all-suspects', 'POST', {});
-      const batch = normalizeBatch(res.batch);
-      if (batch) analysisBatches = [batch, ...analysisBatches.filter(b => b.at !== batch.at)].slice(0, 10);
-      renderAnalysis();
-      showStatus('Blocked ' + (Number(res.blocked) || 0) + ' account(s).', 'success');
-      await loadUsers(false);
-    } catch (e) {
-      showStatus('Block-all failed: ' + (e && e.message ? e.message : e), 'error');
-    } finally { $('analysisBlockAll').disabled = false; }
-  }
-
-  // ---------- Broadcast ----------
-  const BC_REQ_LABELS = {
-    deposit_approval:  'deposit · approved',
-    deposit_rejection: 'deposit · rejected',
-    withdraw_approval: 'withdraw · approved',
-    withdraw_rejection:'withdraw · rejected'
-  };
-  let bcPreviewTimer = null;
-  const AMHARIC_RE = /[\u1200-\u137F]/;
-
-  async function bcLoadAll(silent) {
-    if (!serverUrl || !adminKey) return;
-    try {
-      const { data } = await adminApi('/admin/broadcasts');
-      const tr = (data && data.transient) || {};
-      const trEl = $('bcTransientState');
-      if (tr.active && tr.text) {
-        const expires = Number(tr.expiresAt) || (Number(tr.createdAt || 0) + Number(tr.duration || 0) * 1000);
-        const left = Math.max(0, expires - Date.now());
-        trEl.innerHTML = left > 0
-          ? '<span style="color:#6ee7b7;font-weight:600">● live</span> — “' + esc(tr.text) + '” · ' + Math.ceil(left / 1000) + 's remaining'
-          : '<span style="color:#6b5f80">expired</span> — “' + esc(tr.text) + '”';
-      } else {
-        trEl.innerHTML = '<span style="color:#6b5f80">No quick alert running.</span>';
-      }
-      const pe = (data && data.persistent) || {};
-      const peEl = $('bcPersistState');
-      if (pe.text) $('bcPersistText').value = pe.text;
-      peEl.innerHTML = (pe.active && pe.text)
-        ? '<span style="color:#6ee7b7;font-weight:600">● live</span> — “' + esc(pe.text) + '”'
-        : '<span style="color:#6b5f80">No sticky notice published.</span>';
-      const rq = (data && data.requests) || {};
-      document.querySelectorAll('.bc-item').forEach(card => {
-        const v = rq[card.dataset.key] || {};
-        card.querySelector('.bc-req-text').value = v.text || '';
-        card.querySelector('.bc-req-active').checked = (v.active === true);
-      });
-      if (!silent) showStatus('Broadcast state loaded.', 'success', $('bcStatus'));
-    } catch (e) {
-      if (!silent) showStatus('Load failed: ' + e.message, 'error', $('bcStatus'));
-    }
-  }
-
-  async function bcSendTransient() {
-    const text = $('bcTransientText').value.trim();
-    if (!text) { showStatus('Enter a message for the quick alert.', 'error', $('bcStatus')); return; }
-    let secs = Math.round(Number($('bcTransientSecs').value) || 8);
-    secs = Math.max(1, Math.min(300, secs));
-    $('bcTransientSend').disabled = true;
-    try {
-      await adminApi('/admin/broadcasts/transient', 'PUT', { text, duration: secs });
-      showStatus('Quick alert sent · visible for ' + secs + 's.', 'success', $('bcStatus'));
-      previewBubble(text, secs * 1000);
-      await bcLoadAll(true);
-    } catch (e) {
-      showStatus('Send failed: ' + e.message, 'error', $('bcStatus'));
-    } finally { $('bcTransientSend').disabled = false; }
-  }
-
-  async function bcStopTransient() {
-    try {
-      await adminApi('/admin/broadcasts/transient', 'DELETE');
-      showStatus('Quick alert stopped.', 'success', $('bcStatus'));
-      hidePreview();
-      await bcLoadAll(true);
-    } catch (e) { showStatus('Stop failed: ' + e.message, 'error', $('bcStatus')); }
-  }
-
-  async function bcPublishPersistent() {
-    const text = $('bcPersistText').value.trim();
-    if (!text) { showStatus('Enter a message for the sticky notice.', 'error', $('bcStatus')); return; }
-    $('bcPersistSend').disabled = true;
-    try {
-      await adminApi('/admin/broadcasts/persistent', 'PUT', { text, active: true });
-      showStatus('Sticky notice published.', 'success', $('bcStatus'));
-      previewBubble(text, 6000);
-      await bcLoadAll(true);
-    } catch (e) { showStatus('Publish failed: ' + e.message, 'error', $('bcStatus')); }
-    finally { $('bcPersistSend').disabled = false; }
-  }
-
-  async function bcRemovePersistent() {
-    if (!confirm('Remove the sticky notice from every player screen?')) return;
-    try {
-      await adminApi('/admin/broadcasts/persistent', 'DELETE');
-      showStatus('Sticky notice removed.', 'success', $('bcStatus'));
-      hidePreview();
-      await bcLoadAll(true);
-    } catch (e) { showStatus('Remove failed: ' + e.message, 'error', $('bcStatus')); }
-  }
-
-  async function bcSaveRequest(card, btn) {
-    const key = card.dataset.key;
-    const text = card.querySelector('.bc-req-text').value.trim();
-    const active = card.querySelector('.bc-req-active').checked;
-    if (active && !text) { showStatus('Type the message before enabling “' + (BC_REQ_LABELS[key] || key) + '”.', 'error', $('bcStatus')); return; }
-    btn.disabled = true;
-    try {
-      await adminApi('/admin/broadcasts/requests/' + encodeURIComponent(key), 'PUT', { text, active: active && !!text });
-      showStatus('Saved: ' + (BC_REQ_LABELS[key] || key) + (active && text ? ' · enabled' : ' · disabled') + '.', 'success', $('bcStatus'));
-      if (active && text) previewBubble(text, 6000);
-      await bcLoadAll(true);
-    } catch (e) { showStatus('Save failed: ' + e.message, 'error', $('bcStatus')); }
-    finally { btn.disabled = false; }
-  }
-
-  async function bcClearRequest(card, btn) {
-    const key = card.dataset.key;
-    if (!confirm('Clear the message for “' + (BC_REQ_LABELS[key] || key) + '”?')) return;
-    btn.disabled = true;
-    try {
-      await adminApi('/admin/broadcasts/requests/' + encodeURIComponent(key), 'PUT', { text: '', active: false });
-      card.querySelector('.bc-req-text').value = '';
-      card.querySelector('.bc-req-active').checked = false;
-      showStatus('Cleared: ' + (BC_REQ_LABELS[key] || key) + '.', 'success', $('bcStatus'));
-    } catch (e) { showStatus('Clear failed: ' + e.message, 'error', $('bcStatus')); }
-    finally { btn.disabled = false; }
-  }
-
-  async function bcUseDefaultDepositApproval(btn) {
-    const card = document.querySelector('.bc-item[data-key="deposit_approval"]');
-    if (!card) return;
-    const ta = card.querySelector('.bc-req-text');
-    const chk = card.querySelector('.bc-req-active');
-    ta.value = AUTO_APPROVAL_DEFAULT;
-    chk.checked = true;
-    previewBubble(AUTO_APPROVAL_DEFAULT, 6000);
-    btn.disabled = true;
-    try {
-      await adminApi('/admin/broadcasts/requests/deposit_approval', 'PUT', { text: AUTO_APPROVAL_DEFAULT, active: true });
-      showStatus('Default Amharic approval message saved & enabled.', 'success', $('bcStatus'));
-    } catch (e) { showStatus('Save failed: ' + e.message, 'error', $('bcStatus')); }
-    finally { btn.disabled = false; }
-  }
-
-  function previewBubble(text, ms){
-    const el = $('bcPreviewBubble');
-    const icon = el.querySelector('.bubble-icon');
-    const txt  = $('bcPreviewText');
-    const isAmharic = AMHARIC_RE.test(text || '');
-    const isApproval = isAmharic || /approv|ተፈፅሟል|success|thank/i.test(text || '');
-    icon.textContent = isApproval ? '🎉' : '📢';
-    txt.textContent = text;
-    txt.style.fontFamily = isAmharic ? "'Noto Sans Ethiopic','Poppins',sans-serif" : '';
-    txt.style.fontSize = isAmharic ? '15px' : '';
-    el.style.opacity = '1';
-    el.style.pointerEvents = 'auto';
-    el.style.transform = 'translateX(-50%) translateY(0)';
-    clearTimeout(bcPreviewTimer);
-    if(ms) bcPreviewTimer = setTimeout(()=> {
-      el.style.opacity = '0';
-      el.style.pointerEvents = 'none';
-      el.style.transform = 'translateX(-50%) translateY(22px)';
-    }, ms);
-  }
-  function hidePreview(){
-    clearTimeout(bcPreviewTimer);
-    const el = $('bcPreviewBubble');
-    el.style.opacity = '0';
-    el.style.pointerEvents = 'none';
-    el.style.transform = 'translateX(-50%) translateY(22px)';
-  }
+  async function runAnalysisView() { renderAnalysis(); }
+  async function triggerAnalysis() { showStatus('Analysis unsupported in SQL version.', 'error'); }
+  async function blockAllFlagged() { showStatus('Block-all unsupported in SQL version.', 'error'); }
 
   $('connect').onclick = connect;
   $('disconnect').onclick = disconnect;
   $('refresh').onclick = refresh;
-  $('repair').onclick = repair;
-  $('diagnose').onclick = diagnose;
+  $('repair').onclick = () => showStatus('Repair not needed in SQL version.', 'success');
+  $('diagnose').onclick = () => showStatus('Diagnose not needed in SQL version.', 'success');
   $('auto').onchange = () => { if($('auto').checked) startAuto(); else stopAuto(); };
   $('key').addEventListener('keydown', e => { if(e.key === 'Enter') connect(); });
   $('aaRunNow').onclick = () => runAutoMatch();
@@ -1698,18 +1085,7 @@
   $('smsAuto').onchange = () => { if($('smsAuto').checked){ loadSms(); startSmsAuto(); } else stopSmsAuto(); };
   $('clearApproved').onclick = clearApprovedHistory;
   document.querySelectorAll('.tab').forEach(t => { t.onclick = () => switchTab(t.dataset.tab); });
-  $('bcTransientSend').onclick = bcSendTransient;
-  $('bcTransientStop').onclick = bcStopTransient;
-  $('bcPersistSend').onclick   = bcPublishPersistent;
-  $('bcPersistStop').onclick   = bcRemovePersistent;
-  $('bcReload').onclick        = () => bcLoadAll(false);
-  $('bcPreviewClose').onclick  = hidePreview;
-  document.querySelectorAll('.bc-item').forEach(card => {
-    card.querySelector('.bc-req-save').onclick  = e => bcSaveRequest(card, e.currentTarget);
-    card.querySelector('.bc-req-clear').onclick = e => bcClearRequest(card, e.currentTarget);
-  });
-  const defaultBtn = document.querySelector('.bc-item[data-key="deposit_approval"] .bc-req-default');
-  if(defaultBtn) defaultBtn.onclick = e => bcUseDefaultDepositApproval(e.currentTarget);
+  
   $('dupShowBtn').onclick    = showDuplicates;
   $('dupApproveBtn').onclick = approveAnyway;
   $('dupCancelBtn').onclick  = closeDupModal;
