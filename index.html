@@ -1,625 +1,1473 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Winzo Admin</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  :root{--bg:#120b20;--panel:#1e1530;--border:#3a2a55;--fg:#eee;--muted:#9c8fb5;--accent:#8b5cf6;--accent-hover:#7c3aed;--green:#10b981;--red:#ef4444;--amber:#f59e0b}
-  *{box-sizing:border-box}
-  body{font-family:'Poppins','Noto Sans Ethiopic',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:20px;min-height:100vh;line-height:1.5}
-  .container{max-width:1000px;margin:0 auto}
-  h1{font-size:22px;margin:0 0 4px}
-  h2{font-size:17px;margin:0 0 10px}
-  .subtitle{color:var(--muted);font-size:13px;margin-bottom:20px}
-  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
-  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
-  input, textarea {width:100%;background:#0d0818;color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:11px 12px;font-size:14px;font-family:inherit}
-  input:focus, textarea:focus {outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
-  .row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
-  .row>div{flex:1;min-width:180px}
-  button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:11px 18px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;transition:background .15s, transform .1s, opacity .1s;}
-  button:hover:not(:disabled){background:var(--accent-hover)}
-  button:active:not(:disabled){transform:scale(0.96); opacity:0.85;}
-  button:disabled{opacity:.5;cursor:not-allowed}
-  button.secondary{background:transparent;color:var(--fg);border:1px solid var(--border)}
-  button.secondary:hover:not(:disabled){background:#2a1d3d}
-  button.approve{background:var(--green)}
-  button.approve:hover:not(:disabled){background:#059669}
-  button.reject{background:var(--red)}
-  button.reject:hover:not(:disabled){background:#dc2626}
-  .statusbar{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none;word-break:break-word}
-  .statusbar.show{display:block}
-  .statusbar.info{background:rgba(139,92,246,.15);color:#c4b5fd;border:1px solid rgba(139,92,246,.3)}
-  .statusbar.error{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
-  .statusbar.success{background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.3)}
-  .statusbar.warn{background:rgba(245,158,11,.15);color:#fcd34d;border:1px solid rgba(245,158,11,.3)}
-  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
-  .tx{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
-  .tx-head{display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:8px}
-  .tx-type{font-weight:600;font-size:15px}
-  .tx-type.deposit{color:#6ee7b7}
-  .tx-type.withdraw{color:#fca5a5}
-  .tx-amount{font-size:18px;font-weight:700}
-  .tx-meta{font-size:12px;color:var(--muted);line-height:1.7}
-  .tx-meta b{color:#d1c4e9;font-weight:500}
-  .tx-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-  .tx-actions button{padding:8px 16px;font-size:13px}
-  .empty{color:var(--muted);text-align:center;padding:40px 20px;font-size:14px}
-  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;background:rgba(245,158,11,.2);color:#fcd34d}
-  .pill.dup{background:rgba(239,68,68,.2);color:#fca5a5}
-  .pill.auto{background:rgba(16,185,129,.2);color:#6ee7b7}
-  .pill.win{background:rgba(255,204,68,.2);color:#ffcc44}
-  .pill.blocked{background:rgba(239,68,68,.3);color:#ffb0b0}
-  code{background:#0d0818;padding:2px 6px;border-radius:4px;font-size:12px}
-  .tabs{display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--border);flex-wrap:wrap}
-  .tab{background:transparent;color:var(--muted);border:none;border-bottom:2px solid transparent;border-radius:0;padding:10px 16px;font-size:14px;font-weight:500;cursor:pointer;transition:color .15s,border-color .15s;margin-bottom:-1px}
-  .tab:hover:not(.active){color:var(--fg);background:transparent}
-  .tab.active{color:var(--fg);border-bottom-color:var(--accent)}
-  .tab .count{display:inline-block;background:rgba(139,92,246,.2);color:#c4b5fd;font-size:11px;padding:1px 7px;border-radius:999px;margin-left:6px;font-weight:600;min-width:18px;text-align:center}
-  .tab .count.zero{background:rgba(156,143,181,.15);color:var(--muted)}
-  .tab .count.has{background:rgba(16,185,129,.25);color:#6ee7b7}
-  .sms{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
-  .sms-head{display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:10px}
-  .sms-from{font-weight:600;font-size:15px;color:#c4b5fd;word-break:break-word}
-  .sms-amount{font-size:18px;font-weight:700;color:#6ee7b7;white-space:nowrap}
-  .sms-meta{font-size:12.5px;color:var(--muted);line-height:2}
-  .sms-meta b{color:#d1c4e9;font-weight:500;display:inline-block;min-width:74px}
-  .sms-ref{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#0d0818;border:1px solid var(--border);padding:3px 9px;border-radius:6px;color:#fcd34d;cursor:pointer;font-size:13px;letter-spacing:.6px;display:inline-block}
-  .sms-raw{margin-top:10px;font-size:11.5px;color:#8b7fa8}
-  .sms-raw summary{cursor:pointer;color:var(--muted);font-size:12px;outline:none}
-  .sms-raw p{margin:8px 0 0;background:#0d0818;border:1px solid var(--border);border-radius:8px;padding:9px;white-space:pre-wrap;word-break:break-word;line-height:1.6}
-  .aa-log{background:#0d0818;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;max-height:220px;overflow-y:auto;line-height:1.7;color:#b8abc9}
-  .aa-log .ok{color:#6ee7b7}
-  .aa-log .skip{color:#9c8fb5}
-  .aa-log .warn{color:#fcd34d}
-  .aa-log .err{color:#fca5a5}
-  .aa-log .ts{color:#6b5f80}
-  .chk{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;margin:0;white-space:nowrap}
-  .chk input{width:auto}
-  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:1000;padding:16px}
-  .modal-overlay.show{display:flex}
-  .modal{background:var(--panel);border:1px solid var(--border);border-radius:14px;max-width:680px;width:100%;max-height:88vh;overflow-y:auto;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
-  .modal h3{margin:0 0 10px;font-size:17px;color:#fcd34d;display:flex;align-items:center;gap:8px}
-  .modal-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:16px}
-  .modal-actions button{padding:9px 16px;font-size:13.5px}
-  .img-content{text-align:center;margin-top:10px;background:#000;border-radius:8px;padding:10px;min-height:200px;display:flex;align-items:center;justify-content:center}
-  .img-content img{max-width:100%;max-height:65vh;border-radius:4px;display:none}
-  .utable{width:100%;border-collapse:collapse;font-size:13px;background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden}
-  .utable thead th{background:#160f25;color:#c4b5fd;text-align:left;font-weight:600;padding:9px 10px;border-bottom:1px solid var(--border);white-space:nowrap;font-size:12px}
-  .utable thead th.num{text-align:right}
-  .utable tbody tr{border-bottom:1px solid rgba(58,42,85,.6);cursor:pointer;transition:background .12s}
-  .utable tbody tr:last-child{border-bottom:none}
-  .utable tbody tr:hover{background:#251a3d}
-  .utable tbody td{padding:8px 10px;color:var(--fg);vertical-align:middle}
-  .utable tbody td.num{text-align:right;font-variant-numeric:tabular-nums}
-  .utable tbody td.name{font-weight:600;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .utable tbody td.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;color:#b8abc9;white-space:nowrap}
-  .utable-empty{padding:32px 20px;text-align:center;color:var(--muted);font-size:13px}
-</style>
-</head>
-<body>
-<div class="container">
-  <h1>Winzo Admin</h1>
-  <div class="subtitle">PostgreSQL Admin Panel · SMS Auto-Approval</div>
+import express from 'express';
+import { WebSocketServer } from 'ws';
+import crypto from 'crypto';
+import http from 'http';
+import pg from 'pg';
 
-  <div class="card">
-    <div class="row">
-      <div>
-        <label for="url">Server URL</label>
-        <input id="url" value="https://winzo-authoritative-sqlite-fixed-audited.app.aletcloud.com" placeholder="https://...">
-      </div>
-      <div>
-        <label for="key">Admin key</label>
-        <input id="key" type="password" placeholder="ADMIN_KEY">
-      </div>
-    </div>
-    <div class="row" style="margin-top:12px">
-      <div style="flex:0 0 auto"><button id="connect">Connect</button></div>
-      <div style="flex:0 0 auto"><button id="disconnect" class="secondary" disabled>Disconnect</button></div>
-    </div>
-  </div>
+const { Pool } = pg;
 
-  <div id="status" class="statusbar"></div>
+// --- Database Initialization ---
+const pool = new Pool({
+  host: process.env.DB_HOST || 'winzo-sql-rw.db-956.svc.cluster.local',
+  port: Number(process.env.DB_PORT || 5432),
+  database: process.env.DB_NAME || 'winzo_sql',
+  user: process.env.DB_USER || 'admin_winzo_sql',
+  password: process.env.DB_PASSWORD || 'avR9@t+ItYe-Mqa3Ulmb2Wk7U:D:Qsla',
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
+});
 
-  <div id="panel" style="display:none">
-    <div class="tabs" role="tablist">
-      <button class="tab active" data-tab="pending" role="tab">
-        Pending <span class="count zero" id="pendingCount">0</span>
-      </button>
-      <button class="tab" data-tab="users" role="tab">
-        Users <span class="count zero" id="usersCount">0</span>
-      </button>
-      <button class="tab" data-tab="sms" role="tab">
-        Incoming SMS
-      </button>
-    </div>
+// --- Configuration ---
+const PORT = Number(process.env.PORT || 3000);
+const BOT_TOKEN = process.env.BOT_TOKEN || '';
+const ADMIN_KEY = process.env.ADMIN_KEY || '';
+const SMS_WEBHOOK_SECRET = process.env.SMS_WEBHOOK_SECRET || '9f8a7b6c5d4e3f2a1b0c1976';
+const NODE_ENV = process.env.NODE_ENV || 'production';
 
-    <div id="tab-pending" class="tabpanel">
-      <div class="toolbar">
-        <button id="refresh" class="secondary">↻ Refresh</button>
-        <label class="chk" style="margin-left:auto">
-          <input type="checkbox" id="auto" checked> Auto-refresh (6s)
-        </label>
-      </div>
-      <div id="list"></div>
-    </div>
+if (!ADMIN_KEY) console.warn('WARNING: ADMIN_KEY is not set. Admin approval will be disabled.');
+if (!BOT_TOKEN) console.warn('WARNING: BOT_TOKEN is not set. All WebSocket authentication will fail.');
 
-    <div id="tab-users" class="tabpanel" style="display:none">
-      <div class="toolbar">
-        <input id="usersSearch" type="search" placeholder="Search name, user id, telegram id…" style="flex:1;min-width:200px">
-        <button id="usersRefresh" class="secondary">↻ Refresh</button>
-      </div>
-      <div id="usersTable"></div>
-    </div>
+const SELECTION_SECONDS = 30;
+const SPINNING_SECONDS = 3;
+const RESULTS_SECONDS = 13;
+const MAX_PICKS = 3;
+const PAYOUT_RATE = 0.80;
+const REFERRAL_RATE = 0.05;
+const BOT_START_WALLET = 1_000_000;
+const BOT_MIN = 3;
+const BOT_MAX = 6;
 
-    <div id="tab-sms" class="tabpanel" style="display:none">
-      <div class="card" style="margin-bottom:20px;">
-        <h3 style="margin:0 0 10px;font-size:15px;color:#c4b5fd;">Test SMS Forwarder API</h3>
-        <p style="font-size:12px;color:var(--muted);margin:0 0 10px;">Use this to simulate an incoming Telebirr SMS and test auto-approval.</p>
-        <textarea id="testSmsText" placeholder="Paste Telebirr SMS text here..." style="min-height:80px;margin-bottom:10px;"></textarea>
-        <button id="testSmsBtn">Send Test SMS to Server</button>
-      </div>
+// ============================================================================
+// AUTO-DEPOSIT STRICTNESS TUNING
+// ============================================================================
+const AUTO_DEPOSIT_AMOUNT_TOLERANCE = 0.01;         // Birr tolerance
+const MIN_REFERENCE_LENGTH = 6;
+const MAX_REFERENCE_LENGTH = 128;
+const MIN_TELEBIRR_REF_LENGTH = 8;                  // stricter for pure-numeric refs
+const SMS_MAX_AGE_MS = 24 * 60 * 60 * 1000;         // 24h
+const DEPOSIT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7d
+const MIN_DEPOSIT_AMOUNT = 1;
+const MAX_DEPOSIT_AMOUNT = 1_000_000;
+const DEPOSIT_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000; // 10 min
+const DEPOSIT_RATE_LIMIT_MAX = 5;                    // 5 deposit requests / 10 min
+const DUPLICATE_SMS_WINDOW_MS = 60 * 1000;           // identical SMS within 60s = duplicate
 
-      <div class="toolbar">
-        <button id="loadSms" class="secondary">↻ Reload SMS List</button>
-        <label class="chk" style="margin-left:auto">
-          <input type="checkbox" id="smsAuto"> Auto-refresh (10s)
-        </label>
-      </div>
-      <div id="smsList"></div>
-    </div>
-  </div>
+const BOT_NAMES = [
+  "Abebe", "Kebede", "Selam", "Hana", "Dawit", "Meron", "Yonas", "Sara", 
+  "Bereket", "Tigist", "Elias", "Liya", "Samuel", "Bethel", "Nahom", "Rediet",
+  "Biniam", "Feven", "Girma", "Mimi", "Henok", "Tsion", "Fikru", "Eden",
+  "Dagmawi", "Ruth", "Natnael", "Mahlet", "Yosef", "Rahel", "Tewodros", "Marta",
+  "Amanuel", "Sofia", "Zelalem", "Alem", "Beka", "Chala", "Desta", "Eyerus"
+];
 
-  <!-- Automatic Deposit Approval Card -->
-  <div class="card" id="autoMatchCard" style="display:none;">
-    <h2>Automatic Deposit Approval Engine</h2>
-    <div class="subtitle" style="margin:0 0 12px">
-      The server automatically matches incoming SMS to pending deposits. You can also trigger a manual scan here.
-    </div>
-    <div class="row" style="margin-top:12px">
-      <div style="flex:0 0 auto"><button id="aaRunNow">Match Now</button></div>
-    </div>
-    <div id="aaStatus" class="statusbar" style="margin-top:12px"></div>
-    <div style="margin-top:12px">
-      <label>Engine Log</label>
-      <div id="aaLog" class="aa-log"><span class="ts">—</span> <span class="skip">Ready. Press “Match Now” to scan pending SMS.</span></div>
-    </div>
-  </div>
-</div>
+// Strict trusted-sender allow-list (matched on normalized sender, not substring).
+const SMS_TRUSTED_SENDERS = ['127', 'telebirr', 'ethio telecom', 'ethiotelecom', 'ethio-telecom'];
+const DAY = 86400000;
 
-<div id="imgModal" class="modal-overlay" role="dialog" aria-modal="true">
-  <div class="modal" style="max-width:700px;">
-    <h3><span class="icon">🧾</span> Deposit Receipt</h3>
-    <div class="img-content" id="imgContainer">
-      <span id="imgLoading" style="color:var(--muted);font-size:13px;">Loading image...</span>
-      <img id="receiptImg" alt="Receipt" src="">
-    </div>
-    <div class="modal-actions">
-      <button id="imgCloseBtn" class="secondary">Close</button>
-    </div>
-  </div>
-</div>
+// ============================================================================
+// Database Schema Bootstrap
+// ============================================================================
+async function initDb() {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+          username VARCHAR(64) PRIMARY KEY, display_name VARCHAR(128), telegram_id BIGINT, telegram_username VARCHAR(64),
+          main_wallet NUMERIC DEFAULT 0, play_wallet NUMERIC DEFAULT 0, signup_bonus_remaining NUMERIC DEFAULT 0, signup_bonus_original NUMERIC DEFAULT 0,
+          withdrawal_hold_until BIGINT DEFAULT 0, withdrawal_hold_reason VARCHAR(64), pending_withdrawal NUMERIC DEFAULT 0, referral_earnings NUMERIC DEFAULT 0,
+          wallet_updated_at BIGINT, referred_by VARCHAR(64), last_ip VARCHAR(64), last_ip_hash VARCHAR(128), blocked BOOLEAN DEFAULT FALSE,
+          blocked_at BIGINT, block_reason VARCHAR(256), block_signals TEXT, device_fingerprint VARCHAR(128), fraud_status VARCHAR(64),
+          account_status VARCHAR(64), created_at BIGINT, updated_at BIGINT, wallet_ledger JSONB DEFAULT '{}'::jsonb
+      );
+      CREATE TABLE IF NOT EXISTS transactions (
+          id VARCHAR(128) PRIMARY KEY, username VARCHAR(64), uid VARCHAR(64), wallet_uid VARCHAR(64), telegram_id BIGINT, telegram_username VARCHAR(64),
+          display_name VARCHAR(128), type VARCHAR(32), amount NUMERIC, status VARCHAR(32), timestamp BIGINT, reference VARCHAR(128),
+          full_name VARCHAR(128), phone_number VARCHAR(64), image_data TEXT, reason VARCHAR(256), wallet_applied INT DEFAULT 0,
+          client_request_id VARCHAR(128), updated_at BIGINT
+      );
+      CREATE TABLE IF NOT EXISTS rooms (
+          id VARCHAR(64) PRIMARY KEY, bet NUMERIC, phase VARCHAR(32), round INT, ends_at BIGINT, winning_number INT,
+          winners_json TEXT, prize_pool NUMERIC, last_result_json TEXT, taken_json TEXT, players_json TEXT, updated_at BIGINT
+      );
+      CREATE TABLE IF NOT EXISTS telegram_users (
+          telegram_id BIGINT PRIMARY KEY, uid VARCHAR(64), username VARCHAR(64), telegram_username VARCHAR(64), updated_at BIGINT
+      );
+      CREATE TABLE IF NOT EXISTS notifications (
+          id VARCHAR(128) PRIMARY KEY, username VARCHAR(64), type VARCHAR(32), message TEXT, status VARCHAR(32),
+          tx_type VARCHAR(32), tx_id VARCHAR(128), timestamp BIGINT, read BOOLEAN DEFAULT FALSE
+      );
+      CREATE TABLE IF NOT EXISTS incoming_sms (
+          id VARCHAR(128) PRIMARY KEY, sender VARCHAR(64), text TEXT, timestamp BIGINT, processed BOOLEAN DEFAULT FALSE,
+          matched_tx_id VARCHAR(128), text_hash VARCHAR(64)
+      );
+      CREATE TABLE IF NOT EXISTS auto_activity (
+          id VARCHAR(128) PRIMARY KEY, kind VARCHAR(32), sms_id VARCHAR(128), reference VARCHAR(128), amount NUMERIC,
+          tx_id VARCHAR(128), reason VARCHAR(256), at BIGINT
+      );
+      CREATE TABLE IF NOT EXISTS transaction_requests (
+          uid VARCHAR(64), client_request_id VARCHAR(128), tx_id VARCHAR(128), type VARCHAR(32), amount NUMERIC, created_at BIGINT,
+          PRIMARY KEY (uid, client_request_id)
+      );
 
-<script>
-(function(){
-  const $ = id => document.getElementById(id);
-  let serverUrl = '', adminKey = '', autoTimer = null, smsTimer = null;
-  let currentTxs = [];
+      -- ✅ Reference codes are consumed at most once, ever.
+      CREATE TABLE IF NOT EXISTS used_references (
+          reference VARCHAR(128) PRIMARY KEY,
+          sms_id VARCHAR(128),
+          tx_id VARCHAR(128),
+          amount NUMERIC,
+          sender VARCHAR(64),
+          username VARCHAR(64),
+          consumed_at BIGINT
+      );
 
-  function showStatus(msg, kind, el){
-    const s = el || $('status');
-    s.textContent = msg;
-    s.className = 'statusbar show ' + (kind || 'info');
-    if(kind === 'success'){
-      setTimeout(()=>{ if(s.textContent === msg) s.className = 'statusbar show info'; }, 3500);
-    }
+      -- ✅ Deposit rate limiting (per user).
+      CREATE TABLE IF NOT EXISTS deposit_attempts (
+          id VARCHAR(128) PRIMARY KEY,
+          username VARCHAR(64),
+          created_at BIGINT
+      );
+
+      -- Helpful indexes.
+      CREATE INDEX IF NOT EXISTS idx_tx_pending_deposit
+        ON transactions (status, type) WHERE status = 'pending' AND type = 'deposit';
+      CREATE INDEX IF NOT EXISTS idx_tx_reference ON transactions (reference);
+      CREATE INDEX IF NOT EXISTS idx_sms_unprocessed ON incoming_sms (processed) WHERE processed = false;
+      CREATE INDEX IF NOT EXISTS idx_sms_text_hash ON incoming_sms (text_hash);
+      CREATE INDEX IF NOT EXISTS idx_deposit_attempts_user ON deposit_attempts (username, created_at);
+    `);
+    console.log('✅ Database Schema Verified.');
+  } catch (e) {
+    console.error('❌ Schema init failed:', e);
+  } finally {
+    client.release();
   }
+}
 
-  function aaLog(msg, cls){
-    const box = $('aaLog');
-    const t = new Date().toLocaleTimeString();
-    const line = document.createElement('div');
-    line.innerHTML = '<span class="ts">'+t+'</span> <span class="'+ (cls||'skip') +'">'+esc(msg)+'</span>';
-    box.appendChild(line);
-    box.scrollTop = box.scrollHeight;
-    while(box.childNodes.length > 200) box.removeChild(box.firstChild);
+// ============================================================================
+// Utility helpers
+// ============================================================================
+function toFiniteNumber(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+function now() { return Date.now(); }
+function safeUser(username) { return String(username || '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 32); }
+function safeUid(value) { return String(value || '').replace(/[^A-Za-z0-9_:-]/g, '').slice(0, 64); }
+function constantTimeEqual(a, b) {
+  const aa = Buffer.from(String(a || ''));
+  const bb = Buffer.from(String(b || ''));
+  return aa.length === bb.length && crypto.timingSafeEqual(aa, bb);
+}
+function hashText(v) { return crypto.createHash('sha256').update(String(v)).digest('hex'); }
+function normalizedClientIp(ip) {
+  let value = String(ip || '').trim();
+  if (value.startsWith('::ffff:')) value = value.slice(7);
+  if (value === '::1') return '127.0.0.1';
+  return value;
+}
+function hashWithRotatingSalt(value, dayOffset = 0) {
+  const d = new Date(Date.now() - dayOffset * DAY).toISOString().slice(0, 10);
+  const salt = `${process.env.IP_HASH_SALT || 'winzo-ip-salt'}|${d}`;
+  return hashText(`${salt}|${String(value || '')}`);
+}
+function websocketClientIp(ws) {
+  if (process.env.TRUST_PROXY_HEADERS === 'true') {
+    const forwarded = String(ws?._req?.headers?.['x-forwarded-for'] || '').split(',')[0].trim();
+    if (forwarded) return normalizedClientIp(forwarded);
   }
+  return normalizedClientIp(ws?._socket?.remoteAddress || '');
+}
 
-  function normalizeUrl(u){
-    u = String(u||'').trim().replace(/\/+$/,'');
-    if(!u) return '';
-    if(!/^https?:\/\//i.test(u)) u = 'https://' + u;
-    return u;
-  }
+class Mutex {
+  constructor() { this._t = Promise.resolve(); }
+  run(fn) { const n = this._t.then(fn, fn); this._t = n.then(() => {}, () => {}); return n; }
+}
 
-  function esc(s){
-    return String(s==null?'':s).replace(/[&<>"']/g, c =>
-      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
+// ============================================================================
+// Telegram initData cryptographic verification
+// ============================================================================
+function validateInitData(initData, maxAge = 300) {
+  if (!BOT_TOKEN) return { ok: false, reason: 'server-misconfigured' };
+  if (!initData || typeof initData !== 'string') return { ok: false, reason: 'missing-initData' };
 
-  function switchTab(name){
-    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-    $('tab-pending').style.display   = (name === 'pending')  ? '' : 'none';
-    $('tab-users').style.display     = (name === 'users')    ? '' : 'none';
-    $('tab-sms').style.display       = (name === 'sms')      ? '' : 'none';
-    if (name === 'users' && !usersData.length) loadUsers(true);
-    if (name === 'sms') loadSms();
-  }
+  let params;
+  try { params = new URLSearchParams(initData); }
+  catch { return { ok: false, reason: 'malformed-query-string' }; }
 
-  async function adminApi(path, method = 'GET', body) {
-    if (!serverUrl || !adminKey) throw new Error('not-connected');
-    const opts = { method, cache: 'no-store', headers: { 'X-Admin-Key': adminKey } };
-    if (body !== undefined) {
-      opts.headers['Content-Type'] = 'application/json';
-      opts.body = JSON.stringify(body);
-    }
-    const res = await fetch(serverUrl + path, opts);
-    let data = {};
-    try { data = await res.json(); } catch { data = { ok: false, error: 'invalid-json' }; }
-    if (res.status === 401 || res.status === 403) throw new Error('admin-key-rejected');
-    if (!res.ok || data.ok === false) throw new Error(data.error || ('http-' + res.status));
-    return data;
-  }
+  const receivedHash = params.get('hash');
+  if (!receivedHash || !/^[a-f0-9]{64}$/i.test(receivedHash)) return { ok: false, reason: 'missing-hash' };
 
-  async function connect(){
-    const url = normalizeUrl($('url').value), key = $('key').value;
-    if(!key){ showStatus('Enter the admin key.','error'); return; }
-    $('connect').disabled = true;
-    showStatus('Testing connection…','info');
-    try{
-      const test = await fetch(url+'/admin/pending', {headers:{'X-Admin-Key': key}});
-      if(test.status === 403) throw new Error('admin-key-rejected');
-      if(!test.ok) throw new Error('admin endpoint missing (status '+test.status+')');
+  params.delete('hash');
+  const entries = [...params.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  const dataCheckString = entries.map(([k, v]) => `${k}=${v}`).join('\n');
 
-      serverUrl = url; adminKey = key;
-      $('disconnect').disabled = false;
-      $('panel').style.display = '';
-      $('autoMatchCard').style.display = '';
-      showStatus('Connected to ' + url, 'success');
-      
-      await refresh();
-      startAuto();
-      loadUsers(false).catch(() => {});
-    }catch(e){
-      showStatus('Connection failed: ' + (e.message||e), 'error');
-      serverUrl = ''; adminKey = ''; $('panel').style.display = 'none'; $('autoMatchCard').style.display = 'none';
-    }finally{ $('connect').disabled = false; }
-  }
+  const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
+  const computed = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
 
-  function disconnect(){
-    serverUrl = ''; adminKey = '';
-    stopAuto(); stopSmsAuto(); closeImgModal();
-    $('panel').style.display = 'none';
-    $('autoMatchCard').style.display = 'none';
-    $('disconnect').disabled = true;
-    $('list').replaceChildren();
-    $('smsList').replaceChildren();
-    $('usersTable').replaceChildren();
-    usersData = [];
-    showStatus('Disconnected.','info');
-  }
+  const a = Buffer.from(computed, 'hex');
+  const b = Buffer.from(receivedHash, 'hex');
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return { ok: false, reason: 'invalid-signature' };
 
-  function startAuto(){ stopAuto(); if($('auto').checked) autoTimer = setInterval(refresh, 6000); }
-  function stopAuto(){ if(autoTimer){ clearInterval(autoTimer); autoTimer = null; } }
+  const authDate = Number(params.get('auth_date') || 0);
+  if (!authDate || !Number.isFinite(authDate)) return { ok: false, reason: 'missing-auth_date' };
+  const ageSeconds = Math.floor(Date.now() / 1000) - authDate;
+  if (ageSeconds > maxAge) return { ok: false, reason: `expired` };
+  if (ageSeconds < -300) return { ok: false, reason: `future-date` };
 
-  async function refresh(){
-    if(!serverUrl) return;
-    try{
-      const data = await adminApi('/admin/pending');
-      currentTxs = data.transactions || [];
-      render(currentTxs);
-      updateCounts();
-    }catch(e){
-      showStatus('Refresh failed: ' + e.message, 'error');
-    }
-  }
+  let user = null;
+  try {
+    const rawUser = params.get('user');
+    user = rawUser ? JSON.parse(rawUser) : null;
+  } catch { return { ok: false, reason: 'user-not-json' }; }
+  
+  if (!user || typeof user.id !== 'number' || !Number.isSafeInteger(user.id) || user.id <= 0) return { ok: false, reason: 'invalid-user' };
 
-  function updateCounts(){
-    const p = currentTxs.length;
-    const pc = $('pendingCount'); pc.textContent = p; pc.className = 'count' + (p ? '' : ' zero');
-  }
+  return { ok: true, user, authDate, params };
+}
 
-  function render(txs){
-    const list = $('list'); list.replaceChildren();
-    if(!txs.length){
-      const d = document.createElement('div'); d.className='empty';
-      d.textContent = 'No pending transactions.';
-      list.appendChild(d); return;
-    }
-    for(const t of txs) list.appendChild(renderTx(t));
-  }
-
-  function renderTx(t){
-    const box = document.createElement('div'); box.className='tx';
-    const head = document.createElement('div'); head.className='tx-head';
-    const left = document.createElement('div');
-    const type = document.createElement('div');
-    type.className = 'tx-type ' + (t.type||'');
-    type.textContent = (t.type||'').toUpperCase();
-    left.appendChild(type);
-    const who = document.createElement('div'); who.className='tx-meta';
-    who.innerHTML = '<b>'+esc(t.displayName||t.username||'—')+'</b>';
-    left.appendChild(who);
-    head.appendChild(left);
-    const right = document.createElement('div'); right.style.textAlign='right';
-    const amount = document.createElement('div'); amount.className='tx-amount';
-    amount.textContent = Number(t.amount||0) + ' Birr';
-    right.appendChild(amount);
-    if(t.status === 'pending'){
-      const p = document.createElement('span'); p.className='pill'; p.textContent='pending';
-      right.appendChild(p);
-    }
-    head.appendChild(right);
-    box.appendChild(head);
-
-    const meta = document.createElement('div'); meta.className='tx-meta';
-    if(t.reference) meta.innerHTML += '<b>ref</b> ' + esc(t.reference) + '<br>';
-    if(t.type === 'withdraw') {
-      const fn = t.fullName || t.full_name;
-      const ph = t.phoneNumber || t.phone_number;
-      if (fn) meta.innerHTML += '<b>full name</b> ' + esc(fn) + '<br>';
-      if (ph) meta.innerHTML += '<b>phone</b> ' + esc(ph) + '<br>';
-    }
-    meta.innerHTML += '<b>id</b> <code>' + esc(t.id) + '</code><br>';
-    meta.innerHTML += '<b>uid</b> <code>' + esc(t.walletUid||t.uid||'') + '</code>';
-    if(t.timestamp) meta.innerHTML += '<br><b>at</b> ' + new Date(Number(t.timestamp)).toLocaleString();
-    box.appendChild(meta);
-
-    const actions = document.createElement('div'); actions.className='tx-actions';
-    const imgData = t.imageData || t.image_data;
-    if (t.type === 'deposit' && imgData) {
-      const imgBtn = document.createElement('button');
-      imgBtn.className = 'secondary';
-      imgBtn.textContent = 'View Receipt';
-      imgBtn.onclick = () => showReceipt(imgData);
-      actions.appendChild(imgBtn);
-    }
-    if(t.status === 'pending'){
-      const approve = document.createElement('button'); approve.className='approve'; approve.textContent='Approve';
-      const reject = document.createElement('button'); reject.className='reject'; reject.textContent='Reject';
-      approve.onclick = ()=>decide(t, 'approved', approve, reject);
-      reject.onclick = ()=>decide(t, 'rejected', approve, reject);
-      actions.append(approve, reject);
-    }
-    if(actions.children.length > 0) box.appendChild(actions);
-    return box;
-  }
-
-  async function decide(tx, decision, approveBtn, rejectBtn){
-    if(!confirm(decision === 'approved' ? 'Approve this transaction?' : 'Reject this transaction?')) return;
-    approveBtn.disabled = true; rejectBtn.disabled = true;
-    try{
-      await adminApi('/admin/decision?id=' + encodeURIComponent(tx.id) + '&decision=' + decision);
-      showStatus('Transaction ' + decision + '.', 'success');
-      await refresh();
-    }catch(e){
-      showStatus('Failed: ' + e.message, 'error');
-      approveBtn.disabled = false; rejectBtn.disabled = false;
-    }
-  }
-
-  // --- SMS TAB LOGIC ---
-  function parseSms(text){
-    const t = String(text==null?'':text).replace(/\s+/g,' ').trim();
-    const out = {amount:null, from:null, reference:null};
-    if(!t) return out;
-    let m = t.match(/received\s+(?:ETB|Birr)\s*([\d,]+(?:\.\d+)?)/i)
-         || t.match(/(?:ETB|Birr|ብር|Br\b|Amt|Amount)\s*[:\-]?\s*([\d,]+(?:\.\d+)?)/i);
-    if(m) out.amount = m[1].replace(/,/g,'');
-    
-    m = t.match(/your\s+transaction\s+number\s+is\s*[:\-]?\s*([A-Za-z0-9]{6,})/i)
-     || t.match(/\btransaction\s+(?:number|no\.?|id)\s*(?:is|:|\-)?\s*([A-Za-z0-9]{6,})/i)
-     || t.match(/\bref(?:erence)?\s*(?:number|code|no\.?|id)?\s*(?:is|:|\-)?\s*([A-Za-z0-9]{6,})/i);
-    if(m) out.reference = m[1].toUpperCase();
-    return out;
-  }
-
-  async function loadSms(){
-    if(!serverUrl){ showStatus('Connect first.','error'); return; }
-    $('loadSms').disabled = true;
-    showStatus('Fetching SMS records…','info');
-    try{
-      const res = await adminApi('/admin/sms');
-      const data = res.data || {};
-      
-      const items = Object.keys(data).map(k => {
-        const v = data[k];
-        return { id: k, sender: v.sender, text: v.text, timestamp: v.timestamp };
-      }).sort((a,b) => b.timestamp - a.timestamp);
-      
-      renderSms(items);
-      showStatus('Loaded ' + items.length + ' SMS records.', 'success');
-    }catch(e){ showStatus('SMS fetch failed: ' + e.message,'error'); }
-    finally{ $('loadSms').disabled = false; }
-  }
-
-  function renderSms(items){
-    const list = $('smsList'); list.replaceChildren();
-    if(!items.length){
-      const d = document.createElement('div'); d.className='empty';
-      d.textContent='No SMS records found in database.'; list.appendChild(d); return;
-    }
-    for(const raw of items) list.appendChild(renderSmsItem(raw));
-  }
-
-  function renderSmsItem(raw){
-    const text = raw.text || '';
-    const p = parseSms(text);
-    const fromName = raw.sender || '—';
-    const amount = p.amount;
-    const reference = p.reference;
-    const when = new Date(raw.timestamp);
-    
-    const box = document.createElement('div'); box.className='sms';
-    const head = document.createElement('div'); head.className='sms-head';
-    const left = document.createElement('div');
-    const fromEl = document.createElement('div'); fromEl.className='sms-from';
-    fromEl.textContent = fromName;
-    left.appendChild(fromEl);
-    head.appendChild(left);
-    const right = document.createElement('div'); right.style.textAlign='right';
-    const amtEl = document.createElement('div');
-    if(amount){ amtEl.className='sms-amount'; amtEl.textContent = Number(amount).toFixed(2)+' Birr'; }
-    else { amtEl.className='sms-amount na'; amtEl.textContent='No amount'; }
-    right.appendChild(amtEl);
-    head.appendChild(right);
-    box.appendChild(head);
-    
-    const meta = document.createElement('div'); meta.className='sms-meta';
-    meta.innerHTML = `<div><b>Time:</b> ${when.toLocaleString()}</div>`;
-    meta.innerHTML += `<div><b>Reference:</b> ${reference ? '<span class="sms-ref">'+esc(reference)+'</span>' : '—'}</div>`;
-    box.appendChild(meta);
-    
-    if(text){
-      const det = document.createElement('details'); det.className='sms-raw';
-      const sum = document.createElement('summary'); sum.textContent='Raw message';
-      const pre = document.createElement('p'); pre.textContent = text;
-      det.append(sum, pre);
-      box.appendChild(det);
-    }
-    return box;
-  }
-
-  function startSmsAuto(){ stopSmsAuto(); if($('smsAuto').checked) smsTimer = setInterval(loadSms, 10000); }
-  function stopSmsAuto(){ if(smsTimer){clearInterval(smsTimer); smsTimer=null;} }
-
-  $('testSmsBtn').onclick = async function() {
-    const txt = $('testSmsText').value;
-    if(!txt.trim()) return alert('Enter some text first');
-    
-    const secret = prompt("Enter SMS Webhook Secret:");
-    if (!secret) return;
-
-    $('testSmsBtn').disabled = true;
-    try {
-      const res = await fetch(serverUrl + '/api/sms/incoming', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-sms-secret': secret
-        },
-        body: JSON.stringify({ from: '127', text: txt })
-      });
-      const data = await res.json();
-      if(data.ok) {
-        alert('SMS received by server! Matched: ' + data.matched);
-        $('testSmsText').value = '';
-        await loadSms();
-        await refresh();
-      } else {
-        alert('Error: ' + data.error);
+// ============================================================================
+// User management (unchanged from original — kept intact)
+// ============================================================================
+async function ensureUser(username, referredBy = null, bot = false, extra = {}) {
+  const clean = safeUid(username);
+  if (!clean) return null;
+  
+  const client = await pool.connect();
+  try {
+    const res = await client.query('SELECT * FROM users WHERE username = $1', [clean]);
+    if (res.rows.length > 0) {
+      const current = res.rows[0];
+      const patch = {};
+      if (extra.telegram_id != null && current.telegram_id !== Number(extra.telegram_id)) patch.telegram_id = Number(extra.telegram_id);
+      if (extra.display_name && current.display_name !== String(extra.display_name)) patch.display_name = String(extra.display_name).slice(0, 128);
+      if (extra.last_ip && current.last_ip_hash !== hashWithRotatingSalt(normalizedClientIp(extra.last_ip))) {
+        patch.last_ip_hash = hashWithRotatingSalt(normalizedClientIp(extra.last_ip));
       }
-    } catch(e) {
-      alert('Fetch error: ' + e.message);
-    } finally {
-      $('testSmsBtn').disabled = false;
+
+      if (Object.keys(patch).length) {
+        const setClauses = Object.keys(patch).map((key, i) => `${key} = $${i + 2}`).join(', ');
+        const values = [clean, ...Object.values(patch)];
+        await client.query(`UPDATE users SET ${setClauses}, updated_at = $${values.length + 1} WHERE username = $1`, [...values, now()]);
+      }
+      return { ...current, ...patch };
     }
-  };
-
-  // --- MANUAL MATCH LOGIC ---
-  async function runAutoMatch(){
-    if(!serverUrl || !adminKey){ showStatus('Connect to the server first.', 'warn', $('aaStatus')); return; }
-    $('aaRunNow').disabled = true;
-    showStatus('Scanning…', 'info', $('aaStatus'));
-    try{
-      const res = await adminApi('/admin/auto-match', 'POST', {});
-      const summary = res.approved + ' approved · ' + res.skipped + ' skipped · ' + res.errors + ' errors';
-      showStatus('Scan complete: ' + summary, res.approved ? 'success' : 'info', $('aaStatus'));
-      aaLog('Scan complete: ' + summary, res.approved ? 'ok' : 'skip');
-      if(res.approved) await refresh();
-    }catch(e){
-      aaLog('Auto-match error: ' + (e.message||e), 'err');
-      showStatus('Auto-match failed: ' + e.message, 'error', $('aaStatus'));
-    }finally{ $('aaRunNow').disabled = false; }
-  }
-
-  // --- USERS TAB LOGIC ---
-  let usersData = [];
-  function rowMatches(row, q) {
-    if (!q) return true;
-    const hay = [row.uid, row.name, row.telegram_username, row.telegram_id != null ? String(row.telegram_id) : ''].join(' ').toLowerCase();
-    return q.toLowerCase().split(/\s+/).every(tok => hay.includes(tok));
-  }
-
-  function renderUsersTable() {
-    const target = $('usersTable');
-    const q = String($('usersSearch').value || '').trim();
-    const filtered = usersData.filter(r => rowMatches(r, q));
     
-    if (!filtered.length) {
-      target.innerHTML = '<div class="utable-empty">' + (q ? 'No user matches' : 'No users yet.') + '</div>';
+    const t = now();
+    const newUser = {
+      username: clean, display_name: extra.display_name || clean, telegram_id: extra.telegram_id || null,
+      telegram_username: extra.telegram_username || null, main_wallet: 0, play_wallet: bot ? BOT_START_WALLET : 30,
+      signup_bonus_remaining: bot ? 0 : 30, signup_bonus_original: bot ? 0 : 30,
+      withdrawal_hold_until: bot ? 0 : t + DAY, withdrawal_hold_reason: bot ? null : 'new-account-24h-hold',
+      pending_withdrawal: 0, referral_earnings: 0, wallet_updated_at: t, referred_by: referredBy && referredBy !== clean ? safeUser(referredBy) : null,
+      last_ip_hash: extra.last_ip ? hashWithRotatingSalt(normalizedClientIp(extra.last_ip)) : (extra.last_ip_hash || null),
+      created_at: t, updated_at: t
+    };
+    
+    await client.query(`
+      INSERT INTO users (username, display_name, telegram_id, telegram_username, main_wallet, play_wallet, signup_bonus_remaining, signup_bonus_original, withdrawal_hold_until, withdrawal_hold_reason, pending_withdrawal, referral_earnings, wallet_updated_at, referred_by, last_ip_hash, created_at, updated_at) 
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+    `, Object.values(newUser));
+    
+    return newUser;
+  } finally {
+    client.release();
+  }
+}
+
+async function resolveTelegramUser(user, referredBy = null) {
+  if (!user?.id) return null;
+  const telegramId = Number(user.id);
+  const telegramUsername = safeUser(user.username || '');
+  const displayName = [user.first_name, user.last_name].filter(Boolean).join(' ').trim() || telegramUsername || `tg_${telegramId}`;
+  const canonicalUid = `tg_${telegramId}`;
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const mapRes = await client.query('SELECT * FROM telegram_users WHERE telegram_id = $1 FOR UPDATE', [telegramId]);
+    if (mapRes.rows.length > 0 && mapRes.rows[0].uid) {
+      const mappedUid = safeUid(mapRes.rows[0].uid);
+      const mappedUser = await client.query('SELECT * FROM users WHERE username = $1', [mappedUid]);
+      if (mappedUser.rows.length > 0 && (!mappedUser.rows[0].telegram_id || Number(mappedUser.rows[0].telegram_id) === telegramId)) {
+        await client.query('UPDATE telegram_users SET username = $1, telegram_username = $2, updated_at = $3 WHERE telegram_id = $4', [mappedUser.rows[0].username, telegramUsername, now(), telegramId]);
+        await client.query('COMMIT');
+        return { uid: mappedUid, user: (await ensureUser(mappedUid, referredBy, false, { telegram_id: telegramId, display_name: displayName, telegram_username: telegramUsername || null })) };
+      }
+    }
+
+    let found = await client.query('SELECT * FROM users WHERE username = $1 OR telegram_id = $2 LIMIT 1', [canonicalUid, telegramId]);
+    let finalUid = canonicalUid;
+
+    if (found.rows.length > 0) {
+      const row = found.rows[0];
+      if (row.telegram_id && Number(row.telegram_id) !== telegramId) throw new Error('conflicting-user');
+      if (row.username !== canonicalUid) {
+        await client.query('UPDATE users SET username = $1, telegram_id = $2, updated_at = $3 WHERE username = $4', [canonicalUid, telegramId, now(), row.username]);
+        finalUid = canonicalUid;
+      }
+    }
+    
+    await client.query('COMMIT');
+    const created = await ensureUser(finalUid, referredBy, false, { telegram_id: telegramId, display_name: displayName, telegram_username: telegramUsername || null });
+    await pool.query('INSERT INTO telegram_users (telegram_id, uid, username, telegram_username, updated_at) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (telegram_id) DO UPDATE SET uid=EXCLUDED.uid, username=EXCLUDED.username, updated_at=EXCLUDED.updated_at', 
+      [telegramId, finalUid, created.username, telegramUsername, now()]);
+    return { uid: finalUid, user: created, telegramId, telegramUsername };
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('[IDENTITY] error', e.message);
+    return null;
+  } finally {
+    client.release();
+  }
+}
+
+async function walletFor(username) {
+  const clean = safeUid(username);
+  if (!clean) return { main: 0, play: 0, pending: 0, refEarn: 0, updatedAt: 0 };
+  const res = await pool.query('SELECT main_wallet, play_wallet, pending_withdrawal, referral_earnings, wallet_updated_at FROM users WHERE username = $1', [clean]);
+  if (res.rows.length === 0) return { main: 0, play: 0, pending: 0, refEarn: 0, updatedAt: 0 };
+  const u = res.rows[0];
+  return { main: Number(u.main_wallet), play: Number(u.play_wallet), pending: Number(u.pending_withdrawal), refEarn: Number(u.referral_earnings), updatedAt: Number(u.wallet_updated_at) };
+}
+
+async function sendWallet(uid) {
+  const payload = { type: 'wallet', ...(await walletFor(uid)) };
+  const set = conns.get(uid);
+  if (set) for (const ws of set) if (ws.readyState === 1) ws.send(JSON.stringify(payload));
+}
+
+async function addNotification(username, data) {
+  const id = data.id || crypto.randomUUID();
+  const payload = { type: 'notification', id, ...data, timestamp: Number(data.timestamp || now()) };
+  await pool.query('INSERT INTO notifications (id, username, type, message, status, tx_type, tx_id, timestamp, read) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,false)', 
+    [id, username, data.type || 'notification', String(data.message || ''), data.status || null, data.txType || null, data.txId || null, payload.timestamp]);
+  const set = conns.get(username);
+  if (set) for (const ws of set) if (ws.readyState === 1) ws.send(JSON.stringify(payload));
+}
+
+async function notifyTransaction(username, tx) {
+  await addNotification(username, {
+    type: 'transaction_result', status: tx.status, txType: tx.type, txId: tx.id, reason: tx.reason || '',
+    message: tx.status === 'approved' ? `${tx.type === 'withdraw' ? 'Withdrawal' : 'Deposit'} approved.` : 'Your request was rejected by admin.'
+  });
+  const set = conns.get(username);
+  if (set) for (const ws of set) if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'transaction-status', id: tx.id, status: tx.status, txType: tx.type, reason: tx.reason || '' }));
+}
+
+// ============================================================================
+// Transactions
+// ============================================================================
+async function transactionRequest(uid, data) {
+  const type = data.txType;
+  const amount = Number(data.amount);
+  if (!['deposit', 'withdraw'].includes(type)) return { ok: false, reason: 'bad-type' };
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000) return { ok: false, reason: 'bad-amount' };
+
+  // ✅ Rate limit deposit requests per user.
+  if (type === 'deposit') {
+    if (amount < MIN_DEPOSIT_AMOUNT || amount > MAX_DEPOSIT_AMOUNT) return { ok: false, reason: 'amount-out-of-range' };
+    const since = now() - DEPOSIT_RATE_LIMIT_WINDOW_MS;
+    const recent = await pool.query(
+      'SELECT COUNT(*)::int AS c FROM deposit_attempts WHERE username = $1 AND created_at > $2',
+      [uid, since]
+    );
+    if (recent.rows[0].c >= DEPOSIT_RATE_LIMIT_MAX) {
+      return { ok: false, reason: 'rate-limited' };
+    }
+    await pool.query('INSERT INTO deposit_attempts (id, username, created_at) VALUES ($1,$2,$3)',
+      [crypto.randomUUID(), uid, now()]);
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const userRes = await client.query('SELECT * FROM users WHERE username = $1 FOR UPDATE', [uid]);
+    if (userRes.rows.length === 0) throw new Error('user-not-found');
+    const user = userRes.rows[0];
+    if (user.blocked) throw new Error('account-blocked');
+    if (String(user.fraud_status || '').toLowerCase() === 'frozen') throw new Error('account-frozen');
+
+    // ✅ Reject deposits that reuse an already-consumed reference.
+    if (type === 'deposit') {
+      const rawRef = normalizePaymentReference(data.reference);
+      if (rawRef) {
+        const prior = await client.query('SELECT tx_id FROM used_references WHERE reference = $1', [rawRef]);
+        if (prior.rows.length > 0) throw new Error('reference-already-used');
+        const dup = await client.query(
+          "SELECT id FROM transactions WHERE type = 'deposit' AND status IN ('pending','approved') AND UPPER(REGEXP_REPLACE(reference, '[^A-Za-z0-9]', '', 'g')) = $1 LIMIT 1",
+          [rawRef]
+        );
+        if (dup.rows.length > 0) throw new Error('reference-already-used');
+      }
+    }
+
+    if (type === 'withdraw') {
+      if (Number(user.withdrawal_hold_until) > now()) throw new Error(`withdrawal-hold:${user.withdrawal_hold_reason}`);
+      const main = Number(user.main_wallet);
+      const pending = Number(user.pending_withdrawal);
+      if (main - pending < amount) throw new Error('insufficient-main');
+      await client.query('UPDATE users SET pending_withdrawal = $1, updated_at = $2 WHERE username = $3', [pending + amount, now(), uid]);
+    }
+
+    const id = crypto.randomUUID();
+    const clientRequestId = String(data.clientRequestId || '').slice(0, 128);
+    
+    await client.query(`
+      INSERT INTO transactions (id, username, uid, wallet_uid, telegram_id, telegram_username, display_name, type, amount, status, timestamp, reference, full_name, phone_number, image_data, reason, wallet_applied, client_request_id, updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+    `, [id, uid, uid, uid, user.telegram_id, user.telegram_username, user.display_name || uid, type, amount, 'pending', now(), 
+        String(data.reference || ''), String(data.fullName || ''), String(data.phoneNumber || ''), String(data.imageData || '').slice(0, 2500000), '', 0, clientRequestId, now()]);
+
+    if (clientRequestId) {
+      await client.query('INSERT INTO transaction_requests (uid, client_request_id, tx_id, type, amount, created_at) VALUES ($1,$2,$3,$4,$5,$6)', 
+        [uid, clientRequestId, id, type, amount, now()]);
+    }
+
+    await client.query('COMMIT');
+    await sendWallet(uid);
+
+    if (type === 'deposit') {
+      rescanPendingSms().catch(err => console.error('[TX-RESCAN]', err.message));
+    }
+
+    return { ok: true, id, clientRequestId };
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('[TX-REQUEST]', e.message);
+    return { ok: false, reason: e.message };
+  } finally {
+    client.release();
+  }
+}
+
+async function transactionImage(uid, id, imageData) {
+  if (!id || !imageData || String(imageData).length > 2_500_000) return false;
+  const res = await pool.query('UPDATE transactions SET image_data = $1, updated_at = $2 WHERE id = $3 AND username = $4 AND status = $5 RETURNING id', 
+    [String(imageData), now(), id, uid, 'pending']);
+  return res.rowCount > 0;
+}
+
+async function adminListTransactions() {
+  const res = await pool.query("SELECT * FROM transactions WHERE status = 'pending' ORDER BY timestamp DESC");
+  return res.rows.map(d => ({
+    id: d.id, username: d.username, uid: d.uid || d.wallet_uid, walletUid: d.wallet_uid,
+    telegramId: d.telegram_id, telegramUsername: d.telegram_username, displayName: d.display_name,
+    type: d.type, amount: Number(d.amount), status: d.status, timestamp: Number(d.timestamp), reference: d.reference,
+    fullName: d.full_name, phoneNumber: d.phone_number, imageData: d.image_data, reason: d.reason, walletApplied: Number(d.wallet_applied)
+  }));
+}
+
+async function adminDecision(id, decision, reason = '') {
+  if (decision === 'approve') decision = 'approved';
+  if (decision === 'reject') decision = 'rejected';
+  if (!['approved', 'rejected'].includes(decision)) return { ok: false, reason: 'bad-decision' };
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const txRes = await client.query('SELECT * FROM transactions WHERE id = $1 FOR UPDATE', [id]);
+    if (txRes.rows.length === 0) throw new Error('not-found');
+    const tx = txRes.rows[0];
+    if (tx.status !== 'pending') throw new Error('already-decided');
+    
+    const userRes = await client.query('SELECT * FROM users WHERE username = $1 FOR UPDATE', [tx.wallet_uid || tx.uid]);
+    if (userRes.rows.length === 0) throw new Error('wallet-user-not-found');
+    const user = userRes.rows[0];
+
+    let newMain = Number(user.main_wallet);
+    let newPlay = Number(user.play_wallet);
+    let newPending = Number(user.pending_withdrawal);
+    const amount = Number(tx.amount);
+
+    if (tx.type === 'deposit' && decision === 'approved') {
+      newPlay += amount;
+    } else if (tx.type === 'withdraw' && decision === 'approved') {
+      if (newMain < amount || newPending < amount) throw new Error('insufficient-funds');
+      newMain -= amount;
+      newPending -= amount;
+    } else if (tx.type === 'withdraw' && decision === 'rejected') {
+      if (newPending < amount) throw new Error('insufficient-pending');
+      newPending -= amount;
+    }
+
+    await client.query('UPDATE users SET main_wallet = $1, play_wallet = $2, pending_withdrawal = $3, updated_at = $4 WHERE username = $5', 
+      [newMain, newPlay, newPending, now(), tx.wallet_uid || tx.uid]);
+
+    await client.query('UPDATE transactions SET status = $1, reason = $2, wallet_applied = 1, updated_at = $3 WHERE id = $4', 
+      [decision, String(reason).slice(0, 256), now(), id]);
+
+    await client.query('COMMIT');
+    
+    const updatedTx = { ...tx, status: decision, reason };
+    await sendWallet(tx.wallet_uid || tx.uid);
+    await notifyTransaction(tx.wallet_uid || tx.uid, updatedTx);
+    return { ok: true, tx: updatedTx };
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('[ADMIN] decision failed', e.message);
+    return { ok: false, reason: e.message };
+  } finally {
+    client.release();
+  }
+}
+
+// ============================================================================
+// AUTOMATIC DEPOSIT VERIFICATION — STRICT MODE
+// ============================================================================
+
+/**
+ * Strict sender normalization.
+ */
+function normalizeSender(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Returns true only if the sender is *exactly* on the trusted allow-list.
+ * Uses token-level matching so "+25112712345" does NOT match "127".
+ */
+function isTrustedSmsSender(record) {
+  const raw = [record.from, record.sender, record.address, record.originator, record.source]
+    .filter(Boolean)
+    .map(v => normalizeSender(v))
+    .filter(Boolean);
+  if (!raw.length) return false;
+
+  for (const candidate of raw) {
+    for (const trusted of SMS_TRUSTED_SENDERS) {
+      const t = normalizeSender(trusted);
+      if (!t) continue;
+      if (candidate === t) return true;
+      if (/^[0-9]+$/.test(t) && candidate.split(' ').includes(t)) return true;
+    }
+  }
+  return false;
+}
+
+function normalizePaymentReference(value) {
+  return String(value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, MAX_REFERENCE_LENGTH);
+}
+
+/**
+ * Reject malformed references. Telebirr refs are alphanumeric, ~10–16 chars,
+ * often starting with "FT". We're not strict about the prefix (other
+ * providers may differ), but we enforce length and charset.
+ */
+function isValidReference(ref) {
+  if (!ref || typeof ref !== 'string') return false;
+  if (ref.length < MIN_REFERENCE_LENGTH || ref.length > MAX_REFERENCE_LENGTH) return false;
+  if (!/^[A-Z0-9]+$/.test(ref)) return false;
+  if (/^[0-9]+$/.test(ref) && ref.length < MIN_TELEBIRR_REF_LENGTH) return false;
+  return true;
+}
+
+function parsePaymentRecord(r) {
+  const text = String(r.text || r.message || '').replace(/\s+/g, ' ').trim();
+  let reference = r.reference || '';
+  if (!reference && text) {
+    const m = text.match(/(?:transaction|txn|ref(?:erence)?)\s*(?:number|code|no\.?|id)?\s*(?:is|:|\-)?\s*([A-Z0-9]{6,})/i) 
+           || text.match(/receipt\/([A-Za-z0-9]{6,24})/i);
+    if (m) reference = m[1];
+  }
+  let amount = Number(r.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    const m = text.match(/(?:ETB|Birr|ብር|Br\b|Amt|Amount)\s*[:\-]?\s*([0-9][0-9,]*(?:\.\d{1,2})?)/i);
+    if (m) amount = Number(String(m[1]).replace(/,/g, ''));
+  }
+  return {
+    reference: normalizePaymentReference(reference),
+    amount: Number.isFinite(amount) ? amount : 0,
+    isTrusted: isTrustedSmsSender(r),
+    text,
+  };
+}
+
+async function logAutoActivity(kind, smsId, reference, amount, txId, reason) {
+  await pool.query('INSERT INTO auto_activity (id, kind, sms_id, reference, amount, tx_id, reason, at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)', 
+    [crypto.randomUUID(), kind, String(smsId||''), reference || '', Number(amount)||0, txId || '', reason || '', now()]);
+}
+
+/**
+ * Additional strictness: if the deposit request carried a phone number or
+ * full name, we require at least the last-4 digits / a name token to appear
+ * in the SMS text. This blocks the "one SMS unlocks any amount" attack.
+ */
+function smsMatchesDepositIdentity(smsText, tx) {
+  const text = String(smsText || '').toLowerCase();
+  if (!text) return false;
+
+  const phone = String(tx.phone_number || '').replace(/\D/g, '');
+  if (phone.length >= 4) {
+    const tail = phone.slice(-4);
+    if (!text.includes(tail)) {
+      // Also accept the full phone with or without country code.
+      if (!text.includes(phone)) return false;
+    }
+  }
+
+  const fullName = String(tx.full_name || '').trim().toLowerCase();
+  if (fullName.length >= 3) {
+    const tokens = fullName.split(/\s+/).filter(t => t.length >= 3);
+    if (tokens.length && !tokens.some(t => text.includes(t))) return false;
+  }
+  return true;
+}
+
+/**
+ * Attempt to auto-approve a single SMS against pending deposit requests.
+ *
+ * STRICT RULES:
+ *  1. Sender must be strictly trusted.
+ *  2. Reference must be present, valid, not previously consumed.
+ *  3. SMS must be fresh (<= 24h).
+ *  4. Amount must be > 0.
+ *  5. There must be exactly one pending deposit with:
+ *       - matching normalized reference,
+ *       - amount within tolerance,
+ *       - created within 7 days,
+ *       - user not blocked/frozen,
+ *       - phone/name match (if provided).
+ *  6. Reference is reserved atomically *before* approval.
+ */
+async function autoApproveMatchingDeposits(smsId, smsRecord) {
+  const payment = parsePaymentRecord(smsRecord);
+
+  if (!payment.isTrusted) return { ok: false, reason: 'untrusted-sender' };
+  if (!payment.reference) return { ok: false, reason: 'no-reference' };
+  if (!isValidReference(payment.reference)) return { ok: false, reason: 'invalid-reference' };
+
+  const smsAt = Number(smsRecord.timestamp || now());
+  if (!Number.isFinite(smsAt) || (now() - smsAt) > SMS_MAX_AGE_MS) {
+    return { ok: false, reason: 'stale-sms' };
+  }
+
+  if (!(payment.amount > 0)) return { ok: false, reason: 'no-amount' };
+  if (payment.amount < MIN_DEPOSIT_AMOUNT || payment.amount > MAX_DEPOSIT_AMOUNT) {
+    return { ok: false, reason: 'amount-out-of-range' };
+  }
+
+  // Reference must not have been consumed previously.
+  const used = await pool.query('SELECT tx_id FROM used_references WHERE reference = $1', [payment.reference]);
+  if (used.rows.length > 0) {
+    await logAutoActivity('skipped', smsId, payment.reference, payment.amount, used.rows[0].tx_id, 'reference-reused');
+    return { ok: false, reason: 'reference-reused' };
+  }
+
+  // Take a PostgreSQL advisory lock on this reference so two server instances
+  // or two SMS deliveries cannot race. The lock is released automatically at
+  // session end; we use a short-lived dedicated client.
+  const lockKey = advisoryKeyForReference(payment.reference);
+  const lockClient = await pool.connect();
+  try {
+    const lockRes = await lockClient.query('SELECT pg_try_advisory_lock($1) AS got', [lockKey]);
+    if (!lockRes.rows[0]?.got) {
+      return { ok: false, reason: 'reference-locked' };
+    }
+
+    try {
+      // Re-check after acquiring the lock.
+      const recheck = await pool.query('SELECT tx_id FROM used_references WHERE reference = $1', [payment.reference]);
+      if (recheck.rows.length > 0) {
+        return { ok: false, reason: 'reference-reused' };
+      }
+
+      // Find matching pending deposits.
+      const txRes = await pool.query(
+        "SELECT * FROM transactions WHERE status = 'pending' AND type = 'deposit' AND timestamp > $1",
+        [now() - DEPOSIT_MAX_AGE_MS]
+      );
+
+      const candidates = [];
+      for (const tx of txRes.rows) {
+        const txRef = normalizePaymentReference(tx.reference);
+        if (!txRef) continue;
+        if (txRef !== payment.reference) continue;
+        const txAmt = Number(tx.amount);
+        if (!Number.isFinite(txAmt)) continue;
+        if (Math.abs(txAmt - payment.amount) > AUTO_DEPOSIT_AMOUNT_TOLERANCE) continue;
+        candidates.push(tx);
+      }
+
+      if (candidates.length === 0) {
+        await logAutoActivity('skipped', smsId, payment.reference, payment.amount, '', 'no-match');
+        return { ok: false, reason: 'no-match' };
+      }
+      if (candidates.length > 1) {
+        await logAutoActivity('skipped', smsId, payment.reference, payment.amount, '', 'ambiguous-tx');
+        return { ok: false, reason: 'ambiguous-tx' };
+      }
+
+      const tx = candidates[0];
+
+      // Blocked / frozen check at match time.
+      const owner = await pool.query('SELECT blocked, fraud_status, account_status FROM users WHERE username = $1', [tx.wallet_uid || tx.uid]);
+      if (owner.rows.length === 0) {
+        await logAutoActivity('skipped', smsId, payment.reference, payment.amount, tx.id, 'owner-missing');
+        return { ok: false, reason: 'owner-missing' };
+      }
+      const o = owner.rows[0];
+      if (o.blocked) {
+        await logAutoActivity('skipped', smsId, payment.reference, payment.amount, tx.id, 'owner-blocked');
+        return { ok: false, reason: 'owner-blocked' };
+      }
+      if (String(o.fraud_status || '').toLowerCase() === 'frozen') {
+        await logAutoActivity('skipped', smsId, payment.reference, payment.amount, tx.id, 'owner-frozen');
+        return { ok: false, reason: 'owner-frozen' };
+      }
+
+      // Identity cross-check (phone/name embedded in SMS).
+      if (!smsMatchesDepositIdentity(payment.text, tx)) {
+        await logAutoActivity('skipped', smsId, payment.reference, payment.amount, tx.id, 'identity-mismatch');
+        return { ok: false, reason: 'identity-mismatch' };
+      }
+
+      // Atomically reserve the reference BEFORE approving.
+      const reserve = await pool.query(
+        `INSERT INTO used_references (reference, sms_id, tx_id, amount, sender, username, consumed_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)
+         ON CONFLICT (reference) DO NOTHING
+         RETURNING reference`,
+        [payment.reference, smsId, tx.id, payment.amount, String(smsRecord.sender || smsRecord.from || ''), tx.username, now()]
+      );
+      if (reserve.rowCount === 0) {
+        await logAutoActivity('skipped', smsId, payment.reference, payment.amount, tx.id, 'reference-reused');
+        return { ok: false, reason: 'reference-reused' };
+      }
+
+      const result = await adminDecision(tx.id, 'approved', `Auto-approved: SMS ${String(smsId).slice(0, 80)} (ref ${payment.reference})`);
+      if (!result.ok) {
+        // Roll back the reservation so a retry can succeed.
+        await pool.query('DELETE FROM used_references WHERE reference = $1 AND tx_id = $2', [payment.reference, tx.id]);
+        await logAutoActivity('error', smsId, payment.reference, payment.amount, tx.id, result.reason);
+        return { ok: false, reason: result.reason };
+      }
+
+      await logAutoActivity('approved', smsId, payment.reference, payment.amount, tx.id, 'verified');
+      return { ok: true, txId: tx.id, tx: result.tx };
+    } finally {
+      try { await lockClient.query('SELECT pg_advisory_unlock($1)', [lockKey]); } catch {}
+    }
+  } finally {
+    lockClient.release();
+  }
+}
+
+function advisoryKeyForReference(ref) {
+  const h = crypto.createHash('sha256').update('ref:' + String(ref || '')).digest();
+  // pg_advisory_lock takes a bigint; take first 6 bytes to stay safe.
+  const n = h.readUIntBE(0, 6);
+  return Number(n);
+}
+
+/**
+ * Process a single unprocessed SMS row.
+ *
+ * We only mark processed=true when we reach a *definitive* outcome:
+ *  - approved (matched)
+ *  - untrusted-sender
+ *  - no-reference / invalid-reference
+ *  - no-amount / amount-out-of-range
+ *  - stale-sms
+ *
+ * Anything else (no-match, ambiguous-tx, reference-locked) stays unprocessed
+ * so a later deposit request or poll can retry.
+ */
+async function processIncomingSmsSnapshot(row) {
+  if (row.processed) return;
+  try {
+    const res = await autoApproveMatchingDeposits(row.id, row);
+    const definitive = res.ok || ['untrusted-sender', 'no-reference', 'invalid-reference',
+      'no-amount', 'amount-out-of-range', 'stale-sms', 'reference-reused'].includes(res.reason);
+    if (definitive) {
+      await pool.query(
+        'UPDATE incoming_sms SET processed = true, matched_tx_id = COALESCE($1, matched_tx_id) WHERE id = $2',
+        [res.ok ? res.txId : null, row.id]
+      );
+    }
+  } catch (e) { console.error('[AUTO-DEPOSIT]', e); }
+}
+
+async function rescanPendingSms() {
+  const res = await pool.query('SELECT * FROM incoming_sms WHERE processed = false ORDER BY timestamp ASC LIMIT 50');
+  for (const row of res.rows) {
+    await processIncomingSmsSnapshot(row);
+  }
+}
+
+function startAutomaticDepositMonitor() {
+  setInterval(async () => {
+    try {
+      const res = await pool.query('SELECT * FROM incoming_sms WHERE processed = false ORDER BY timestamp ASC LIMIT 10');
+      for (const row of res.rows) {
+        await processIncomingSmsSnapshot(row);
+      }
+    } catch (e) { console.error('[SMS-MONITOR]', e.message); }
+  }, 5000);
+  console.log('[AUTO-DEPOSIT] polling monitor started');
+}
+
+async function markNotificationRead(uid, id) {
+  await pool.query('UPDATE notifications SET read = true WHERE id = $1 AND username = $2', [id, uid]);
+}
+
+async function claimPayout(uid, amount, roomId, round, kind) {
+  const key = `payout:${roomId}_${round}_${uid}_${kind}`;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const marker = await client.query('SELECT id FROM notifications WHERE id = $1', [key]);
+    if (marker.rows.length > 0) { await client.query('ROLLBACK'); return false; }
+    
+    await client.query('UPDATE users SET main_wallet = main_wallet + $1, wallet_updated_at = $2, updated_at = $2 WHERE username = $3', [amount, now(), uid]);
+    await client.query('INSERT INTO notifications (id, username, type, read, timestamp) VALUES ($1,$2,$3,true,$4)', [key, uid, 'payout_marker', now()]);
+    await client.query('COMMIT');
+    await sendWallet(uid);
+    return true;
+  } catch (e) {
+    await client.query('ROLLBACK');
+    return false;
+  } finally {
+    client.release();
+  }
+}
+
+async function creditReferral(ref, amount, roomId, round, winnerUid) {
+  if (!ref || ref === winnerUid || amount <= 0) return false;
+  const key = `ref:${roomId}_${round}_${winnerUid}_${ref}`;
+  
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const marker = await client.query('SELECT id FROM notifications WHERE id = $1', [key]);
+    if (marker.rows.length > 0) { await client.query('ROLLBACK'); return false; }
+
+    await client.query('INSERT INTO users (username, display_name, created_at, updated_at) VALUES ($1,$1,$2,$2) ON CONFLICT (username) DO NOTHING', [ref, now()]);
+    await client.query('UPDATE users SET main_wallet = main_wallet + $1, referral_earnings = referral_earnings + $1, wallet_updated_at = $2, updated_at = $2 WHERE username = $3', [amount, now(), ref]);
+    await client.query('INSERT INTO notifications (id, username, type, read, timestamp) VALUES ($1,$2,$3,true,$4)', [key, ref, 'referral_marker', now()]);
+    
+    await client.query('COMMIT');
+    await addNotification(ref, { message: `🎁 You earned ${amount} Birr commission from a win.` });
+    await sendWallet(ref);
+    return true;
+  } catch (e) {
+    await client.query('ROLLBACK');
+    return false;
+  } finally {
+    client.release();
+  }
+}
+
+// ============================================================================
+// Game room (unchanged from original)
+// ============================================================================
+class Room {
+  constructor(id, bet, row = null) {
+    this.id = id; this.bet = bet;
+    this.phase = row?.phase || 'selection';
+    this.round = Number(row?.round || 1);
+    this.endsAt = Number(row?.ends_at || (now() + SELECTION_SECONDS * 1000));
+    this.players = new Map();
+    this.taken = new Map();
+    this.winningNumber = row?.winning_number == null ? null : Number(row.winning_number);
+    this.winners = row?.winners_json ? JSON.parse(row.winners_json) : [];
+    this.prizePool = Number(row?.prize_pool || 0);
+    this.lastResult = row?.last_result_json ? JSON.parse(row.last_result_json) : null;
+    this.mutex = new Mutex(); this.botTimers = []; this.dirty = true;
+    if (row?.taken_json) for (const [n, uid] of Object.entries(JSON.parse(row.taken_json))) this.taken.set(Number(n), uid);
+    if (row?.players_json) {
+      const saved = JSON.parse(row.players_json);
+      for (const [uid, p] of Object.entries(saved)) this.players.set(uid, {
+        uid, picks: Array.isArray(p.picks) ? p.picks.map(Number) : [], isBot: !!p.isBot, active: !!p.active, displayName: String(p.displayName || uid)
+      });
+    }
+  }
+  snapshot() {
+    const players = {};
+    for (const [uid, p] of this.players) if (p.active || p.isBot) players[uid] = { name: p.displayName || uid, picks: [...p.picks], isBot: !!p.isBot, bet: this.bet };
+    const activePlayers = [...this.players.values()].filter(p => p.active);
+    const totalPicks = activePlayers.reduce((sum, p) => sum + p.picks.length, 0);
+    const totalBets = totalPicks * this.bet;
+    const humanBets = activePlayers.filter(p => !p.isBot).reduce((sum, p) => sum + p.picks.length * this.bet, 0);
+    return {
+      gameState: this.phase, round: this.round, betAmount: this.bet, selectionEndsAt: this.endsAt, endsAt: this.endsAt,
+      numbersTaken: Object.fromEntries([...this.taken.keys()].map(n => [n, true])), players, 
+      winners: [...this.winners].map(uid => this.players.get(uid)?.displayName || uid),
+      winningNumber: this.winningNumber, prizePool: this.prizePool, potAmount: this.prizePool,
+      totalBets, humanBets, totalPicks, displayedPrizePool: Math.floor(totalBets * PAYOUT_RATE),
+      onlineCount: activePlayers.length, botCount: activePlayers.filter(p => p.isBot).length, realPlayerCount: activePlayers.filter(p => !p.isBot).length,
+      serverNow: now(), lastResult: this.lastResult,
+    };
+  }
+  async persist() {
+    const players = {};
+    for (const [uid, p] of this.players) players[uid] = { picks: [...p.picks], isBot: !!p.isBot, active: !!p.active, displayName: p.displayName || uid };
+    const taken = Object.fromEntries(this.taken.entries());
+    await pool.query(`
+      INSERT INTO rooms (id, bet, phase, round, ends_at, winning_number, winners_json, prize_pool, last_result_json, taken_json, players_json, updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+      ON CONFLICT (id) DO UPDATE SET 
+        phase = EXCLUDED.phase, round = EXCLUDED.round, ends_at = EXCLUDED.ends_at, winning_number = EXCLUDED.winning_number,
+        winners_json = EXCLUDED.winners_json, prize_pool = EXCLUDED.prize_pool, last_result_json = EXCLUDED.last_result_json,
+        taken_json = EXCLUDED.taken_json, players_json = EXCLUDED.players_json, updated_at = EXCLUDED.updated_at
+    `, [this.id, this.bet, this.phase, this.round, this.endsAt, this.winningNumber, JSON.stringify(this.winners), this.prizePool, 
+        this.lastResult ? JSON.stringify(this.lastResult) : null, JSON.stringify(taken), JSON.stringify(players), now()]);
+    this.dirty = false;
+  }
+  broadcast() {
+    const payload = JSON.stringify({ type: 'state', room: this.id, state: this.snapshot() });
+    for (const ws of wss.clients) if (ws.readyState === 1 && ws.authed && ws.roomId === this.id) ws.send(payload);
+  }
+  async push() { await this.persist(); this.broadcast(); }
+}
+
+let rooms = {};
+async function loadRooms() {
+  const res = await pool.query('SELECT * FROM rooms');
+  const rowMap = new Map();
+  res.rows.forEach(row => rowMap.set(row.id, row));
+  rooms = { room_15: new Room('room_15', 15, rowMap.get('room_15')), room_30: new Room('room_30', 30, rowMap.get('room_30')) };
+  for (const room of Object.values(rooms)) for (const p of room.players.values()) if (!p.isBot) p.active = false;
+}
+async function saveRoom(room) { await room.persist(); room.broadcast(); }
+
+async function debit(uid, amount, roomId, round) {
+  const amt = toFiniteNumber(amount, 0);
+  if (amt <= 0) return { ok: false, reason: 'bad-amount' };
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const res = await client.query('SELECT play_wallet FROM users WHERE username = $1 FOR UPDATE', [uid]);
+    if (res.rows.length === 0) throw new Error('user-not-found');
+    if (Number(res.rows[0].play_wallet) < amt) throw new Error('insufficient');
+    
+    await client.query('UPDATE users SET play_wallet = play_wallet - $1, updated_at = $2, wallet_updated_at = $2 WHERE username = $3', [amt, now(), uid]);
+    await client.query('COMMIT');
+    await sendWallet(uid);
+    return { ok: true };
+  } catch (e) {
+    await client.query('ROLLBACK');
+    await sendWallet(uid);
+    return { ok: false, reason: e.message };
+  } finally {
+    client.release();
+  }
+}
+
+async function refundWager(uid, amount, roomId, round) {
+  const amt = toFiniteNumber(amount, 0);
+  if (amt <= 0) return false;
+  try {
+    await pool.query('UPDATE users SET play_wallet = play_wallet + $1, updated_at = $2, wallet_updated_at = $2 WHERE username = $3', [amt, now(), uid]);
+    await sendWallet(uid);
+    return true;
+  } catch (e) { return false; }
+}
+
+async function pickIntent(room, uid, num) {
+  return room.mutex.run(async () => {
+    if (room.phase !== 'selection') return { ok: false, reason: 'not-selection' };
+    if (!(num >= 1 && num <= 200)) return { ok: false, reason: 'range' };
+    let p = room.players.get(uid);
+    if (!p) { p = { uid, picks: [], isBot: false, active: true, displayName: uid }; room.players.set(uid, p); }
+    p.active = true;
+    if (p.picks.length >= MAX_PICKS) return { ok: false, reason: 'max-picks' };
+    if (p.picks.includes(num)) return { ok: false, reason: 'duplicate' };
+    if (room.taken.has(num)) return { ok: false, reason: 'taken' };
+    const d = await debit(uid, room.bet, room.id, room.round);
+    if (!d.ok) return d;
+    room.taken.set(num, uid);
+    p.picks.push(num);
+    room.dirty = true;
+    return { ok: true };
+  });
+}
+
+async function unpickIntent(room, uid, num) {
+  return room.mutex.run(async () => {
+    if (room.phase !== 'selection') return { ok: false, reason: 'not-selection' };
+    const p = room.players.get(uid);
+    if (!p || !p.picks.includes(num) || room.taken.get(num) !== uid) return { ok: false, reason: 'not-picked' };
+    if (!(await refundWager(uid, room.bet, room.id, room.round))) return { ok: false, reason: 'refund-failed' };
+    p.picks = p.picks.filter(n => n !== num); room.taken.delete(num); room.dirty = true;
+    return { ok: true };
+  });
+}
+
+async function refundDisconnectedPlayer(room, p) {
+  if (!p || p.isBot || !p.picks.length) return;
+  await refundWager(p.uid, room.bet * p.picks.length, room.id, room.round);
+  for (const n of p.picks) if (room.taken.get(n) === p.uid) room.taken.delete(n);
+  p.picks = []; p.active = false; room.dirty = true;
+}
+
+async function toSpinning(room) {
+  if (room.phase !== 'selection') return;
+  const allWithPicks = [...room.players.values()].filter(p => p.picks.length > 0 && (p.isBot || p.active));
+  if (!allWithPicks.length) return resetRound(room, 'no-picks');
+  const allNums = [...new Set(allWithPicks.flatMap(p => p.picks))];
+  if (!allNums.length) return resetRound(room, 'no-picks');
+  
+  const winningNumber = allNums[Math.floor(Math.random() * allNums.length)];
+  const winners = allWithPicks.filter(p => p.picks.includes(winningNumber)).map(p => p.uid);
+  const totalPicksInRoom = allWithPicks.reduce((s, p) => s + p.picks.length, 0);
+  const prizePool = Math.floor(totalPicksInRoom * room.bet * PAYOUT_RATE);
+  
+  room.winningNumber = winningNumber; room.winners = winners; room.prizePool = prizePool;
+  room.phase = 'spinning'; room.endsAt = now() + SPINNING_SECONDS * 1000; room.dirty = true;
+  
+  if (winners.length && prizePool > 0) {
+    const share = Math.floor(prizePool / winners.length);
+    for (const uid of winners) {
+      if (share <= 0) break;
+      if (!(await claimPayout(uid, share, room.id, room.round, 'win'))) continue;
+      if (!room.players.get(uid)?.isBot) {
+        await addNotification(uid, { message: `🏆 You won ${share} Birr in round ${room.round}!` });
+      }
+    }
+  }
+  room.lastResult = { round: room.round, winningNumber, winners: winners.map(uid => room.players.get(uid)?.displayName || uid), winAmount: (winners.length && prizePool > 0) ? Math.floor(prizePool / winners.length) : 0, setAt: now() };
+}
+
+async function toResults(room) {
+  if (room.phase !== 'spinning') return;
+  room.phase = 'results'; room.endsAt = now() + RESULTS_SECONDS * 1000; room.dirty = true;
+}
+
+async function resetRound(room, why) {
+  for (const p of room.players.values()) {
+    if (p.isBot || !p.picks.length) continue;
+    if (room.phase === 'selection' || !p.active) await refundWager(p.uid, room.bet * p.picks.length, room.id, room.round);
+  }
+  room.round += 1; room.phase = 'selection'; room.endsAt = now() + SELECTION_SECONDS * 1000;
+  room.taken.clear(); room.winningNumber = null; room.winners = []; room.prizePool = 0; room.lastResult = null;
+  for (const p of room.players.values()) { p.picks = []; p.active = false; }
+  room.dirty = true;
+  scheduleBots(room);
+}
+
+function botRoster(count, round) {
+  const pool = [...BOT_NAMES]; const off = ((round - 1) * 7) % pool.length;
+  return pool.slice(off).concat(pool.slice(0, off)).slice(0, Math.min(count, pool.length));
+}
+function botUid(displayName) { return `__bot_${safeUser(displayName)}`; }
+function clearBotTimers(room) { room.botTimers.forEach(clearTimeout); room.botTimers = []; }
+function currentBotRoster(room) { return botRoster(BOT_MIN + (room.round % (BOT_MAX - BOT_MIN + 1)), room.round); }
+
+function normalizeRoundBots(room) {
+  const roster = new Set(currentBotRoster(room));
+  const activeBotUids = new Set([...roster].map(botUid));
+  for (const [uid, p] of room.players) {
+    if (!p.isBot) continue;
+    if (!activeBotUids.has(uid)) {
+      for (const n of p.picks || []) if (room.taken.get(n) === uid) room.taken.delete(n);
+      p.picks = []; p.active = false;
+    } else { p.active = true; p.displayName = p.displayName || uid.replace(/^__bot_/, ''); }
+  }
+  return roster;
+}
+
+function scheduleBots(room) {
+  clearBotTimers(room);
+  if (room.phase !== 'selection') return;
+  const roster = normalizeRoundBots(room);
+  const names = [...roster];
+  if (!names.length) return;
+  const order = [];
+  for (let pickNo = 0; pickNo < MAX_PICKS; pickNo++) {
+    const pass = [...names];
+    for (let i = pass.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pass[i], pass[j]] = [pass[j], pass[i]]; }
+    for (const name of pass) order.push(name);
+  }
+  let index = 0;
+  const runNextPick = async () => {
+    if (room.phase !== 'selection' || index >= order.length || now() >= room.endsAt - 1000) return;
+    const displayName = order[index++];
+    const uid = botUid(displayName);
+    try {
+      await room.mutex.run(async () => {
+        if (room.phase !== 'selection') return;
+        await ensureUser(uid, null, true);
+        let p = room.players.get(uid);
+        if (!p) { p = { uid, picks: [], isBot: true, active: true, displayName }; room.players.set(uid, p); }
+        else { p.active = true; p.isBot = true; p.displayName = displayName; }
+        if (p.picks.length >= MAX_PICKS) return;
+        let num = null;
+        for (let attempt = 0; attempt < 12; attempt++) {
+          const candidate = 1 + Math.floor(Math.random() * 200);
+          if (!room.taken.has(candidate) && !p.picks.includes(candidate)) { num = candidate; break; }
+        }
+        if (num == null) { for (let candidate = 1; candidate <= 200; candidate++) if (!room.taken.has(candidate)) { num = candidate; break; } }
+        if (num == null) return;
+        room.taken.set(num, uid); p.picks.push(num); room.dirty = true; room.broadcast();
+      });
+    } catch (err) { console.error('[BOT-PICK]', err); }
+    if (room.phase !== 'selection' || index >= order.length) return;
+    room.botTimers.push(setTimeout(runNextPick, 300));
+  };
+  room.botTimers.push(setTimeout(runNextPick, 350));
+}
+
+setInterval(async () => {
+  for (const room of Object.values(rooms)) {
+    await room.mutex.run(async () => {
+      const t = now();
+      if (room.phase === 'selection' && t >= room.endsAt) await toSpinning(room);
+      else if (room.phase === 'spinning' && t >= room.endsAt) await toResults(room);
+      else if (room.phase === 'results' && t >= room.endsAt) resetRound(room, 'results-done');
+      if (room.dirty) { await room.persist(); room.broadcast(); room.dirty = false; }
+    });
+  }
+}, 500);
+
+// ============================================================================
+// WebSocket Setup
+// ============================================================================
+const conns = new Map();
+const wss = new WebSocketServer({ noServer: true });
+function send(ws, obj) { if (ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+
+wss.on('connection', (ws) => {
+  ws.isAlive = true; ws.authenticatedAt = null;
+  ws.authTimer = setTimeout(() => { if (!ws.authed) { try { ws.close(4001, 'authentication timeout'); } catch {} } }, 10000);
+  ws.uid = null; ws.roomId = null; ws.authed = false; ws.isAdmin = false;
+
+  ws.on('pong', () => { ws.isAlive = true; });
+  ws.on('message', async raw => {
+    let m; try { m = JSON.parse(raw.toString()); } catch { return; }
+    try { await handle(ws, m); }
+    catch (e) { console.error('[WS-MSG]', e); send(ws, { type: 'error', message: 'server-error' }); }
+  });
+  
+  ws.on('close', async () => {
+    clearTimeout(ws.authTimer);
+    if (!ws.uid) return;
+    const set = conns.get(ws.uid);
+    if (set) { set.delete(ws); if (!set.size) conns.delete(ws.uid); }
+    if (ws.roomId) {
+      const room = rooms[ws.roomId];
+      if (!room) return;
+      await room.mutex.run(async () => {
+        const p = room.players.get(ws.uid);
+        if (!p || p.isBot) return;
+        if (room.phase === 'selection') await refundDisconnectedPlayer(room, p);
+        p.active = false; room.dirty = true;
+        await room.persist(); room.broadcast();
+      }).catch(err => console.error('[WS-CLOSE]', err));
+    }
+  });
+  ws.on('error', () => {});
+});
+
+async function handle(ws, m) {
+  if (m.type === 'ping') return send(ws, { type: 'pong', t: now() });
+
+  if (m.type === 'auth') {
+    const verification = validateInitData(m.initData || '');
+    if (!verification.ok) return send(ws, { type: 'error', message: 'auth-failed' });
+    
+    const telegramUser = verification.user;
+    const resolved = await resolveTelegramUser(telegramUser, m.ref || null);
+    if (!resolved?.uid) return send(ws, { type: 'error', message: 'auth-failed' });
+
+    const uid = resolved.uid;
+    const isBlockedRes = await pool.query('SELECT blocked, block_reason, blocked_at FROM users WHERE username = $1', [uid]);
+    if (isBlockedRes.rows[0]?.blocked) {
+      send(ws, { type: 'account-blocked', reason: isBlockedRes.rows[0].block_reason, at: Number(isBlockedRes.rows[0].blocked_at) });
+      try { ws.close(4003, 'account-blocked'); } catch {}
       return;
     }
+
+    await ensureUser(uid, m.ref || null, false, {
+      telegram_id: telegramUser.id, display_name: [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' ') || uid, last_ip: websocketClientIp(ws)
+    });
     
-    let html = '<table class="utable"><thead><tr>' +
-      '<th>Name</th><th>Telegram ID</th><th>User ID</th>' +
-      '<th class="num">M-Wallet</th><th class="num">P-Wallet</th>' +
-      '</tr></thead><tbody>';
-      
-    for (const r of filtered) {
-      html += '<tr>' +
-        '<td class="name">' + esc(r.name) + '</td>' +
-        '<td class="mono">' + (r.telegram_id ? esc(r.telegram_id) : '—') + '</td>' +
-        '<td class="mono">' + esc(r.uid) + '</td>' +
-        '<td class="num">' + Number(r.main).toLocaleString() + '</td>' +
-        '<td class="num">' + Number(r.play).toLocaleString() + '</td>' +
-        '</tr>';
-    }
-    html += '</tbody></table>';
-    target.innerHTML = html;
+    clearTimeout(ws.authTimer);
+    ws.authenticatedAt = now(); ws.uid = uid; ws.authed = true;
+    ws.displayName = resolved.user.display_name;
+
+    let set = conns.get(uid);
+    if (!set) { set = new Set(); conns.set(uid, set); }
+    set.add(ws);
+
+    const holdRes = await pool.query('SELECT withdrawal_hold_until FROM users WHERE username = $1', [uid]);
+    send(ws, { type: 'authed', uid, displayName: ws.displayName, telegramId: telegramUser.id, withdrawalHoldUntil: Number(holdRes.rows[0]?.withdrawal_hold_until || 0) });
+    send(ws, { type: 'wallet', ...(await walletFor(uid)) });
+
+    const txSnap = await pool.query("SELECT id, type, amount, status, timestamp FROM transactions WHERE wallet_uid = $1 AND status = 'pending' ORDER BY timestamp DESC LIMIT 10", [uid]);
+    send(ws, { type: 'pending-transactions', transactions: txSnap.rows.map(t => ({ ...t, timestamp: Number(t.timestamp), amount: Number(t.amount) })) });
+    return;
   }
 
-  async function loadUsers(showErrors) {
-    if (!serverUrl || !adminKey) return;
+  if (m.type === 'admin-auth') {
+    if (!ADMIN_KEY || typeof m.key !== 'string' || !constantTimeEqual(m.key, ADMIN_KEY)) return ws.close(4003, 'admin auth failed');
+    ws.authed = true; ws.isAdmin = true; send(ws, { type: 'admin-authed' }); return;
+  }
+
+  if (ws.isAdmin) {
+    if (m.type === 'admin-list-transactions') return send(ws, { type: 'admin-transactions', transactions: await adminListTransactions() });
+    if (m.type === 'admin-decision') {
+      const r = await adminDecision(String(m.id || ''), String(m.decision || ''), String(m.reason || ''));
+      if (!r.ok) return send(ws, { type: 'admin-error', message: r.reason });
+      send(ws, { type: 'admin-decision-ok', id: m.id, status: r.tx.status, transaction: r.tx });
+      send(ws, { type: 'admin-transactions', transactions: await adminListTransactions() });
+      return;
+    }
+    return;
+  }
+
+  if (!ws.authed) return send(ws, { type: 'error', message: 'not-authed' });
+  
+  if (m.type === 'join') {
+    const room = rooms[m.room]; if (!room) return send(ws, { type: 'error', message: 'bad-room' });
+    ws.roomId = m.room;
+    const existing = room.players.get(ws.uid);
+    if (existing && existing.picks.length && !existing.active) await refundDisconnectedPlayer(room, existing);
+    if (!room.players.has(ws.uid)) room.players.set(ws.uid, { uid: ws.uid, picks: [], isBot: false, active: true, displayName: ws.displayName });
+    else { room.players.get(ws.uid).active = true; }
+    room.dirty = true; await saveRoom(room);
+    await sendWallet(ws.uid);
+    return;
+  }
+  
+  if (m.type === 'leave') {
+    const room = rooms[ws.roomId]; const p = room?.players.get(ws.uid);
+    if (room && p && !p.isBot) { await refundDisconnectedPlayer(room, p); room.players.delete(ws.uid); room.dirty = true; await saveRoom(room); }
+    ws.roomId = null; return;
+  }
+  
+  if (m.type === 'pick') {
+    const room = rooms[ws.roomId]; if (!room) return;
+    const r = await pickIntent(room, ws.uid, Number(m.number));
+    send(ws, r.ok ? { type: 'pick-ok', number: Number(m.number) } : { type: 'pick-fail', number: Number(m.number), reason: r.reason });
+    send(ws, { type: 'wallet', ...(await walletFor(ws.uid)) });
+    return;
+  }
+  
+  if (m.type === 'unpick') {
+    const room = rooms[ws.roomId]; if (!room) return;
+    const r = await unpickIntent(room, ws.uid, Number(m.number));
+    send(ws, r.ok ? { type: 'unpick-ok', number: Number(m.number) } : { type: 'unpick-fail', number: Number(m.number), reason: r.reason });
+    send(ws, { type: 'wallet', ...(await walletFor(ws.uid)) });
+    return;
+  }
+  
+  if (m.type === 'transfer') {
+    const amount = Number(m.amount);
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 1000000) return send(ws, { type: 'error', message: 'bad-amount' });
     try {
-      const { users } = await adminApi('/admin/users');
-      usersData = Array.isArray(users) ? users : [];
-      $('usersCount').textContent = String(usersData.length);
-      $('usersCount').className = 'count' + (usersData.length ? ' has' : ' zero');
-      renderUsersTable();
-    } catch (e) {
-      if (showErrors) showStatus('Load users failed: ' + e.message, 'error');
-    }
+      await pool.query('UPDATE users SET main_wallet = main_wallet - $1, play_wallet = play_wallet + $1, updated_at = $2 WHERE username = $3 AND main_wallet >= $1', [amount, now(), ws.uid]);
+      await sendWallet(ws.uid);
+    } catch (e) { send(ws, { type: 'error', message: 'transfer-failed' }); }
+    return;
+  }
+  
+  if (m.type === 'wallet-refresh') { await sendWallet(ws.uid); return; }
+  
+  if (m.type === 'transaction-request') {
+    const r = await transactionRequest(ws.uid, m);
+    if (!r.ok) return send(ws, { type: 'error', message: r.reason });
+    send(ws, { type: 'transaction-created', id: r.id, clientRequestId: r.clientRequestId || null });
+    send(ws, { type: 'wallet', ...(await walletFor(ws.uid)) });
+    return;
+  }
+  
+  if (m.type === 'transaction-image') { await transactionImage(ws.uid, String(m.id || ''), String(m.imageData || '')); return; }
+  if (m.type === 'notification-read') { await markNotificationRead(ws.uid, String(m.id || '')); return; }
+}
+
+setInterval(() => { for (const ws of wss.clients) { if (!ws.isAlive) { ws.terminate(); continue; } ws.isAlive = false; try { ws.ping(); } catch {} } }, 60000);
+
+// ============================================================================
+// Express API Routes
+// ============================================================================
+const app = express();
+
+// 1. SMS Webhook — strict secret check + duplicate-SMS dedupe.
+app.post('/api/sms/incoming', express.json(), async (req, res) => {
+  const providedSecret = req.headers['x-sms-secret'];
+  if (!providedSecret || providedSecret !== SMS_WEBHOOK_SECRET) {
+    console.warn('[SECURITY] Unauthorized SMS attempt. Header received:', providedSecret);
+    return res.status(401).json({ ok: false, error: 'Unauthorized' });
   }
 
-  // --- UI BINDINGS ---
-  $('connect').onclick = connect;
-  $('disconnect').onclick = disconnect;
-  $('refresh').onclick = refresh;
-  $('aaRunNow').onclick = runAutoMatch;
-  $('loadSms').onclick = loadSms;
-  $('usersRefresh').onclick = () => loadUsers(true);
-  $('usersSearch').addEventListener('input', renderUsersTable);
-  $('auto').onchange = () => { if($('auto').checked) startAuto(); else stopAuto(); };
-  $('smsAuto').onchange = () => { if($('smsAuto').checked){ loadSms(); startSmsAuto(); } else stopSmsAuto(); };
-  $('key').addEventListener('keydown', e => { if(e.key === 'Enter') connect(); });
-  
-  document.querySelectorAll('.tab').forEach(t => { t.onclick = () => switchTab(t.dataset.tab); });
-  
-  function showReceipt(base64Data) {
-    const modal = $('imgModal');
-    const img = $('receiptImg');
-    const loading = $('imgLoading');
-    img.style.display = 'none';
-    img.src = '';
-    loading.style.display = 'block';
-    loading.textContent = 'Loading image...';
-    modal.classList.add('show');
-    if (!base64Data || base64Data.length < 50) { loading.textContent = 'No image data found.'; return; }
-    let src = base64Data.trim();
-    if (!src.startsWith('data:image/')) src = 'data:image/jpeg;base64,' + src;
-    img.onload  = () => { loading.style.display = 'none'; img.style.display = 'block'; };
-    img.onerror = () => { loading.textContent = 'Failed to load image.'; };
-    img.src = src;
+  try {
+    const { from, text } = req.body;
+    if (!text) return res.status(400).json({ ok: false, error: 'Missing text' });
+
+    const id = crypto.randomUUID();
+    const timestamp = now();
+    const textHash = crypto.createHash('sha256').update(String(from || '') + '|' + String(text)).digest('hex');
+
+    // ✅ Dedupe: identical SMS from same sender within 60s is ignored.
+    const dupe = await pool.query(
+      'SELECT id FROM incoming_sms WHERE text_hash = $1 AND timestamp > $2 LIMIT 1',
+      [textHash, timestamp - DUPLICATE_SMS_WINDOW_MS]
+    );
+    if (dupe.rows.length > 0) {
+      await logAutoActivity('skipped', id, '', 0, '', 'duplicate-sms');
+      return res.json({ ok: true, received: true, duplicate: true, matched: false });
+    }
+
+    await pool.query(
+      'INSERT INTO incoming_sms (id, sender, text, timestamp, processed, text_hash) VALUES ($1, $2, $3, $4, false, $5)',
+      [id, from || 'Unknown', text, timestamp, textHash]
+    );
+
+    console.log(`[SMS] Received securely from ${from}: ${text.substring(0, 30)}...`);
+
+    const smsRecord = { id, sender: from, text, timestamp };
+    const matchResult = await autoApproveMatchingDeposits(id, smsRecord);
+
+    const definitive = matchResult.ok || ['untrusted-sender', 'no-reference', 'invalid-reference',
+      'no-amount', 'amount-out-of-range', 'stale-sms', 'reference-reused'].includes(matchResult.reason);
+    if (definitive) {
+      await pool.query(
+        'UPDATE incoming_sms SET processed = true, matched_tx_id = COALESCE($1, matched_tx_id) WHERE id = $2',
+        [matchResult.ok ? matchResult.txId : null, id]
+      );
+    }
+
+    res.json({ ok: true, received: true, matched: matchResult.ok, reason: matchResult.reason || null });
+  } catch (e) {
+    console.error('[SMS API ERROR]', e);
+    res.status(500).json({ ok: false, error: e.message });
   }
-  function closeImgModal() { $('imgModal').classList.remove('show'); $('receiptImg').src = ''; }
-  $('imgCloseBtn').onclick = closeImgModal;
-  $('imgModal').addEventListener('click', e => { if(e.target === $('imgModal')) closeImgModal(); });
-})();
-</script>
-</body>
-</html>
+});
+
+// 2. General API middleware
+app.use(express.json({ limit: '3mb' }));
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, X-Admin-Key, x-sms-secret');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
+
+app.get('/', (_, res) => res.send('Winzo Server is running. Database is PostgreSQL.'));
+app.get('/health', (_, res) => res.status(200).send('OK'));
+
+function isAdmin(req) { return ADMIN_KEY && constantTimeEqual(String(req.get('x-admin-key') || ''), ADMIN_KEY); }
+
+app.get('/admin/pending', async (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ ok: false });
+  try { res.json({ ok: true, transactions: await adminListTransactions() }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get('/admin/decision', async (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ ok: false });
+  const id = String(req.query.id || ''), decision = String(req.query.decision || '');
+  try {
+    const result = await adminDecision(id, decision, 'Processed via HTTP admin panel');
+    await logAutoActivity(decision === 'approved' ? 'admin-approved' : 'admin-rejected', '', '', 0, id, 'http-admin');
+    res.json({ ok: result.ok, transaction: result.tx, error: result.reason });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get('/admin/users', async (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ ok: false });
+  try {
+    const usersRes = await pool.query('SELECT * FROM users ORDER BY updated_at DESC');
+    res.json({ ok: true, users: usersRes.rows.map(u => ({ uid: u.username, name: u.display_name, telegram_id: u.telegram_id, main: Number(u.main_wallet), play: Number(u.play_wallet), pending: Number(u.pending_withdrawal), blocked: u.blocked })) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post('/admin/auto-match', async (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ ok: false });
+  try {
+    const smsRes = await pool.query('SELECT * FROM incoming_sms WHERE processed = false ORDER BY timestamp ASC');
+    let approved = 0, skipped = 0, errors = 0;
+    for (const row of smsRes.rows) {
+      try {
+        const before = await pool.query('SELECT processed FROM incoming_sms WHERE id = $1', [row.id]);
+        await processIncomingSmsSnapshot(row);
+        const after = await pool.query('SELECT processed, matched_tx_id FROM incoming_sms WHERE id = $1', [row.id]);
+        if (after.rows[0]?.matched_tx_id) approved++;
+        else if (after.rows[0]?.processed && before.rows[0]?.processed === false) skipped++;
+      } catch (e) {
+        errors++;
+        await logAutoActivity('error', row.id, '', 0, '', e.message);
+      }
+    }
+    res.json({ ok: true, approved, skipped, errors, scanned: smsRes.rows.length });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/admin/sms', async (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ ok: false });
+  try {
+    const smsRes = await pool.query('SELECT * FROM incoming_sms ORDER BY timestamp DESC LIMIT 50');
+    const data = {};
+    smsRes.rows.forEach(r => {
+      data[r.id] = { sender: r.sender, text: r.text, timestamp: Number(r.timestamp) };
+    });
+    res.json({ ok: true, data });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ✅ Admin endpoint: view used references (audit trail).
+app.get('/admin/used-references', async (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ ok: false });
+  try {
+    const r = await pool.query('SELECT * FROM used_references ORDER BY consumed_at DESC LIMIT 100');
+    res.json({ ok: true, references: r.rows });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ✅ Admin endpoint: view auto-activity log.
+app.get('/admin/activity', async (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ ok: false });
+  try {
+    const r = await pool.query('SELECT * FROM auto_activity ORDER BY at DESC LIMIT 100');
+    res.json({ ok: true, activity: r.rows });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+const server = http.createServer(app);
+server.on('upgrade', (req, socket, head) => {
+  wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
+});
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server listening on 0.0.0.0:${PORT}`);
+  (async () => {
+    try {
+      await initDb();
+      await loadRooms();
+      startAutomaticDepositMonitor();
+      for (const room of Object.values(rooms)) {
+        if (room.phase === 'selection' && room.endsAt <= now()) { room.endsAt = now() + SELECTION_SECONDS * 1000; room.dirty = true; }
+        if (room.phase === 'selection') normalizeRoundBots(room);
+        room.persist().catch(err => console.error('Room persist failed:', err));
+        scheduleBots(room);
+      }
+      console.log('✅ Background initialization complete.');
+    } catch (err) {
+      console.error('⚠️ Background initialization failed (DB may be slow or unreachable):', err);
+    }
+  })();
+});
+
+async function gracefulShutdown(signal) {
+  console.log(`[SHUTDOWN] ${signal}`);
+  for (const room of Object.values(rooms)) { clearBotTimers(room); }
+  for (const ws of wss.clients) { try { ws.close(1001, 'server shutting down'); } catch {} }
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 5000).unref();
+}
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
