@@ -17,8 +17,9 @@
   .subtitle{color:var(--muted);font-size:13px;margin-bottom:20px}
   .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
   label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
-  input, textarea {width:100%;background:#0d0818;color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:11px 12px;font-size:14px;font-family:inherit}
-  input:focus, textarea:focus {outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+  input, textarea, select {width:100%;background:#0d0818;color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:11px 12px;font-size:14px;font-family:inherit}
+  select{cursor:pointer}
+  input:focus, textarea:focus, select:focus {outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
   .row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
   .row>div{flex:1;min-width:180px}
   button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:11px 18px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;transition:background .15s, transform .1s, opacity .1s;}
@@ -115,6 +116,9 @@
   .ud-msg-box { margin-bottom: 20px; }
   .ud-tx-link { color: var(--accent); text-decoration: underline; font-size: 14px; cursor: pointer; display: inline-block; margin-top: 10px; font-weight: 500; }
   .ud-tx-link:hover { color: var(--accent-hover); }
+  
+  /* Winners table footer */
+  .utable tfoot td { padding: 10px; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -149,6 +153,9 @@
       <button class="tab" data-tab="users" role="tab">
         Users <span class="count zero" id="usersCount">0</span>
       </button>
+      <button class="tab" data-tab="winners" role="tab">
+        Winners <span class="count zero" id="winnersCount">0</span>
+      </button>
       <button class="tab" data-tab="sms" role="tab">
         Incoming SMS
       </button>
@@ -173,6 +180,26 @@
         <button id="usersRefresh" class="secondary">↻ Refresh</button>
       </div>
       <div id="usersTable"></div>
+    </div>
+
+    <!-- ✅ NEW: Winners tab -->
+    <div id="tab-winners" class="tabpanel" style="display:none">
+      <div class="toolbar">
+        <input id="winnersSearch" type="search" placeholder="Filter by player name, user id, room, round…" style="flex:1;min-width:200px">
+        <select id="winnersRoom" style="flex:0 0 180px;min-width:180px">
+          <option value="">All rooms</option>
+          <option value="room_15">room_15 (15 Birr)</option>
+          <option value="room_30">room_30 (30 Birr)</option>
+        </select>
+        <button id="winnersRefresh" class="secondary">↻ Refresh</button>
+      </div>
+      <div class="card" style="padding:12px 14px;margin-bottom:14px">
+        <p style="font-size:12px;color:var(--muted);margin:0">
+          Every <b>human</b> player win is persisted here — bot wins are excluded.
+          Includes player name, room, round, win amount, winning number, and prize pool.
+        </p>
+      </div>
+      <div id="winnersTable"></div>
     </div>
 
     <div id="tab-sms" class="tabpanel" style="display:none">
@@ -224,7 +251,7 @@
     <div id="aaStatus" class="statusbar" style="margin-top:12px"></div>
     <div style="margin-top:12px">
       <label>Engine Log</label>
-      <div id="aaLog" class="aa-log"><span class="ts">—</span> <span class="skip">Ready. Press “Match Now” to scan pending SMS.</span></div>
+      <div id="aaLog" class="aa-log"><span class="ts">—</span> <span class="skip">Ready. Press "Match Now" to scan pending SMS.</span></div>
     </div>
   </div>
 </div>
@@ -286,6 +313,7 @@
   let serverUrl = '', adminKey = '', autoTimer = null, smsTimer = null;
   let currentTxs = [];
   let usersData = [];
+  let winnersData = [];               // ✅ NEW: cached winners
   let activeUser = null; // For User Details Modal
 
   function showStatus(msg, kind, el){
@@ -323,9 +351,11 @@
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
     $('tab-pending').style.display   = (name === 'pending')  ? '' : 'none';
     $('tab-users').style.display     = (name === 'users')    ? '' : 'none';
+    $('tab-winners').style.display   = (name === 'winners')  ? '' : 'none';
     $('tab-sms').style.display       = (name === 'sms')      ? '' : 'none';
     $('tab-usedrefs').style.display  = (name === 'usedrefs') ? '' : 'none';
     if (name === 'users' && !usersData.length) loadUsers(true);
+    if (name === 'winners' && !winnersData.length) loadWinners(true);
     if (name === 'sms') loadSms();
     if (name === 'usedrefs') loadUsedRefs();
   }
@@ -364,6 +394,7 @@
       await refresh();
       startAuto();
       loadUsers(false).catch(() => {});
+      loadWinners(false).catch(() => {});   // ✅ preload winners count
     }catch(e){
       showStatus('Connection failed: ' + (e.message||e), 'error');
       serverUrl = ''; adminKey = ''; $('panel').style.display = 'none'; $('autoMatchCard').style.display = 'none';
@@ -379,8 +410,12 @@
     $('list').replaceChildren();
     $('smsList').replaceChildren();
     $('usersTable').replaceChildren();
+    $('winnersTable').replaceChildren();
     $('refsList').replaceChildren();
     usersData = [];
+    winnersData = [];
+    $('winnersCount').textContent = '0';
+    $('winnersCount').className = 'count zero';
     showStatus('Disconnected.','info');
   }
 
@@ -676,6 +711,72 @@
     }
   }
 
+  // --- ✅ NEW: WINNERS TAB LOGIC ---
+  async function loadWinners(showErrors) {
+    if (!serverUrl || !adminKey) return;
+    try {
+      const res = await adminApi('/admin/winners?limit=200');
+      winnersData = Array.isArray(res.winners) ? res.winners : [];
+      $('winnersCount').textContent = String(winnersData.length);
+      $('winnersCount').className = 'count' + (winnersData.length ? ' has' : ' zero');
+      renderWinnersTable();
+    } catch (e) {
+      if (showErrors) showStatus('Load winners failed: ' + e.message, 'error');
+    }
+  }
+
+  function renderWinnersTable() {
+    const target = $('winnersTable');
+    const q = String($('winnersSearch').value || '').trim().toLowerCase();
+    const roomFilter = String($('winnersRoom').value || '').trim();
+
+    const filtered = winnersData.filter(w => {
+      if (roomFilter && w.roomId !== roomFilter) return false;
+      if (!q) return true;
+      const hay = [w.username, w.displayName, w.roomId, String(w.round)].join(' ').toLowerCase();
+      return q.split(/\s+/).every(tok => hay.includes(tok));
+    });
+
+    if (!filtered.length) {
+      target.innerHTML = '<div class="utable-empty">' +
+        (q || roomFilter ? 'No winners match the filter.' : 'No winner records yet.') +
+        '</div>';
+      return;
+    }
+
+    let html = '<table class="utable"><thead><tr>' +
+      '<th>Date</th>' +
+      '<th>Player</th>' +
+      '<th>User ID</th>' +
+      '<th>Room</th>' +
+      '<th class="num">Round</th>' +
+      '<th class="num">Win Amount</th>' +
+      '<th class="num">Winning #</th>' +
+      '</tr></thead><tbody>';
+
+    let totalWon = 0;
+    for (const w of filtered) {
+      totalWon += Number(w.winAmount) || 0;
+      const date = w.createdAt ? new Date(Number(w.createdAt)).toLocaleString() : '—';
+      html += '<tr>' +
+        '<td class="mono">' + date + '</td>' +
+        '<td class="name">' + esc(w.displayName || w.username) + '</td>' +
+        '<td class="mono">' + esc(w.username) + '</td>' +
+        '<td class="mono">' + esc(w.roomId) + '</td>' +
+        '<td class="num">' + Number(w.round) + '</td>' +
+        '<td class="num" style="color:#6ee7b7;font-weight:700;">' + Number(w.winAmount).toLocaleString() + ' Birr</td>' +
+        '<td class="num">' + (w.winningNumber != null ? w.winningNumber : '—') + '</td>' +
+        '</tr>';
+    }
+
+    html += '</tbody><tfoot><tr style="background:#160f25;">' +
+      '<td colspan="5" style="text-align:right;color:var(--muted);">Total (' + filtered.length + ' records):</td>' +
+      '<td class="num" style="color:#6ee7b7;font-weight:700;">' + totalWon.toLocaleString() + ' Birr</td>' +
+      '<td></td></tr></tfoot></table>';
+
+    target.innerHTML = html;
+  }
+
   // --- USER DETAILS MODAL LOGIC ---
   async function openUserDetails(user) {
     activeUser = user;
@@ -695,6 +796,8 @@
       html += '<div class="ud-item"><b>User ID</b><span>' + esc(u.uid) + '</span></div>';
       html += '<div class="ud-item"><b>Main Wallet</b><span>' + Number(u.main).toLocaleString() + ' Birr</span></div>';
       html += '<div class="ud-item"><b>Play Balance</b><span>' + Number(u.play).toLocaleString() + ' Birr</span></div>';
+      // ✅ NEW: referral earnings display
+      html += '<div class="ud-item"><b>Referral Earnings</b><span style="color:#6ee7b7;">' + Number(u.referral_earnings || 0).toLocaleString() + ' Birr</span></div>';
       html += '<div class="ud-item"><b>Referred By</b><span>' + esc(u.referred_by || 'None') + '</span></div>';
       html += '<div class="ud-item"><b>Referring List</b><span>' + (u.referrals && u.referrals.length ? u.referrals.length + ' users' : '0 users') + '</span></div>';
       html += '</div>';
@@ -852,6 +955,9 @@
   $('loadSms').onclick = loadSms;
   $('usersRefresh').onclick = () => loadUsers(true);
   $('usersSearch').addEventListener('input', renderUsersTable);
+  $('winnersRefresh').onclick = () => loadWinners(true);           // ✅ NEW
+  $('winnersSearch').addEventListener('input', renderWinnersTable); // ✅ NEW
+  $('winnersRoom').addEventListener('change', renderWinnersTable);  // ✅ NEW
   $('refsRefresh').onclick = loadUsedRefs;
   $('auto').onchange = () => { if($('auto').checked) startAuto(); else stopAuto(); };
   $('smsAuto').onchange = () => { if($('smsAuto').checked){ loadSms(); startSmsAuto(); } else stopSmsAuto(); };
