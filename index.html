@@ -11,7 +11,7 @@
   :root{--bg:#120b20;--panel:#1e1530;--border:#3a2a55;--fg:#eee;--muted:#9c8fb5;--accent:#8b5cf6;--accent-hover:#7c3aed;--green:#10b981;--red:#ef4444;--amber:#f59e0b}
   *{box-sizing:border-box}
   body{font-family:'Poppins','Noto Sans Ethiopic',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:20px;min-height:100vh;line-height:1.5}
-  .container{max-width:1100px;margin:0 auto}
+  .container{max-width:1200px;margin:0 auto}
   h1{font-size:22px;margin:0 0 4px}
   h2{font-size:17px;margin:0 0 10px}
   .subtitle{color:var(--muted);font-size:13px;margin-bottom:20px}
@@ -81,8 +81,7 @@
   .aa-log .ts{color:#6b5f80}
   .chk{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;margin:0;white-space:nowrap}
   .chk input{width:auto}
-  
-  /* Modal Styles */
+
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:1000;padding:16px}
   .modal-overlay.show{display:flex}
   .modal{background:var(--panel);border:1px solid var(--border);border-radius:14px;max-width:680px;width:100%;max-height:88vh;overflow-y:auto;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
@@ -91,8 +90,7 @@
   .modal-actions button{padding:9px 16px;font-size:13.5px}
   .img-content{text-align:center;margin-top:10px;background:#000;border-radius:8px;padding:10px;min-height:200px;display:flex;align-items:center;justify-content:center}
   .img-content img{max-width:100%;max-height:65vh;border-radius:4px;display:none}
-  
-  /* Table Styles */
+
   .utable{width:100%;border-collapse:collapse;font-size:13px;background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden}
   .utable thead th{background:#160f25;color:#c4b5fd;text-align:left;font-weight:600;padding:9px 10px;border-bottom:1px solid var(--border);white-space:nowrap;font-size:12px}
   .utable thead th.num{text-align:right}
@@ -109,16 +107,28 @@
   .refcode{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#0d0818;border:1px solid var(--border);padding:2px 8px;border-radius:6px;color:#fcd34d;letter-spacing:.5px}
   .refmeta{color:var(--muted);font-size:11.5px}
 
-  /* User Detail Modal Specific */
   .ud-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; background: #160f25; padding: 15px; border-radius: 10px; border: 1px solid var(--border); }
   .ud-item b { color: var(--muted); font-size: 12px; display: block; margin-bottom: 4px; font-weight: 500; }
   .ud-item span { font-size: 15px; font-weight: 600; color: var(--fg); }
   .ud-msg-box { margin-bottom: 20px; }
   .ud-tx-link { color: var(--accent); text-decoration: underline; font-size: 14px; cursor: pointer; display: inline-block; margin-top: 10px; font-weight: 500; }
   .ud-tx-link:hover { color: var(--accent-hover); }
-  
-  /* Winners table footer */
+
   .utable tfoot td { padding: 10px; font-weight: 600; }
+
+  /* Analytics */
+  .metrics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  .metric-card{background:#160f25;border:1px solid var(--border);border-radius:12px;padding:14px}
+  .metric-card .lbl{font-size:11px;color:var(--muted);margin-bottom:4px}
+  .metric-card .val{font-size:26px;font-weight:700;color:#fcd34d}
+  .metric-card .val.green{color:#6ee7b7}
+  .referrer-block{background:#160f25;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden}
+  .referrer-block summary{cursor:pointer;padding:12px 14px;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .referrer-block summary::-webkit-details-marker{display:none}
+  .referrer-block[open] summary{border-bottom:1px solid var(--border)}
+  .ref-body{padding:6px 14px 12px}
+  .ref-body .refrow{padding:7px 0;border-bottom:1px solid rgba(58,42,85,.5)}
+  @media(max-width:900px){.metrics-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -156,6 +166,8 @@
       <button class="tab" data-tab="winners" role="tab">
         Winners <span class="count zero" id="winnersCount">0</span>
       </button>
+      <button class="tab" data-tab="analytics" role="tab">📊 Analytics</button>
+      <button class="tab" data-tab="referrals" role="tab">👥 Referrals</button>
       <button class="tab" data-tab="sms" role="tab">
         Incoming SMS
       </button>
@@ -182,7 +194,6 @@
       <div id="usersTable"></div>
     </div>
 
-    <!-- ✅ NEW: Winners tab -->
     <div id="tab-winners" class="tabpanel" style="display:none">
       <div class="toolbar">
         <input id="winnersSearch" type="search" placeholder="Filter by player name, user id, room, round…" style="flex:1;min-width:200px">
@@ -200,6 +211,131 @@
         </p>
       </div>
       <div id="winnersTable"></div>
+    </div>
+
+    <!-- ANALYTICS TAB -->
+    <div id="tab-analytics" class="tabpanel" style="display:none">
+      <div class="card">
+        <div class="row">
+          <div><label for="anFrom">From date (UTC)</label><input id="anFrom" type="date"></div>
+          <div><label for="anTo">To date (UTC)</label><input id="anTo" type="date"></div>
+          <div><label for="anRoom">Room</label>
+            <select id="anRoom">
+              <option value="both">Both rooms</option>
+              <option value="room_15">15 Birr</option>
+              <option value="room_30">30 Birr</option>
+            </select>
+          </div>
+          <div style="flex:0 0 auto"><button id="anLoad">Load analytics</button></div>
+          <div style="flex:0 0 auto"><button id="anRefresh" class="secondary">↻ Refresh</button></div>
+        </div>
+        <div id="anStatus" class="statusbar" style="margin-top:12px"></div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="lbl">Avg humans / game</div>
+          <div id="anAvg" class="val">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="lbl">Peak hourly avg</div>
+          <div id="anPeak" class="val">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="lbl">Games recorded</div>
+          <div id="anGames" class="val">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="lbl">Hours with data</div>
+          <div id="anHours" class="val">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="lbl">Total human participations</div>
+          <div id="anTotalHumans" class="val">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="lbl">Total human picks</div>
+          <div id="anTotalHumanPicks" class="val">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="lbl">Total bot picks</div>
+          <div id="anTotalBots" class="val">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="lbl">Human wins</div>
+          <div id="anHumanWins" class="val green">—</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0">Hourly breakdown</h3>
+        <p style="font-size:12px;color:var(--muted);margin:0 0 10px">
+          Every round is persisted in <code>round_snapshots</code> with the exact human count and pick count.
+          Buckets are grouped by UTC hour. The daily average is the mean of non-empty hourly averages.
+        </p>
+        <div style="overflow:auto">
+          <table class="utable">
+            <thead>
+              <tr>
+                <th>Hour (UTC)</th>
+                <th class="num">Games</th>
+                <th class="num">Humans</th>
+                <th class="num">Human picks</th>
+                <th class="num">Bots</th>
+                <th class="num">Avg humans / game</th>
+                <th class="num">Human wins</th>
+                <th class="num">Human win amount</th>
+              </tr>
+            </thead>
+            <tbody id="anRows">
+              <tr><td colspan="8" class="utable-empty">Load data to see hourly breakdown.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- REFERRALS TAB -->
+    <div id="tab-referrals" class="tabpanel" style="display:none">
+      <div class="card">
+        <div class="row">
+          <div style="flex:1"><label for="refSearch">Search referrer / referred</label><input id="refSearch" type="search" placeholder="Name or ID…"></div>
+          <div><label for="refSort">Sort by</label>
+            <select id="refSort">
+              <option value="count">Most referred first</option>
+              <option value="earnings">Highest earnings first</option>
+              <option value="name">Referrer name (A→Z)</option>
+            </select>
+          </div>
+          <div style="flex:0 0 auto"><button id="refLoad">Load referrals</button></div>
+          <div style="flex:0 0 auto"><button id="refRefresh" class="secondary">↻ Refresh</button></div>
+        </div>
+        <div id="refStatus" class="statusbar" style="margin-top:12px"></div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="lbl">Referrers</div>
+          <div id="refReferrers" class="val">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="lbl">Referred players</div>
+          <div id="refReferred" class="val">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="lbl">Total earnings</div>
+          <div id="refEarn" class="val green">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="lbl">Avg / referrer</div>
+          <div id="refAvg" class="val">—</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0">Referrers &amp; their referred players</h3>
+        <div id="refList"><div class="utable-empty">Load referrals to see referrers.</div></div>
+      </div>
     </div>
 
     <div id="tab-sms" class="tabpanel" style="display:none">
@@ -239,7 +375,6 @@
     </div>
   </div>
 
-  <!-- Automatic Deposit Approval Card -->
   <div class="card" id="autoMatchCard" style="display:none;">
     <h2>Automatic Deposit Approval Engine</h2>
     <div class="subtitle" style="margin:0 0 12px">
@@ -256,7 +391,6 @@
   </div>
 </div>
 
-<!-- Receipt Modal -->
 <div id="imgModal" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="modal" style="max-width:700px;">
     <h3><span class="icon">🧾</span> Deposit Receipt</h3>
@@ -270,12 +404,11 @@
   </div>
 </div>
 
-<!-- User Details Modal -->
 <div id="userDetailsModal" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="modal" style="max-width: 600px;">
     <h3><span class="icon">👤</span> User Details</h3>
     <div id="udBody"></div>
-    
+
     <div class="ud-msg-box">
       <label>Send Message to User</label>
       <textarea id="udMsgText" style="min-height:80px; margin-bottom:8px;" placeholder="Type your message here..."></textarea>
@@ -294,13 +427,10 @@
   </div>
 </div>
 
-<!-- Transaction History Modal -->
 <div id="txHistoryModal" class="modal-overlay" role="dialog" aria-modal="true" style="z-index: 1001;">
   <div class="modal" style="max-width: 800px;">
     <h3><span class="icon">📊</span> Transaction History</h3>
-    <div id="txHistoryTable" style="margin-top: 15px;">
-      <!-- Table will be injected here -->
-    </div>
+    <div id="txHistoryTable" style="margin-top: 15px;"></div>
     <div class="modal-actions">
       <button id="txCloseBtn" class="secondary">Close</button>
     </div>
@@ -313,8 +443,8 @@
   let serverUrl = '', adminKey = '', autoTimer = null, smsTimer = null;
   let currentTxs = [];
   let usersData = [];
-  let winnersData = [];               // ✅ NEW: cached winners
-  let activeUser = null; // For User Details Modal
+  let winnersData = [];
+  let activeUser = null;
 
   function showStatus(msg, kind, el){
     const s = el || $('status');
@@ -349,13 +479,18 @@
 
   function switchTab(name){
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-    $('tab-pending').style.display   = (name === 'pending')  ? '' : 'none';
-    $('tab-users').style.display     = (name === 'users')    ? '' : 'none';
-    $('tab-winners').style.display   = (name === 'winners')  ? '' : 'none';
-    $('tab-sms').style.display       = (name === 'sms')      ? '' : 'none';
-    $('tab-usedrefs').style.display  = (name === 'usedrefs') ? '' : 'none';
+    $('tab-pending').style.display    = (name === 'pending')    ? '' : 'none';
+    $('tab-users').style.display      = (name === 'users')      ? '' : 'none';
+    $('tab-winners').style.display    = (name === 'winners')    ? '' : 'none';
+    $('tab-analytics').style.display  = (name === 'analytics')  ? '' : 'none';
+    $('tab-referrals').style.display  = (name === 'referrals')  ? '' : 'none';
+    $('tab-sms').style.display        = (name === 'sms')        ? '' : 'none';
+    $('tab-usedrefs').style.display   = (name === 'usedrefs')   ? '' : 'none';
+
     if (name === 'users' && !usersData.length) loadUsers(true);
     if (name === 'winners' && !winnersData.length) loadWinners(true);
+    if (name === 'analytics' && !window._analyticsLoaded) loadAnalytics(true);
+    if (name === 'referrals' && !window._referralsLoaded) loadReferrals(true);
     if (name === 'sms') loadSms();
     if (name === 'usedrefs') loadUsedRefs();
   }
@@ -390,11 +525,13 @@
       $('panel').style.display = '';
       $('autoMatchCard').style.display = '';
       showStatus('Connected to ' + url, 'success');
-      
+
       await refresh();
       startAuto();
       loadUsers(false).catch(() => {});
-      loadWinners(false).catch(() => {});   // ✅ preload winners count
+      loadWinners(false).catch(() => {});
+      // Preload analytics dates so the tab is ready
+      initAnalyticsDates();
     }catch(e){
       showStatus('Connection failed: ' + (e.message||e), 'error');
       serverUrl = ''; adminKey = ''; $('panel').style.display = 'none'; $('autoMatchCard').style.display = 'none';
@@ -412,10 +549,11 @@
     $('usersTable').replaceChildren();
     $('winnersTable').replaceChildren();
     $('refsList').replaceChildren();
-    usersData = [];
-    winnersData = [];
+    usersData = []; winnersData = [];
     $('winnersCount').textContent = '0';
     $('winnersCount').className = 'count zero';
+    window._analyticsLoaded = false;
+    window._referralsLoaded = false;
     showStatus('Disconnected.','info');
   }
 
@@ -526,7 +664,7 @@
     let m = t.match(/received\s+(?:ETB|Birr)\s*([\d,]+(?:\.\d+)?)/i)
          || t.match(/(?:ETB|Birr|ብር|Br\b|Amt|Amount)\s*[:\-]?\s*([\d,]+(?:\.\d+)?)/i);
     if(m) out.amount = m[1].replace(/,/g,'');
-    
+
     m = t.match(/your\s+transaction\s+number\s+is\s*[:\-]?\s*([A-Za-z0-9]{6,})/i)
      || t.match(/\btransaction\s+(?:number|no\.?|id)\s*(?:is|:|\-)?\s*([A-Za-z0-9]{6,})/i)
      || t.match(/\bref(?:erence)?\s*(?:number|code|no\.?|id)?\s*(?:is|:|\-)?\s*([A-Za-z0-9]{6,})/i);
@@ -541,12 +679,12 @@
     try{
       const res = await adminApi('/admin/sms');
       const data = res.data || {};
-      
+
       const items = Object.keys(data).map(k => {
         const v = data[k];
         return { id: k, sender: v.sender, text: v.text, timestamp: v.timestamp };
       }).sort((a,b) => b.timestamp - a.timestamp);
-      
+
       renderSms(items);
       showStatus('Loaded ' + items.length + ' SMS records.', 'success');
     }catch(e){ showStatus('SMS fetch failed: ' + e.message,'error'); }
@@ -569,7 +707,7 @@
     const amount = p.amount;
     const reference = p.reference;
     const when = new Date(raw.timestamp);
-    
+
     const box = document.createElement('div'); box.className='sms';
     const head = document.createElement('div'); head.className='sms-head';
     const left = document.createElement('div');
@@ -584,12 +722,12 @@
     right.appendChild(amtEl);
     head.appendChild(right);
     box.appendChild(head);
-    
+
     const meta = document.createElement('div'); meta.className='sms-meta';
     meta.innerHTML = `<div><b>Time:</b> ${when.toLocaleString()}</div>`;
     meta.innerHTML += `<div><b>Reference:</b> ${reference ? '<span class="sms-ref">'+esc(reference)+'</span>' : '—'}</div>`;
     box.appendChild(meta);
-    
+
     if(text){
       const det = document.createElement('details'); det.className='sms-raw';
       const sum = document.createElement('summary'); sum.textContent='Raw message';
@@ -607,7 +745,7 @@
     const txt = $('testSmsText').value;
     const from = $('testSmsFrom').value || '127';
     if(!txt.trim()) return alert('Enter some text first');
-    
+
     const secret = prompt("Enter SMS Webhook Secret:");
     if (!secret) return;
 
@@ -641,7 +779,7 @@
     }
   };
 
-  // --- MANUAL MATCH LOGIC ---
+  // --- MANUAL MATCH ---
   async function runAutoMatch(){
     if(!serverUrl || !adminKey){ showStatus('Connect to the server first.', 'warn', $('aaStatus')); return; }
     $('aaRunNow').disabled = true;
@@ -658,7 +796,7 @@
     }finally{ $('aaRunNow').disabled = false; }
   }
 
-  // --- USERS TAB LOGIC ---
+  // --- USERS TAB ---
   function rowMatches(row, q) {
     if (!q) return true;
     const hay = [row.uid, row.name, row.telegram_username, row.telegram_id != null ? String(row.telegram_id) : ''].join(' ').toLowerCase();
@@ -669,17 +807,17 @@
     const target = $('usersTable');
     const q = String($('usersSearch').value || '').trim();
     const filtered = usersData.filter(r => rowMatches(r, q));
-    
+
     if (!filtered.length) {
       target.innerHTML = '<div class="utable-empty">' + (q ? 'No user matches' : 'No users yet.') + '</div>';
       return;
     }
-    
+
     let html = '<table class="utable"><thead><tr>' +
       '<th>Name</th><th>Telegram ID</th><th>User ID</th>' +
       '<th class="num">M-Wallet</th><th class="num">P-Wallet</th>' +
       '</tr></thead><tbody>';
-      
+
     for (const r of filtered) {
       html += '<tr data-uid="' + esc(r.uid) + '">' +
         '<td class="name">' + esc(r.name) + '</td>' +
@@ -692,7 +830,6 @@
     html += '</tbody></table>';
     target.innerHTML = html;
 
-    // Attach click listeners to rows
     target.querySelectorAll('tbody tr').forEach((tr, idx) => {
       tr.addEventListener('click', () => openUserDetails(filtered[idx]));
     });
@@ -711,7 +848,7 @@
     }
   }
 
-  // --- ✅ NEW: WINNERS TAB LOGIC ---
+  // --- WINNERS TAB ---
   async function loadWinners(showErrors) {
     if (!serverUrl || !adminKey) return;
     try {
@@ -777,38 +914,34 @@
     target.innerHTML = html;
   }
 
-  // --- USER DETAILS MODAL LOGIC ---
+  // --- USER DETAILS MODAL ---
   async function openUserDetails(user) {
     activeUser = user;
-    
-    // Show modal immediately with loading state
     $('udBody').innerHTML = '<div class="empty">Loading user details...</div>';
-    $('udMsgText').value = ''; 
+    $('udMsgText').value = '';
     $('userDetailsModal').classList.add('show');
 
     try {
       const res = await adminApi('/admin/user-details?uid=' + encodeURIComponent(user.uid));
       const u = res.user;
-      activeUser = u; // Update with full details
+      activeUser = u;
 
       let html = '<div class="ud-grid">';
       html += '<div class="ud-item"><b>Full Name</b><span>' + esc(u.name || '—') + '</span></div>';
       html += '<div class="ud-item"><b>User ID</b><span>' + esc(u.uid) + '</span></div>';
       html += '<div class="ud-item"><b>Main Wallet</b><span>' + Number(u.main).toLocaleString() + ' Birr</span></div>';
       html += '<div class="ud-item"><b>Play Balance</b><span>' + Number(u.play).toLocaleString() + ' Birr</span></div>';
-      // ✅ NEW: referral earnings display
       html += '<div class="ud-item"><b>Referral Earnings</b><span style="color:#6ee7b7;">' + Number(u.referral_earnings || 0).toLocaleString() + ' Birr</span></div>';
       html += '<div class="ud-item"><b>Referred By</b><span>' + esc(u.referred_by || 'None') + '</span></div>';
       html += '<div class="ud-item"><b>Referring List</b><span>' + (u.referrals && u.referrals.length ? u.referrals.length + ' users' : '0 users') + '</span></div>';
       html += '</div>';
-      
+
       if (u.referrals && u.referrals.length > 0) {
         html += '<div style="margin-bottom: 15px; font-size: 13px; color: var(--muted);"><b>Referred Users:</b> ' + u.referrals.map(r => esc(r.name) + ' (' + esc(r.uid) + ')').join(', ') + '</div>';
       }
 
       $('udBody').innerHTML = html;
 
-      // Set block button state
       const isBlocked = u.blocked;
       const blockBtn = $('udBlockBtn');
       blockBtn.textContent = isBlocked ? 'Unblock User' : 'Block User';
@@ -826,12 +959,11 @@
     activeUser = null;
   }
 
-  // Send Message Logic
   $('udSendMsgBtn').onclick = async function() {
     if (!activeUser) return;
     const msg = $('udMsgText').value.trim();
     if (!msg) return alert('Enter a message first.');
-    
+
     this.disabled = true;
     try {
       await adminApi('/admin/send-message', 'POST', { userId: activeUser.uid, message: msg });
@@ -844,19 +976,18 @@
     }
   };
 
-  // Block/Unblock Logic
   $('udBlockBtn').onclick = async function() {
     if (!activeUser) return;
     const currentlyBlocked = this.dataset.blocked === 'true';
     const newState = !currentlyBlocked;
-    
+
     if (!confirm('Are you sure you want to ' + (newState ? 'BLOCK' : 'UNBLOCK') + ' this user?')) return;
-    
+
     this.disabled = true;
     try {
       await adminApi('/admin/block-user', 'POST', { userId: activeUser.uid, blocked: newState });
       showStatus('User ' + (newState ? 'blocked' : 'unblocked') + '.', 'success');
-      
+
       activeUser.blocked = newState;
       this.dataset.blocked = newState ? 'true' : 'false';
       this.textContent = newState ? 'Unblock User' : 'Block User';
@@ -868,27 +999,26 @@
     }
   };
 
-  // Transaction History Logic
   $('udTxLink').onclick = async function(e) {
     e.preventDefault();
     if (!activeUser) return;
-    
+
     $('txHistoryModal').classList.add('show');
     $('txHistoryTable').innerHTML = '<div class="empty">Loading transactions...</div>';
-    
+
     try {
       const res = await adminApi('/admin/user-transactions?uid=' + encodeURIComponent(activeUser.uid));
       const txs = res.transactions || [];
-      
+
       if (!txs.length) {
         $('txHistoryTable').innerHTML = '<div class="empty">No transactions found for this user.</div>';
         return;
       }
-      
+
       let tbl = '<table class="utable"><thead><tr>' +
         '<th>Date</th><th>Type</th><th class="num">Amount</th><th>Status</th><th>Ref / ID</th>' +
         '</tr></thead><tbody>';
-        
+
       txs.forEach(t => {
         const date = t.timestamp ? new Date(Number(t.timestamp)).toLocaleString() : '—';
         const typeColor = t.type === 'deposit' ? '#6ee7b7' : '#fca5a5';
@@ -902,7 +1032,7 @@
       });
       tbl += '</tbody></table>';
       $('txHistoryTable').innerHTML = tbl;
-      
+
     } catch (e) {
       $('txHistoryTable').innerHTML = '<div class="empty" style="color:var(--red)">Failed to load: ' + esc(e.message) + '</div>';
     }
@@ -913,8 +1043,7 @@
   $('userDetailsModal').addEventListener('click', e => { if(e.target === $('userDetailsModal')) closeUserModals(); });
   $('txHistoryModal').addEventListener('click', e => { if(e.target === $('txHistoryModal')) $('txHistoryModal').classList.remove('show'); });
 
-
-  // --- USED REFS TAB LOGIC ---
+  // --- USED REFS TAB ---
   async function loadUsedRefs() {
     if (!serverUrl || !adminKey) return;
     $('refsRefresh').disabled = true;
@@ -947,6 +1076,176 @@
     }
   }
 
+  // ============================================================
+  // ANALYTICS TAB
+  // ============================================================
+  function todayUTC() { return new Date().toISOString().slice(0, 10); }
+
+  function initAnalyticsDates() {
+    const from = $('anFrom');
+    const to = $('anTo');
+    if (from && !from.value) from.value = todayUTC();
+    if (to && !to.value) to.value = todayUTC();
+  }
+
+  function anShowStatus(msg, kind) {
+    const s = $('anStatus');
+    s.textContent = msg;
+    s.className = 'statusbar show ' + (kind || 'info');
+    if (kind === 'success') {
+      setTimeout(() => { if (s.textContent === msg) s.className = 'statusbar show info'; }, 3500);
+    }
+  }
+
+  function fmtHourUTC(h) {
+    const start = new Date(Date.UTC(2020, 0, 1, h));
+    const end = new Date(Date.UTC(2020, 0, 1, h + 1));
+    const f = d => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', hour: 'numeric', hour12: true }).format(d);
+    return `${f(start)}–${f(end)}`;
+  }
+
+  async function loadAnalytics(showErrors) {
+    if (!serverUrl || !adminKey) return;
+    initAnalyticsDates();
+    const from = $('anFrom').value;
+    const to = $('anTo').value;
+    const room = $('anRoom').value;
+    if (!from || !to || from > to) {
+      anShowStatus('Choose a valid date range.', 'error');
+      return;
+    }
+    anShowStatus('Loading analytics from PostgreSQL…', 'info');
+    try {
+      const qs = new URLSearchParams({ from, to, room }).toString();
+      const res = await adminApi('/admin/analytics/games?' + qs);
+      window._analyticsLoaded = true;
+
+      const s = res.summary || {};
+      $('anAvg').textContent             = (Number(s.dailyAvgHumansPerGame || 0)).toFixed(2);
+      $('anPeak').textContent            = (Number(s.peakHourlyAvg || 0)).toFixed(2);
+      $('anGames').textContent           = String(s.gamesRecorded || 0);
+      $('anHours').textContent           = String(s.hoursWithData || 0) + ' / 24';
+      $('anTotalHumans').textContent     = Number(s.totalHumanParticipations || 0).toLocaleString();
+      $('anTotalHumanPicks').textContent = Number(s.totalHumanPicks || 0).toLocaleString();
+      $('anTotalBots').textContent       = Number(s.totalBots || 0).toLocaleString();
+      $('anHumanWins').textContent       = Number(s.humanWinners || 0).toLocaleString();
+
+      const rows = Array.isArray(res.hourly) ? res.hourly : [];
+      const tbody = $('anRows');
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="utable-empty">No hourly data in range.</td></tr>';
+      } else {
+        tbody.innerHTML = rows.map(h => {
+          const empty = h.games === 0;
+          const style = empty ? 'style="opacity:.45"' : '';
+          return '<tr ' + style + '>' +
+            '<td>' + fmtHourUTC(h.hour) + '</td>' +
+            '<td class="num">' + h.games + '</td>' +
+            '<td class="num">' + (h.totalHumans || 0) + '</td>' +
+            '<td class="num">' + (h.totalHumanPicks || 0) + '</td>' +
+            '<td class="num">' + (h.totalBots || 0) + '</td>' +
+            '<td class="num">' + (Number(h.avgHumans) || 0).toFixed(2) + '</td>' +
+            '<td class="num">' + (h.humanWinners || 0) + '</td>' +
+            '<td class="num" style="color:#6ee7b7;">' + (Number(h.humanWinAmount) || 0).toLocaleString() + '</td>' +
+            '</tr>';
+        }).join('');
+      }
+
+      anShowStatus('Loaded ' + (s.gamesRecorded || 0) + ' game(s) in range.', 'success');
+    } catch (e) {
+      anShowStatus('Load failed: ' + e.message, 'error');
+      if (showErrors) showStatus('Load analytics failed: ' + e.message, 'error');
+    }
+  }
+
+  // ============================================================
+  // REFERRALS TAB
+  // ============================================================
+  function refShowStatus(msg, kind) {
+    const s = $('refStatus');
+    s.textContent = msg;
+    s.className = 'statusbar show ' + (kind || 'info');
+    if (kind === 'success') {
+      setTimeout(() => { if (s.textContent === msg) s.className = 'statusbar show info'; }, 3500);
+    }
+  }
+
+  let _referralData = { totals: {}, referrers: [] };
+
+  async function loadReferrals(showErrors) {
+    if (!serverUrl || !adminKey) return;
+    refShowStatus('Loading referrals…', 'info');
+    try {
+      const res = await adminApi('/admin/analytics/referrals');
+      window._referralsLoaded = true;
+      _referralData = {
+        totals: res.totals || {},
+        referrers: Array.isArray(res.referrers) ? res.referrers : [],
+      };
+
+      const t = _referralData.totals;
+      $('refReferrers').textContent = String(t.referrers || 0);
+      $('refReferred').textContent  = String(t.referredUsers || 0);
+      $('refEarn').textContent      = Number(t.totalEarnings || 0).toLocaleString() + ' Birr';
+      $('refAvg').textContent       = (Number(t.avgPerReferrer || 0)).toFixed(2);
+
+      renderReferrals();
+      refShowStatus('Loaded ' + (t.referrers || 0) + ' referrer(s).', 'success');
+    } catch (e) {
+      refShowStatus('Load failed: ' + e.message, 'error');
+      if (showErrors) showStatus('Load referrals failed: ' + e.message, 'error');
+    }
+  }
+
+  function renderReferrals() {
+    const q = String($('refSearch').value || '').trim().toLowerCase();
+    const sortBy = $('refSort').value;
+
+    let list = [...(_referralData.referrers || [])];
+
+    if (q) {
+      list = list.filter(r => {
+        if ((r.name || '').toLowerCase().includes(q)) return true;
+        if ((r.uid || '').toLowerCase().includes(q)) return true;
+        return (r.referred || []).some(x =>
+          (x.name || '').toLowerCase().includes(q) || (x.uid || '').toLowerCase().includes(q)
+        );
+      });
+    }
+
+    list.sort((a, b) => {
+      if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
+      if (sortBy === 'earnings') return (b.referralEarnings || 0) - (a.referralEarnings || 0);
+      return (b.referralCount || 0) - (a.referralCount || 0);
+    });
+
+    const box = $('refList');
+    if (!list.length) {
+      box.innerHTML = '<div class="utable-empty">No referrers match.</div>';
+      return;
+    }
+
+    box.innerHTML = list.map(r => {
+      const referredHtml = (r.referred || []).map(x =>
+        '<div class="refrow">' +
+          '<span>' + esc(x.name || x.uid) + ' <span class="refmeta">(' + esc(x.uid) + ')</span></span>' +
+          '<span class="refmeta">' + (x.createdAt ? new Date(x.createdAt).toLocaleDateString() : '—') + '</span>' +
+        '</div>'
+      ).join('') || '<div class="refrow refmeta">No referred players.</div>';
+
+      return '<details class="referrer-block">' +
+        '<summary>' +
+          '<span>' + esc(r.name || r.uid) + ' <span class="refmeta">(' + esc(r.uid) + ')</span></span>' +
+          '<span>' +
+            '<span class="pill" style="background:rgba(139,92,246,.25);color:#c4b5fd;margin-right:6px">' + r.referralCount + ' referred</span>' +
+            '<span class="pill auto">' + Number(r.referralEarnings || 0).toLocaleString() + ' Birr</span>' +
+          '</span>' +
+        '</summary>' +
+        '<div class="ref-body">' + referredHtml + '</div>' +
+      '</details>';
+    }).join('');
+  }
+
   // --- UI BINDINGS ---
   $('connect').onclick = connect;
   $('disconnect').onclick = disconnect;
@@ -955,16 +1254,22 @@
   $('loadSms').onclick = loadSms;
   $('usersRefresh').onclick = () => loadUsers(true);
   $('usersSearch').addEventListener('input', renderUsersTable);
-  $('winnersRefresh').onclick = () => loadWinners(true);           // ✅ NEW
-  $('winnersSearch').addEventListener('input', renderWinnersTable); // ✅ NEW
-  $('winnersRoom').addEventListener('change', renderWinnersTable);  // ✅ NEW
+  $('winnersRefresh').onclick = () => loadWinners(true);
+  $('winnersSearch').addEventListener('input', renderWinnersTable);
+  $('winnersRoom').addEventListener('change', renderWinnersTable);
   $('refsRefresh').onclick = loadUsedRefs;
   $('auto').onchange = () => { if($('auto').checked) startAuto(); else stopAuto(); };
   $('smsAuto').onchange = () => { if($('smsAuto').checked){ loadSms(); startSmsAuto(); } else stopSmsAuto(); };
   $('key').addEventListener('keydown', e => { if(e.key === 'Enter') connect(); });
-  
+  $('anLoad').onclick = () => loadAnalytics(true);
+  $('anRefresh').onclick = () => loadAnalytics(true);
+  $('refLoad').onclick = () => loadReferrals(true);
+  $('refRefresh').onclick = () => loadReferrals(true);
+  $('refSearch').addEventListener('input', () => { if (window._referralsLoaded) renderReferrals(); });
+  $('refSort').addEventListener('change', () => { if (window._referralsLoaded) renderReferrals(); });
+
   document.querySelectorAll('.tab').forEach(t => { t.onclick = () => switchTab(t.dataset.tab); });
-  
+
   function showReceipt(base64Data) {
     const modal = $('imgModal');
     const img = $('receiptImg');
