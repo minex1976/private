@@ -163,6 +163,9 @@
       <button class="tab" data-tab="users" role="tab">
         Users <span class="count zero" id="usersCount">0</span>
       </button>
+      <button class="tab" data-tab="finance" role="tab">💰 Finance</button>
+      <button class="tab" data-tab="broadcast" role="tab">📣 Broadcast</button>
+      <button class="tab" data-tab="security" role="tab">🛡 Security</button>
       <button class="tab" data-tab="winners" role="tab">
         Winners <span class="count zero" id="winnersCount">0</span>
       </button>
@@ -192,6 +195,22 @@
         <button id="usersRefresh" class="secondary">↻ Refresh</button>
       </div>
       <div id="usersTable"></div>
+    </div>
+
+    <div id="tab-finance" class="tabpanel" style="display:none">
+      <div class="toolbar"><button id="financeRefresh" class="secondary">↻ Refresh finance</button><span style="color:var(--muted);font-size:12px">Approved transactions · service fee = 20% of recorded game prize pools</span></div>
+      <div id="financeTotals" class="metrics-grid"></div><div id="financeDaily"></div>
+    </div>
+    <div id="tab-broadcast" class="tabpanel" style="display:none">
+      <div class="card"><h2>Send broadcast message</h2>
+        <label for="broadcastTarget">Recipients</label><select id="broadcastTarget"><option value="all">All users</option></select>
+        <label for="broadcastType" style="margin-top:10px">Message removal</label><select id="broadcastType"><option value="user">Users can remove the message</option><option value="admin">Only admin can remove the message</option></select>
+        <label for="broadcastText" style="margin-top:10px">Message</label><textarea id="broadcastText" rows="4" placeholder="Write your message..."></textarea>
+        <div class="toolbar" style="margin-top:10px"><button id="broadcastSend">Send message</button></div><div id="broadcastStatus" class="statusbar"></div><label for="broadcastRemoveId" style="margin-top:14px">End an admin-only broadcast (paste its ID)</label><input id="broadcastRemoveId" placeholder="Broadcast ID"><button id="broadcastRemove" class="reject" style="margin-top:8px">Remove broadcast from all players</button>
+      </div>
+    </div>
+    <div id="tab-security" class="tabpanel" style="display:none">
+      <div class="card"><h2>Suspicious account scan</h2><p style="color:var(--muted);font-size:13px;margin:0 0 12px">The server automatically scans every 6 hours. A scan flags matching IP/device clusters for admin review; it does not automatically block or delete accounts.</p><button id="securityScan">Run scan now</button><div id="securityStatus" class="statusbar" style="margin-top:12px"></div><div id="securityResults"></div></div>
     </div>
 
     <div id="tab-winners" class="tabpanel" style="display:none">
@@ -421,6 +440,7 @@
       </div>
       <div style="display:flex; gap:8px;">
         <button id="udBlockBtn" class="reject">Block User</button>
+        <button id="udDeleteBtn" class="reject">Remove User</button>
         <button id="udCloseBtn" class="secondary">Close</button>
       </div>
     </div>
@@ -482,6 +502,9 @@
     $('tab-pending').style.display    = (name === 'pending')    ? '' : 'none';
     $('tab-users').style.display      = (name === 'users')      ? '' : 'none';
     $('tab-winners').style.display    = (name === 'winners')    ? '' : 'none';
+    $('tab-finance').style.display = name === 'finance' ? '' : 'none';
+    $('tab-broadcast').style.display = name === 'broadcast' ? '' : 'none';
+    $('tab-security').style.display = name === 'security' ? '' : 'none';
     $('tab-analytics').style.display  = (name === 'analytics')  ? '' : 'none';
     $('tab-referrals').style.display  = (name === 'referrals')  ? '' : 'none';
     $('tab-sms').style.display        = (name === 'sms')        ? '' : 'none';
@@ -489,6 +512,8 @@
 
     if (name === 'users' && !usersData.length) loadUsers(true);
     if (name === 'winners' && !winnersData.length) loadWinners(true);
+    if (name === 'finance') loadFinance();
+    if (name === 'broadcast') loadBroadcastRecipients();
     if (name === 'analytics' && !window._analyticsLoaded) loadAnalytics(true);
     if (name === 'referrals' && !window._referralsLoaded) loadReferrals(true);
     if (name === 'sms') loadSms();
@@ -814,13 +839,14 @@
     }
 
     let html = '<table class="utable"><thead><tr>' +
-      '<th>Name</th><th>Telegram ID</th><th>User ID</th>' +
+      '<th>Name</th><th>Status / Last seen</th><th>Telegram ID</th><th>User ID</th>' +
       '<th class="num">M-Wallet</th><th class="num">P-Wallet</th>' +
       '</tr></thead><tbody>';
 
     for (const r of filtered) {
       html += '<tr data-uid="' + esc(r.uid) + '">' +
         '<td class="name">' + esc(r.name) + '</td>' +
+        '<td>' + (r.online ? '<span class="pill auto">Online</span>' : '<span class="pill">Offline</span> <small style="color:var(--muted)">' + (r.last_seen ? new Date(Number(r.last_seen)).toLocaleString() : 'Never seen') + '</small>') + '</td>' +
         '<td class="mono">' + (r.telegram_id ? esc(r.telegram_id) : '—') + '</td>' +
         '<td class="mono">' + esc(r.uid) + '</td>' +
         '<td class="num">' + Number(r.main).toLocaleString() + '</td>' +
@@ -843,6 +869,7 @@
       $('usersCount').textContent = String(usersData.length);
       $('usersCount').className = 'count' + (usersData.length ? ' has' : ' zero');
       renderUsersTable();
+      const target=$('broadcastTarget'); if(target){const keep=target.value;target.innerHTML='<option value="all">All users</option>'+usersData.map(u=>'<option value="'+esc(u.uid)+'">'+esc(u.name||u.uid)+' ('+esc(u.uid)+')</option>').join('');if([...target.options].some(o=>o.value===keep))target.value=keep;}
     } catch (e) {
       if (showErrors) showStatus('Load users failed: ' + e.message, 'error');
     }
@@ -932,6 +959,7 @@
       html += '<div class="ud-item"><b>Main Wallet</b><span>' + Number(u.main).toLocaleString() + ' Birr</span></div>';
       html += '<div class="ud-item"><b>Play Balance</b><span>' + Number(u.play).toLocaleString() + ' Birr</span></div>';
       html += '<div class="ud-item"><b>Referral Earnings</b><span style="color:#6ee7b7;">' + Number(u.referral_earnings || 0).toLocaleString() + ' Birr</span></div>';
+      html += '<div class="ud-item"><b>Presence</b><span>' + (u.online ? 'Online now' : 'Offline · ' + (u.last_seen ? new Date(Number(u.last_seen)).toLocaleString() : 'Never seen')) + '</span></div>';
       html += '<div class="ud-item"><b>Referred By</b><span>' + esc(u.referred_by || 'None') + '</span></div>';
       html += '<div class="ud-item"><b>Referring List</b><span>' + (u.referrals && u.referrals.length ? u.referrals.length + ' users' : '0 users') + '</span></div>';
       html += '</div>';
@@ -966,7 +994,7 @@
 
     this.disabled = true;
     try {
-      await adminApi('/admin/send-message', 'POST', { userId: activeUser.uid, message: msg });
+      await adminApi('/admin/send-message', 'POST', { userId: activeUser.uid, message: msg, dismissPolicy: 'user' });
       showStatus('Message sent to ' + (activeUser.name || activeUser.uid) + '.', 'success');
       $('udMsgText').value = '';
     } catch (e) {
@@ -997,6 +1025,13 @@
     } finally {
       this.disabled = false;
     }
+  };
+
+  $('udDeleteBtn').onclick = async function(){
+    if(!activeUser)return; const uid=activeUser.uid;
+    if(!confirm('Permanently remove '+uid+' and its stored user history? This cannot be undone.'))return;
+    this.disabled=true;try{await adminApi('/admin/delete-user','POST',{userId:uid});closeUserModals();await loadUsers(true);showStatus('User '+uid+' removed.','success');}
+    catch(e){showStatus('Remove failed: '+e.message,'error');}finally{this.disabled=false;}
   };
 
   $('udTxLink').onclick = async function(e) {
@@ -1253,6 +1288,7 @@
   $('aaRunNow').onclick = runAutoMatch;
   $('loadSms').onclick = loadSms;
   $('usersRefresh').onclick = () => loadUsers(true);
+  setInterval(()=>{if(serverUrl && adminKey && $('tab-users').style.display!=='none')loadUsers(false);},15000);
   $('usersSearch').addEventListener('input', renderUsersTable);
   $('winnersRefresh').onclick = () => loadWinners(true);
   $('winnersSearch').addEventListener('input', renderWinnersTable);
@@ -1268,7 +1304,17 @@
   $('refSearch').addEventListener('input', () => { if (window._referralsLoaded) renderReferrals(); });
   $('refSort').addEventListener('change', () => { if (window._referralsLoaded) renderReferrals(); });
 
-  document.querySelectorAll('.tab').forEach(t => { t.onclick = () => switchTab(t.dataset.tab); });
+  document.querySelectorAll('.tab').forEach(t => { t.onclick = () => {switchTab(t.dataset.tab);if(t.dataset.tab==='security')loadSecurityHistory();}; });
+
+  async function loadFinance(){try{const r=await adminApi('/admin/finance-summary');const t=r.totals||{};$('financeTotals').innerHTML=[['Total deposits',t.deposits],['Total withdrawals',t.withdrawals],['Service fee earned (20%)',t.serviceFee]].map(([l,v])=>'<div class="metric-card"><div class="lbl">'+l+'</div><div class="val">'+Number(v||0).toLocaleString(undefined,{maximumFractionDigits:2})+' Br</div></div>').join('');$('financeDaily').innerHTML='<table class="utable"><thead><tr><th>Date (UTC)</th><th class="num">Deposits</th><th class="num">Withdrawals</th><th class="num">Service fee (20%)</th></tr></thead><tbody>'+(r.daily||[]).map(d=>'<tr><td>'+esc(d.date)+'</td><td class="num">'+Number(d.deposits).toLocaleString()+'</td><td class="num">'+Number(d.withdrawals).toLocaleString()+'</td><td class="num">'+Number(d.serviceFee).toLocaleString()+'</td></tr>').join('')+'</tbody></table>';}catch(e){showStatus('Finance load failed: '+e.message,'error');}}
+  async function loadBroadcastRecipients(){if(!usersData.length)await loadUsers(false);}
+  async function runSecurityScan(){const b=$('securityScan');b.disabled=true;$('securityStatus').textContent='Scanning accounts…';$('securityStatus').className='statusbar show info';try{const r=await adminApi('/admin/scan-suspicious','POST',{});$('securityStatus').textContent='Scan completed: '+r.scanned+' checked, '+r.flagged+' flagged.';$('securityStatus').className='statusbar show success';$('securityResults').innerHTML=(r.findings||[]).length?'<table class="utable"><thead><tr><th>User</th><th>Signals</th></tr></thead><tbody>'+r.findings.map(x=>'<tr><td>'+esc(x.uid)+'</td><td>'+esc((x.signals||[]).map(s=>s.kind+' ('+s.count+')').join(', '))+'</td></tr>').join('')+'</tbody></table>':'<p style="color:var(--muted);padding:12px">No suspicious accounts detected in this scan.</p>';}catch(e){$('securityStatus').textContent='Scan failed: '+e.message;$('securityStatus').className='statusbar show error';}finally{b.disabled=false;}}
+  $('financeRefresh').onclick=loadFinance;
+  $('securityScan').onclick=runSecurityScan;
+  async function loadSecurityHistory(){try{const r=await adminApi('/admin/security-scans');const scans=r.scans||[];if(scans.length)$('securityResults').innerHTML='<h3 style="margin:14px 0 8px">Recent scan results</h3>'+scans.map(x=>'<div class="referrer-block"><summary>'+new Date(Number(x.created_at)).toLocaleString()+' · '+x.scanned+' checked · '+x.flagged+' flagged</summary></div>').join('');}catch(e){}}
+  const _switchTabOriginal=switchTab;
+  $('broadcastRemove').onclick=async function(){const id=$('broadcastRemoveId').value.trim();if(!id)return alert('Enter the broadcast ID.');try{const r=await adminApi('/admin/remove-broadcast','POST',{broadcastId:id});$('broadcastStatus').textContent='Removed from '+r.removed+' stored message(s).';$('broadcastStatus').className='statusbar show success';}catch(e){$('broadcastStatus').textContent='Remove failed: '+e.message;$('broadcastStatus').className='statusbar show error';}};
+  $('broadcastSend').onclick=async function(){const message=$('broadcastText').value.trim();if(!message)return alert('Enter a message.');this.disabled=true;try{const r=await adminApi('/admin/broadcast','POST',{target:$('broadcastTarget').value,message,dismissPolicy:$('broadcastType').value});$('broadcastStatus').textContent='Message sent to '+r.sent+' user(s).';$('broadcastStatus').className='statusbar show success';$('broadcastText').value='';if(r.broadcastId)$('broadcastRemoveId').value=r.broadcastId;}catch(e){$('broadcastStatus').textContent='Broadcast failed: '+e.message;$('broadcastStatus').className='statusbar show error';}finally{this.disabled=false;}};
 
   function showReceipt(base64Data) {
     const modal = $('imgModal');
