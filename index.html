@@ -824,7 +824,7 @@
   // --- USERS TAB ---
   function rowMatches(row, q) {
     if (!q) return true;
-    const hay = [row.uid, row.name, row.telegram_username, row.telegram_id != null ? String(row.telegram_id) : ''].join(' ').toLowerCase();
+    const hay = [row.uid, row.name, row.telegram_username, row.telegram_id != null ? String(row.telegram_id) : '', row.phone_number || ''].join(' ').toLowerCase();
     return q.toLowerCase().split(/\s+/).every(tok => hay.includes(tok));
   }
 
@@ -839,7 +839,7 @@
     }
 
     let html = '<table class="utable"><thead><tr>' +
-      '<th>Name</th><th>Status / Last seen</th><th>Telegram ID</th><th>User ID</th>' +
+      '<th>Name</th><th>Status / Last seen</th><th>Telegram ID</th><th>Phone Number</th><th>User ID</th>' +
       '<th class="num">M-Wallet</th><th class="num">P-Wallet</th>' +
       '</tr></thead><tbody>';
 
@@ -848,6 +848,7 @@
         '<td class="name">' + esc(r.name) + '</td>' +
         '<td>' + (r.online ? '<span class="pill auto">Online</span>' : '<span class="pill">Offline</span> <small style="color:var(--muted)">' + (r.last_seen ? new Date(Number(r.last_seen)).toLocaleString() : 'Never seen') + '</small>') + '</td>' +
         '<td class="mono">' + (r.telegram_id ? esc(r.telegram_id) : '—') + '</td>' +
+        '<td class="mono">' + (r.phone_number ? esc(r.phone_number) : '—') + '</td>' +
         '<td class="mono">' + esc(r.uid) + '</td>' +
         '<td class="num">' + Number(r.main).toLocaleString() + '</td>' +
         '<td class="num">' + Number(r.play).toLocaleString() + '</td>' +
