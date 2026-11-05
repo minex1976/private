@@ -198,12 +198,26 @@
     </div>
 
     <div id="tab-finance" class="tabpanel" style="display:none">
-      <div class="toolbar"><button id="financeRefresh" class="secondary">↻ Refresh finance</button><span style="color:var(--muted);font-size:12px">Approved transactions · service fee = 20% of completed Spin and Bingo prize pools · Ethiopia time (EAT)</span></div>
+      <div class="toolbar"><button id="financeRefresh" class="secondary">↻ Refresh finance</button><span style="color:var(--muted);font-size:12px">Service fee = 20% of prizes paid to human winners · Ethiopia time (EAT)</span></div>
+      <div class="card">
+        <h2>Finance filters</h2>
+        <div class="row">
+          <div><label for="financeFrom">From date (EAT)</label><input type="date" id="financeFrom"></div>
+          <div><label for="financeTo">To date (EAT)</label><input type="date" id="financeTo"></div>
+        </div>
+        <label for="financeExcludeSearch" style="margin-top:10px">Find players whose deposits should be excluded</label>
+        <input id="financeExcludeSearch" type="search" placeholder="Search player name, phone number or ID">
+        <label for="financeExcludeUsers" style="margin-top:8px">Excluded players (select one or more)</label>
+        <select id="financeExcludeUsers" multiple size="5" style="min-height:110px"></select>
+        <div class="toolbar" style="margin-top:10px"><button id="financeApply">Apply filters</button><button id="financeClear" class="secondary">Clear filters</button></div>
+        <div style="color:var(--muted);font-size:12px">Excluded players are removed from deposit totals only. Their game winnings still contribute to service-fee income.</div>
+      </div>
       <div id="financeTotals" class="metrics-grid"></div><div id="financeDaily"></div>
     </div>
     <div id="tab-broadcast" class="tabpanel" style="display:none">
       <div class="card"><h2>Send broadcast message</h2>
-        <label for="broadcastTarget">Recipients</label><select id="broadcastTarget"><option value="all">All users</option></select>
+        <label for="broadcastSearch">Find a player by name, phone number or ID</label><input id="broadcastSearch" type="search" placeholder="Search name, phone number or user ID">
+        <label for="broadcastTarget" style="margin-top:8px">Recipients</label><select id="broadcastTarget"><option value="all">All users</option></select>
         <label for="broadcastType" style="margin-top:10px">Message removal</label><select id="broadcastType"><option value="user">Users can remove the message</option><option value="admin">Only admin can remove the message</option></select>
         <label for="broadcastText" style="margin-top:10px">Message</label><textarea id="broadcastText" rows="4" placeholder="Write your message..."></textarea>
         <div class="toolbar" style="margin-top:10px"><button id="broadcastSend">Send message</button></div><div id="broadcastStatus" class="statusbar"></div><label for="broadcastRemoveId" style="margin-top:14px">End an admin-only broadcast (paste its ID)</label><input id="broadcastRemoveId" placeholder="Broadcast ID"><button id="broadcastRemove" class="reject" style="margin-top:8px">Remove broadcast from all players</button>
@@ -870,7 +884,7 @@
       $('usersCount').textContent = String(usersData.length);
       $('usersCount').className = 'count' + (usersData.length ? ' has' : ' zero');
       renderUsersTable();
-      const target=$('broadcastTarget'); if(target){const keep=target.value;target.innerHTML='<option value="all">All users</option>'+usersData.map(u=>'<option value="'+esc(u.uid)+'">'+esc(u.name||u.uid)+' ('+esc(u.uid)+')</option>').join('');if([...target.options].some(o=>o.value===keep))target.value=keep;}
+      const target=$('broadcastTarget'); if(target){const keep=target.value;renderBroadcastRecipients();if([...target.options].some(o=>o.value===keep))target.value=keep;} renderFinanceExcludedUsers();
     } catch (e) {
       if (showErrors) showStatus('Load users failed: ' + e.message, 'error');
     }
@@ -1307,11 +1321,53 @@
 
   document.querySelectorAll('.tab').forEach(t => { t.onclick = () => {switchTab(t.dataset.tab);if(t.dataset.tab==='security')loadSecurityHistory();}; });
 
-  async function loadFinance(){try{const r=await adminApi('/admin/finance-summary');const t=r.totals||{},d=r.today||{};const money=v=>Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+' Br';$('financeTotals').innerHTML='<div class="metric-card"><div class="lbl">Today deposits ('+esc(r.timezone||'EAT')+')</div><div class="val">'+money(d.deposits)+'</div></div><div class="metric-card"><div class="lbl">Today withdrawals</div><div class="val">'+money(d.withdrawals)+'</div></div><div class="metric-card"><div class="lbl">Today service fee (20%)</div><div class="val">'+money(d.serviceFee)+'</div></div><div class="metric-card"><div class="lbl">Overall deposits</div><div class="val">'+money(t.deposits)+'</div></div><div class="metric-card"><div class="lbl">Overall withdrawals</div><div class="val">'+money(t.withdrawals)+'</div></div><div class="metric-card"><div class="lbl">Overall service fee</div><div class="val">'+money(t.serviceFee)+'</div></div>';$('financeDaily').innerHTML='<h3 style="margin:16px 0 8px">Daily totals (Ethiopia time)</h3><div style="overflow-x:auto"><table class="utable"><thead><tr><th>Date (EAT)</th><th class="num">Deposits</th><th class="num">Withdrawals</th><th class="num">Service fee (20%)</th></tr></thead><tbody>'+(r.daily||[]).map(x=>'<tr><td>'+esc(x.date)+'</td><td class="num">'+money(x.deposits)+'</td><td class="num">'+money(x.withdrawals)+'</td><td class="num">'+money(x.serviceFee)+'</td></tr>').join('')+'</tbody></table></div>';}catch(e){showStatus('Finance load failed: '+e.message,'error');}}
+  const financeExcludedUids = new Set();
+  function selectedFinanceExcluded(){return [...financeExcludedUids];}
+  function renderFinanceExcludedUsers(){
+    const sel=$('financeExcludeUsers');if(!sel)return;
+    const keep=financeExcludedUids;
+    const q=($('financeExcludeSearch')?.value||'').trim().toLowerCase();
+    const rows=usersData.filter(u=>!q||[u.name,u.uid,u.phone_number,u.telegram_id].some(v=>String(v||'').toLowerCase().includes(q)));
+    sel.innerHTML=rows.map(u=>'<option value="'+esc(u.uid)+'">'+esc(u.name||u.uid)+' · '+esc(u.phone_number||'no phone')+' · '+esc(u.uid)+'</option>').join('');
+    [...sel.options].forEach(o=>{if(keep.has(o.value))o.selected=true;});
+  }
+  async function loadFinance(){
+    try{
+      const params=new URLSearchParams();
+      if($('financeFrom').value)params.set('from',$('financeFrom').value);
+      if($('financeTo').value)params.set('to',$('financeTo').value);
+      const excluded=selectedFinanceExcluded();if(excluded.length)params.set('excludeUsers',excluded.join(','));
+      const r=await adminApi('/admin/finance-summary'+(params.toString()?'?'+params.toString():''));
+      const t=r.totals||{},d=r.today||{};
+      const money=v=>Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+' Br';
+      $('financeTotals').innerHTML='<div class="metric-card"><div class="lbl">Today deposits (EAT)</div><div class="val">'+money(d.deposits)+'</div></div><div class="metric-card"><div class="lbl">Today withdrawals</div><div class="val">'+money(d.withdrawals)+'</div></div><div class="metric-card"><div class="lbl">Today service-fee income</div><div class="val green">'+money(d.serviceFee)+'</div></div><div class="metric-card"><div class="lbl">Filtered deposits</div><div class="val">'+money(t.deposits)+'</div></div><div class="metric-card"><div class="lbl">Filtered withdrawals</div><div class="val">'+money(t.withdrawals)+'</div></div><div class="metric-card"><div class="lbl">Service-fee income (20% of human prizes)</div><div class="val green">'+money(t.serviceFee)+'</div></div>';
+      $('financeDaily').innerHTML='<h3 style="margin:16px 0 8px">Daily totals (Ethiopia time)</h3><div style="overflow-x:auto"><table class="utable"><thead><tr><th>Date (EAT)</th><th class="num">Deposits</th><th class="num">Withdrawals</th><th class="num">Service-fee income</th></tr></thead><tbody>'+(r.daily||[]).map(x=>'<tr><td>'+esc(x.date)+'</td><td class="num">'+money(x.deposits)+'</td><td class="num">'+money(x.withdrawals)+'</td><td class="num">'+money(x.serviceFee)+'</td></tr>').join('')+'</tbody></table></div>';
+    }catch(e){showStatus('Finance load failed: '+e.message,'error');}
+  }
+  function renderBroadcastRecipients(){
+    const target=$('broadcastTarget');if(!target)return;
+    const keep=target.value,q=($('broadcastSearch')?.value||'').trim().toLowerCase();
+    const rows=usersData.filter(u=>!q||[u.name,u.uid,u.phone_number,u.telegram_id].some(v=>String(v||'').toLowerCase().includes(q)));
+    let options='<option value="all">All users</option>'+rows.map(u=>'<option value="'+esc(u.uid)+'">'+esc(u.name||u.uid)+' · '+esc(u.phone_number||'no phone')+' · '+esc(u.uid)+'</option>').join('');
+    const selected=usersData.find(u=>u.uid===keep);
+    if(selected&&!rows.some(u=>u.uid===keep))options+='<option value="'+esc(selected.uid)+'">'+esc(selected.name||selected.uid)+' · '+esc(selected.phone_number||'no phone')+' · '+esc(selected.uid)+'</option>';
+    target.innerHTML=options;
+    if([...target.options].some(o=>o.value===keep))target.value=keep;
+  }
   async function loadBroadcastRecipients(){if(!usersData.length)await loadUsers(false);}
   function renderFlaggedUsers(users){const rows=users||[];$('securityFlaggedUsers').innerHTML='<h3 style="margin:16px 0 8px">Flagged accounts requiring review ('+rows.length+')</h3>'+(rows.length?'<div style="overflow-x:auto"><table class="utable"><thead><tr><th>User</th><th>Account name</th><th>Detection signals</th><th>Detected / updated</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x.uid)+'</td><td>'+esc(x.name||'—')+'</td><td>'+esc((x.signals||[]).map(v=>v.kind+' ('+v.count+')').join(', ')||'Flagged; signal details unavailable')+'</td><td>'+ (x.detectedAt?new Date(Number(x.detectedAt)).toLocaleString():'—')+'</td></tr>').join('')+'</tbody></table></div>':'<p style="color:var(--muted);padding:12px">No flagged accounts currently require review.</p>');}
   async function runSecurityScan(){const b=$('securityScan');b.disabled=true;$('securityStatus').textContent='Scanning accounts…';$('securityStatus').className='statusbar show info';try{const r=await adminApi('/admin/scan-suspicious','POST',{});$('securityStatus').textContent='Scan completed: '+r.scanned+' checked, '+r.flagged+' newly flagged.';$('securityStatus').className='statusbar show success';renderFlaggedUsers(r.flaggedUsers||[]);}catch(e){$('securityStatus').textContent='Scan failed: '+e.message;$('securityStatus').className='statusbar show error';}finally{b.disabled=false;}}
   $('financeRefresh').onclick=loadFinance;
+  $('financeApply').onclick=loadFinance;
+  $('financeClear').onclick=()=>{$('financeFrom').value='';$('financeTo').value='';$('financeExcludeSearch').value='';financeExcludedUids.clear();renderFinanceExcludedUsers();loadFinance();};
+  $('financeExcludeSearch').addEventListener('input',renderFinanceExcludedUsers);
+  $('financeExcludeUsers').addEventListener('change',()=>{
+    const sel=$('financeExcludeUsers');
+    const visible=new Set([...sel.options].map(o=>o.value));
+    for(const uid of visible)financeExcludedUids.delete(uid);
+    [...sel.selectedOptions].forEach(o=>financeExcludedUids.add(o.value));
+  });
+  $('broadcastSearch').addEventListener('input',renderBroadcastRecipients);
   $('securityScan').onclick=runSecurityScan;
   async function loadSecurityHistory(){try{const r=await adminApi('/admin/security-scans');renderFlaggedUsers(r.flaggedUsers||[]);const scans=r.scans||[];$('securityResults').innerHTML='<h3 style="margin:14px 0 8px">Recent scan history</h3>'+(scans.length?scans.map(x=>'<div class="referrer-block"><summary>'+new Date(Number(x.created_at)).toLocaleString()+' · '+x.scanned+' checked · '+x.flagged+' newly flagged</summary></div>').join(''):'<p style="color:var(--muted);padding:12px">No scan history is available yet.</p>');}catch(e){$('securityStatus').textContent='Could not load scan results: '+e.message;$('securityStatus').className='statusbar show error';}}
   const _switchTabOriginal=switchTab;
