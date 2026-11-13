@@ -267,7 +267,7 @@
 
       <div class="metrics-grid">
         <div class="metric-card">
-          <div class="lbl">Avg humans / game</div>
+          <div class="lbl">Avg players / game</div>
           <div id="anAvg" class="val">—</div>
         </div>
         <div class="metric-card">
@@ -275,7 +275,7 @@
           <div id="anPeak" class="val">—</div>
         </div>
         <div class="metric-card">
-          <div class="lbl">Games recorded</div>
+          <div class="lbl">Rounds recorded</div>
           <div id="anGames" class="val">—</div>
         </div>
         <div class="metric-card">
@@ -283,45 +283,41 @@
           <div id="anHours" class="val">—</div>
         </div>
         <div class="metric-card">
-          <div class="lbl">Total human participations</div>
-          <div id="anTotalHumans" class="val">—</div>
+          <div class="lbl">Distinct players (range)</div>
+          <div id="anDistinctPlayers" class="val green">—</div>
         </div>
         <div class="metric-card">
-          <div class="lbl">Total human picks</div>
-          <div id="anTotalHumanPicks" class="val">—</div>
+          <div class="lbl">Peak players in one hour</div>
+          <div id="anPeakPlayers" class="val">—</div>
         </div>
         <div class="metric-card">
-          <div class="lbl">Total bot picks</div>
-          <div id="anTotalBots" class="val">—</div>
+          <div class="lbl">Avg rounds / hour</div>
+          <div id="anAvgRounds" class="val">—</div>
         </div>
         <div class="metric-card">
-          <div class="lbl">Human wins</div>
-          <div id="anHumanWins" class="val green">—</div>
+          <div class="lbl">Avg players / hour</div>
+          <div id="anAvgPlayers" class="val">—</div>
         </div>
       </div>
 
       <div class="card">
         <h3 style="margin-top:0">Hourly breakdown</h3>
         <p style="font-size:12px;color:var(--muted);margin:0 0 10px">
-          Every round is persisted in <code>round_snapshots</code> with the exact human count and pick count.
-          Buckets are grouped by UTC hour. The daily average is the mean of non-empty hourly averages.
+          Every round is persisted in <code>round_snapshots</code>. <b>Players</b> counts each distinct human player once per UTC hour — a player who plays 45 games still counts as 1.
+          <b>Average</b> = players ÷ rounds in that hour.
         </p>
         <div style="overflow:auto">
           <table class="utable">
             <thead>
               <tr>
                 <th>Hour (UTC)</th>
-                <th class="num">Games</th>
-                <th class="num">Humans</th>
-                <th class="num">Human picks</th>
-                <th class="num">Bots</th>
-                <th class="num">Avg humans / game</th>
-                <th class="num">Human wins</th>
-                <th class="num">Human win amount</th>
+                <th class="num">Rounds</th>
+                <th class="num">Players</th>
+                <th class="num">Average</th>
               </tr>
             </thead>
             <tbody id="anRows">
-              <tr><td colspan="8" class="utable-empty">Load data to see hourly breakdown.</td></tr>
+              <tr><td colspan="4" class="utable-empty">Load data to see hourly breakdown.</td></tr>
             </tbody>
           </table>
         </div>
@@ -1171,37 +1167,36 @@
       window._analyticsLoaded = true;
 
       const s = res.summary || {};
-      $('anAvg').textContent             = (Number(s.dailyAvgHumansPerGame || 0)).toFixed(2);
+      $('anAvg').textContent             = (Number(s.overallAvgPlayersPerGame || 0)).toFixed(2);
       $('anPeak').textContent            = (Number(s.peakHourlyAvg || 0)).toFixed(2);
-      $('anGames').textContent           = String(s.gamesRecorded || 0);
+      $('anGames').textContent           = String(s.roundsRecorded || 0).toLocaleString();
       $('anHours').textContent           = String(s.hoursWithData || 0) + ' / 24';
-      $('anTotalHumans').textContent     = Number(s.totalHumanParticipations || 0).toLocaleString();
-      $('anTotalHumanPicks').textContent = Number(s.totalHumanPicks || 0).toLocaleString();
-      $('anTotalBots').textContent       = Number(s.totalBots || 0).toLocaleString();
-      $('anHumanWins').textContent       = Number(s.humanWinners || 0).toLocaleString();
+      $('anDistinctPlayers').textContent = Number(s.distinctPlayersInRange || 0).toLocaleString();
+      $('anPeakPlayers').textContent     = Number(s.peakPlayersInHour || 0).toLocaleString();
+      $('anAvgRounds').textContent       = (Number(s.avgRoundsPerHour || 0)).toFixed(2);
+      $('anAvgPlayers').textContent      = (Number(s.avgPlayersPerHour || 0)).toFixed(2);
 
       const rows = Array.isArray(res.hourly) ? res.hourly : [];
       const tbody = $('anRows');
       if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="utable-empty">No hourly data in range.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="utable-empty">No hourly data in range.</td></tr>';
       } else {
         tbody.innerHTML = rows.map(h => {
-          const empty = h.games === 0;
-          const style = empty ? 'style="opacity:.45"' : '';
+          const rounds  = Number(h.rounds ?? h.games ?? 0);
+          const players = Number(h.uniquePlayers ?? 0);
+          const avg     = rounds > 0 ? players / rounds : 0;
+          const empty   = rounds === 0;
+          const style   = empty ? 'style="opacity:.45"' : '';
           return '<tr ' + style + '>' +
             '<td>' + fmtHourUTC(h.hour) + '</td>' +
-            '<td class="num">' + h.games + '</td>' +
-            '<td class="num">' + (h.totalHumans || 0) + '</td>' +
-            '<td class="num">' + (h.totalHumanPicks || 0) + '</td>' +
-            '<td class="num">' + (h.totalBots || 0) + '</td>' +
-            '<td class="num">' + (Number(h.avgHumans) || 0).toFixed(2) + '</td>' +
-            '<td class="num">' + (h.humanWinners || 0) + '</td>' +
-            '<td class="num" style="color:#6ee7b7;">' + (Number(h.humanWinAmount) || 0).toLocaleString() + '</td>' +
+            '<td class="num">' + rounds + '</td>' +
+            '<td class="num">' + players + '</td>' +
+            '<td class="num">' + avg.toFixed(2) + '</td>' +
             '</tr>';
         }).join('');
       }
 
-      anShowStatus('Loaded ' + (s.gamesRecorded || 0) + ' game(s) in range.', 'success');
+      anShowStatus('Loaded ' + (s.roundsRecorded || 0) + ' round(s) in range.', 'success');
     } catch (e) {
       anShowStatus('Load failed: ' + e.message, 'error');
       if (showErrors) showStatus('Load analytics failed: ' + e.message, 'error');
