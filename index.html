@@ -128,6 +128,16 @@
   .referrer-block[open] summary{border-bottom:1px solid var(--border)}
   .ref-body{padding:6px 14px 12px}
   .ref-body .refrow{padding:7px 0;border-bottom:1px solid rgba(58,42,85,.5)}
+
+  /* Security additions */
+  .signal-card{background:#1a1228;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin:8px 0}
+  .signal-title{font-weight:600;color:#fcd34d;margin-bottom:4px}
+  .signal-meta{font-size:11.5px;color:var(--muted);line-height:1.7}
+  .signal-json{margin:6px 0 0;background:#0d0818;border:1px solid var(--border);border-radius:6px;padding:8px;font-size:11px;color:#b8abc9;overflow:auto;max-height:200px;white-space:pre-wrap;word-break:break-all}
+  .signal-json summary{cursor:pointer;color:var(--muted);font-size:11.5px;padding:2px 0}
+  .sec-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .sec-actions button{padding:6px 12px;font-size:12px}
+
   @media(max-width:900px){.metrics-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -223,8 +233,83 @@
         <div class="toolbar" style="margin-top:10px"><button id="broadcastSend">Send message</button></div><div id="broadcastStatus" class="statusbar"></div><label for="broadcastRemoveId" style="margin-top:14px">End an admin-only broadcast (paste its ID)</label><input id="broadcastRemoveId" placeholder="Broadcast ID"><button id="broadcastRemove" class="reject" style="margin-top:8px">Remove broadcast from all players</button>
       </div>
     </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SECURITY TAB — fully redesigned
+         ═══════════════════════════════════════════════════════════════════ -->
     <div id="tab-security" class="tabpanel" style="display:none">
-      <div class="card"><h2>Suspicious account scan</h2><p style="color:var(--muted);font-size:13px;margin:0 0 12px">The server automatically scans every 6 hours. A scan flags matching IP/device clusters for admin review; it does not automatically block or delete accounts.</p><button id="securityScan">Run scan now</button><div id="securityStatus" class="statusbar" style="margin-top:12px"></div><div id="securityFlaggedUsers"></div><div id="securityResults"></div></div>
+
+      <!-- Metrics overview -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="lbl">Flagged accounts</div>
+          <div id="secTotalFlagged" class="val">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="lbl">IP cluster signals</div>
+          <div id="secIpClusters" class="val">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="lbl">Fingerprint cluster signals</div>
+          <div id="secFpClusters" class="val">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="lbl">New in last 24h</div>
+          <div id="secNew24h" class="val green">—</div>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="card">
+        <h2>Suspicious account scan</h2>
+        <p style="color:var(--muted);font-size:13px;margin:0 0 12px">
+          The server scans periodically (every 15 minutes in the enhanced server, or 6 hours in the legacy server).
+          A scan flags matching IP/device clusters for admin review; it does <b>not</b> automatically block or delete accounts.
+          Use the actions below to freeze or clear signals.
+        </p>
+        <div class="row">
+          <div style="flex:0 0 auto"><button id="securityScan">▶ Run scan now</button></div>
+          <div style="flex:0 0 auto"><button id="securityExport" class="secondary">📥 Export JSON</button></div>
+          <div style="flex:0 0 auto"><button id="securityReload" class="secondary">↻ Reload</button></div>
+        </div>
+        <div id="securityStatus" class="statusbar" style="margin-top:12px"></div>
+      </div>
+
+      <!-- Filters -->
+      <div class="card">
+        <div class="row">
+          <div style="flex:1;min-width:200px"><label for="securitySearch">Search</label>
+            <input id="securitySearch" type="search" placeholder="Search name, uid, reason…">
+          </div>
+          <div style="flex:0 0 200px"><label for="securityKindFilter">Signal type</label>
+            <select id="securityKindFilter">
+              <option value="">All signal types</option>
+              <option value="ip-cluster">IP cluster</option>
+              <option value="fingerprint-cluster">Fingerprint cluster</option>
+            </select>
+          </div>
+          <div style="flex:0 0 200px"><label for="securitySort">Sort</label>
+            <select id="securitySort">
+              <option value="recent">Most recently flagged</option>
+              <option value="signals">Most signals</option>
+              <option value="name">Name (A→Z)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Flagged users -->
+      <div class="card">
+        <h3 style="margin-top:0">Flagged accounts requiring review</h3>
+        <div id="securityFlaggedUsers"><div class="utable-empty">Loading…</div></div>
+      </div>
+
+      <!-- Scan history -->
+      <div class="card">
+        <h3 style="margin-top:0">Scan history</h3>
+        <div id="securityResults"><div class="utable-empty">No scan history loaded yet.</div></div>
+      </div>
+
     </div>
 
     <div id="tab-winners" class="tabpanel" style="display:none">
@@ -266,38 +351,14 @@
       </div>
 
       <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="lbl">Avg players / game</div>
-          <div id="anAvg" class="val">—</div>
-        </div>
-        <div class="metric-card">
-          <div class="lbl">Peak hourly avg</div>
-          <div id="anPeak" class="val">—</div>
-        </div>
-        <div class="metric-card">
-          <div class="lbl">Rounds recorded</div>
-          <div id="anGames" class="val">—</div>
-        </div>
-        <div class="metric-card">
-          <div class="lbl">Hours with data</div>
-          <div id="anHours" class="val">—</div>
-        </div>
-        <div class="metric-card">
-          <div class="lbl">Distinct players (range)</div>
-          <div id="anDistinctPlayers" class="val green">—</div>
-        </div>
-        <div class="metric-card">
-          <div class="lbl">Peak players in one hour</div>
-          <div id="anPeakPlayers" class="val">—</div>
-        </div>
-        <div class="metric-card">
-          <div class="lbl">Avg rounds / hour</div>
-          <div id="anAvgRounds" class="val">—</div>
-        </div>
-        <div class="metric-card">
-          <div class="lbl">Avg players / hour</div>
-          <div id="anAvgPlayers" class="val">—</div>
-        </div>
+        <div class="metric-card"><div class="lbl">Avg players / game</div><div id="anAvg" class="val">—</div></div>
+        <div class="metric-card"><div class="lbl">Peak hourly avg</div><div id="anPeak" class="val">—</div></div>
+        <div class="metric-card"><div class="lbl">Rounds recorded</div><div id="anGames" class="val">—</div></div>
+        <div class="metric-card"><div class="lbl">Hours with data</div><div id="anHours" class="val">—</div></div>
+        <div class="metric-card"><div class="lbl">Distinct players (range)</div><div id="anDistinctPlayers" class="val green">—</div></div>
+        <div class="metric-card"><div class="lbl">Peak players in one hour</div><div id="anPeakPlayers" class="val">—</div></div>
+        <div class="metric-card"><div class="lbl">Avg rounds / hour</div><div id="anAvgRounds" class="val">—</div></div>
+        <div class="metric-card"><div class="lbl">Avg players / hour</div><div id="anAvgPlayers" class="val">—</div></div>
       </div>
 
       <div class="card">
@@ -309,16 +370,9 @@
         <div style="overflow:auto">
           <table class="utable">
             <thead>
-              <tr>
-                <th>Hour (UTC)</th>
-                <th class="num">Rounds</th>
-                <th class="num">Players</th>
-                <th class="num">Average</th>
-              </tr>
+              <tr><th>Hour (UTC)</th><th class="num">Rounds</th><th class="num">Players</th><th class="num">Average</th></tr>
             </thead>
-            <tbody id="anRows">
-              <tr><td colspan="4" class="utable-empty">Load data to see hourly breakdown.</td></tr>
-            </tbody>
+            <tbody id="anRows"><tr><td colspan="4" class="utable-empty">Load data to see hourly breakdown.</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -343,22 +397,10 @@
       </div>
 
       <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="lbl">Referrers</div>
-          <div id="refReferrers" class="val">—</div>
-        </div>
-        <div class="metric-card">
-          <div class="lbl">Referred players</div>
-          <div id="refReferred" class="val">—</div>
-        </div>
-        <div class="metric-card">
-          <div class="lbl">Total earnings</div>
-          <div id="refEarn" class="val green">—</div>
-        </div>
-        <div class="metric-card">
-          <div class="lbl">Avg / referrer</div>
-          <div id="refAvg" class="val">—</div>
-        </div>
+        <div class="metric-card"><div class="lbl">Referrers</div><div id="refReferrers" class="val">—</div></div>
+        <div class="metric-card"><div class="lbl">Referred players</div><div id="refReferred" class="val">—</div></div>
+        <div class="metric-card"><div class="lbl">Total earnings</div><div id="refEarn" class="val green">—</div></div>
+        <div class="metric-card"><div class="lbl">Avg / referrer</div><div id="refAvg" class="val">—</div></div>
       </div>
 
       <div class="card">
@@ -373,19 +415,14 @@
         <p style="font-size:12px;color:var(--muted);margin:0 0 10px;">Simulate an incoming Telebirr SMS. Strict checks still apply.</p>
         <textarea id="testSmsText" placeholder="Paste Telebirr SMS text here..." style="min-height:80px;margin-bottom:10px;"></textarea>
         <div class="row" style="margin-bottom:10px">
-          <div style="flex:0 0 200px">
-            <label for="testSmsFrom">Sender</label>
-            <input id="testSmsFrom" value="127" placeholder="127">
-          </div>
+          <div style="flex:0 0 200px"><label for="testSmsFrom">Sender</label><input id="testSmsFrom" value="127" placeholder="127"></div>
         </div>
         <button id="testSmsBtn">Send Test SMS to Server</button>
       </div>
 
       <div class="toolbar">
         <button id="loadSms" class="secondary">↻ Reload SMS List</button>
-        <label class="chk" style="margin-left:auto">
-          <input type="checkbox" id="smsAuto"> Auto-refresh (10s)
-        </label>
+        <label class="chk" style="margin-left:auto"><input type="checkbox" id="smsAuto"> Auto-refresh (10s)</label>
       </div>
       <div id="smsList"></div>
     </div>
@@ -396,9 +433,7 @@
         <p style="font-size:12px;color:var(--muted);margin:0 0 12px;">
           Every reference code approved by the auto-matcher is recorded here and <b>cannot be reused</b>.
         </p>
-        <div class="toolbar">
-          <button id="refsRefresh" class="secondary">↻ Refresh</button>
-        </div>
+        <div class="toolbar"><button id="refsRefresh" class="secondary">↻ Refresh</button></div>
         <div id="refsList"></div>
       </div>
     </div>
@@ -409,13 +444,26 @@
     <div class="subtitle" style="margin:0 0 12px">
       Strict matching: trusted sender, fresh SMS, valid reference, amount within 0.01 Birr, unused code, and identity cross-check. Unmatched SMS stays queued and retries automatically.
     </div>
-    <div class="row" style="margin-top:12px">
-      <div style="flex:0 0 auto"><button id="aaRunNow">Match Now</button></div>
-    </div>
+    <div class="row" style="margin-top:12px"><div style="flex:0 0 auto"><button id="aaRunNow">Match Now</button></div></div>
     <div id="aaStatus" class="statusbar" style="margin-top:12px"></div>
     <div style="margin-top:12px">
       <label>Engine Log</label>
       <div id="aaLog" class="aa-log"><span class="ts">—</span> <span class="skip">Ready. Press "Match Now" to scan pending SMS.</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECURITY DETAIL MODAL — NEW
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div id="securityDetailModal" class="modal-overlay" role="dialog" aria-modal="true">
+  <div class="modal" style="max-width:820px;">
+    <h3><span class="icon">🛡</span> Security Details</h3>
+    <div id="sdBody"><div class="empty">Loading…</div></div>
+    <div class="modal-actions">
+      <button id="sdFreezeBtn" class="reject">Freeze account</button>
+      <button id="sdClearBtn" class="secondary">Clear signals</button>
+      <button id="sdCloseBtn" class="secondary">Close</button>
     </div>
   </div>
 </div>
@@ -427,9 +475,7 @@
       <span id="imgLoading" style="color:var(--muted);font-size:13px;">Loading image...</span>
       <img id="receiptImg" alt="Receipt" src="">
     </div>
-    <div class="modal-actions">
-      <button id="imgCloseBtn" class="secondary">Close</button>
-    </div>
+    <div class="modal-actions"><button id="imgCloseBtn" class="secondary">Close</button></div>
   </div>
 </div>
 
@@ -461,9 +507,7 @@
   <div class="modal" style="max-width: 800px;">
     <h3><span class="icon">📊</span> Transaction History</h3>
     <div id="txHistoryTable" style="margin-top: 15px;"></div>
-    <div class="modal-actions">
-      <button id="txCloseBtn" class="secondary">Close</button>
-    </div>
+    <div class="modal-actions"><button id="txCloseBtn" class="secondary">Close</button></div>
   </div>
 </div>
 
@@ -565,8 +609,9 @@
       startAuto();
       loadUsers(false).catch(() => {});
       loadWinners(false).catch(() => {});
-      // Preload analytics dates so the tab is ready
       initAnalyticsDates();
+      // Preload security data so metrics are ready
+      loadSecurityHistory().catch(() => {});
     }catch(e){
       showStatus('Connection failed: ' + (e.message||e), 'error');
       serverUrl = ''; adminKey = ''; $('panel').style.display = 'none'; $('autoMatchCard').style.display = 'none';
@@ -576,6 +621,7 @@
   function disconnect(){
     serverUrl = ''; adminKey = '';
     stopAuto(); stopSmsAuto(); closeImgModal(); closeUserModals();
+    $('securityDetailModal').classList.remove('show');
     $('panel').style.display = 'none';
     $('autoMatchCard').style.display = 'none';
     $('disconnect').disabled = true;
@@ -585,6 +631,9 @@
     $('winnersTable').replaceChildren();
     $('refsList').replaceChildren();
     usersData = []; winnersData = [];
+    _flaggedUsers = []; _scanHistory = []; _securityDetailCache.clear();
+    $('securityFlaggedUsers').innerHTML = '<div class="utable-empty">Not connected.</div>';
+    $('securityResults').innerHTML = '<div class="utable-empty">Not connected.</div>';
     $('winnersCount').textContent = '0';
     $('winnersCount').className = 'count zero';
     window._analyticsLoaded = false;
@@ -699,7 +748,6 @@
     let m = t.match(/received\s+(?:ETB|Birr)\s*([\d,]+(?:\.\d+)?)/i)
          || t.match(/(?:ETB|Birr|ብር|Br\b|Amt|Amount)\s*[:\-]?\s*([\d,]+(?:\.\d+)?)/i);
     if(m) out.amount = m[1].replace(/,/g,'');
-
     m = t.match(/your\s+transaction\s+number\s+is\s*[:\-]?\s*([A-Za-z0-9]{6,})/i)
      || t.match(/\btransaction\s+(?:number|no\.?|id)\s*(?:is|:|\-)?\s*([A-Za-z0-9]{6,})/i)
      || t.match(/\bref(?:erence)?\s*(?:number|code|no\.?|id)?\s*(?:is|:|\-)?\s*([A-Za-z0-9]{6,})/i);
@@ -714,12 +762,10 @@
     try{
       const res = await adminApi('/admin/sms');
       const data = res.data || {};
-
       const items = Object.keys(data).map(k => {
         const v = data[k];
         return { id: k, sender: v.sender, text: v.text, timestamp: v.timestamp };
       }).sort((a,b) => b.timestamp - a.timestamp);
-
       renderSms(items);
       showStatus('Loaded ' + items.length + ' SMS records.', 'success');
     }catch(e){ showStatus('SMS fetch failed: ' + e.message,'error'); }
@@ -742,33 +788,27 @@
     const amount = p.amount;
     const reference = p.reference;
     const when = new Date(raw.timestamp);
-
     const box = document.createElement('div'); box.className='sms';
     const head = document.createElement('div'); head.className='sms-head';
     const left = document.createElement('div');
     const fromEl = document.createElement('div'); fromEl.className='sms-from';
     fromEl.textContent = fromName;
-    left.appendChild(fromEl);
-    head.appendChild(left);
+    left.appendChild(fromEl); head.appendChild(left);
     const right = document.createElement('div'); right.style.textAlign='right';
     const amtEl = document.createElement('div');
     if(amount){ amtEl.className='sms-amount'; amtEl.textContent = Number(amount).toFixed(2)+' Birr'; }
     else { amtEl.className='sms-amount na'; amtEl.textContent='No amount'; }
-    right.appendChild(amtEl);
-    head.appendChild(right);
+    right.appendChild(amtEl); head.appendChild(right);
     box.appendChild(head);
-
     const meta = document.createElement('div'); meta.className='sms-meta';
     meta.innerHTML = `<div><b>Time:</b> ${when.toLocaleString()}</div>`;
     meta.innerHTML += `<div><b>Reference:</b> ${reference ? '<span class="sms-ref">'+esc(reference)+'</span>' : '—'}</div>`;
     box.appendChild(meta);
-
     if(text){
       const det = document.createElement('details'); det.className='sms-raw';
       const sum = document.createElement('summary'); sum.textContent='Raw message';
       const pre = document.createElement('p'); pre.textContent = text;
-      det.append(sum, pre);
-      box.appendChild(det);
+      det.append(sum, pre); box.appendChild(det);
     }
     return box;
   }
@@ -780,18 +820,13 @@
     const txt = $('testSmsText').value;
     const from = $('testSmsFrom').value || '127';
     if(!txt.trim()) return alert('Enter some text first');
-
     const secret = prompt("Enter SMS Webhook Secret:");
     if (!secret) return;
-
     $('testSmsBtn').disabled = true;
     try {
       const res = await fetch(serverUrl + '/api/sms/incoming', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-sms-secret': secret
-        },
+        headers: { 'Content-Type': 'application/json', 'x-sms-secret': secret },
         body: JSON.stringify({ from, text: txt })
       });
       const data = await res.json();
@@ -802,16 +837,10 @@
         if (data.reason) parts.push('Reason: ' + data.reason);
         alert(parts.join('\n'));
         $('testSmsText').value = '';
-        await loadSms();
-        await refresh();
-      } else {
-        alert('Error: ' + data.error);
-      }
-    } catch(e) {
-      alert('Fetch error: ' + e.message);
-    } finally {
-      $('testSmsBtn').disabled = false;
-    }
+        await loadSms(); await refresh();
+      } else { alert('Error: ' + data.error); }
+    } catch(e) { alert('Fetch error: ' + e.message); }
+    finally { $('testSmsBtn').disabled = false; }
   };
 
   // --- MANUAL MATCH ---
@@ -842,17 +871,14 @@
     const target = $('usersTable');
     const q = String($('usersSearch').value || '').trim();
     const filtered = usersData.filter(r => rowMatches(r, q));
-
     if (!filtered.length) {
       target.innerHTML = '<div class="utable-empty">' + (q ? 'No user matches' : 'No users yet.') + '</div>';
       return;
     }
-
     let html = '<table class="utable"><thead><tr>' +
       '<th>Name</th><th>Status / Last seen</th><th>Telegram ID</th><th>Phone Number</th><th>User ID</th>' +
       '<th class="num">M-Wallet</th><th class="num">P-Wallet</th>' +
       '</tr></thead><tbody>';
-
     for (const r of filtered) {
       html += '<tr data-uid="' + esc(r.uid) + '">' +
         '<td class="name">' + esc(r.name) + '</td>' +
@@ -866,7 +892,6 @@
     }
     html += '</tbody></table>';
     target.innerHTML = html;
-
     target.querySelectorAll('tbody tr').forEach((tr, idx) => {
       tr.addEventListener('click', () => openUserDetails(filtered[idx]));
     });
@@ -880,7 +905,8 @@
       $('usersCount').textContent = String(usersData.length);
       $('usersCount').className = 'count' + (usersData.length ? ' has' : ' zero');
       renderUsersTable();
-      const target=$('broadcastTarget'); if(target){const keep=target.value;renderBroadcastRecipients();if([...target.options].some(o=>o.value===keep))target.value=keep;} renderFinanceExcludedUsers();
+      const target=$('broadcastTarget'); if(target){const keep=target.value;renderBroadcastRecipients();if([...target.options].some(o=>o.value===keep))target.value=keep;}
+      renderFinanceExcludedUsers();
     } catch (e) {
       if (showErrors) showStatus('Load users failed: ' + e.message, 'error');
     }
@@ -904,31 +930,20 @@
     const target = $('winnersTable');
     const q = String($('winnersSearch').value || '').trim().toLowerCase();
     const roomFilter = String($('winnersRoom').value || '').trim();
-
     const filtered = winnersData.filter(w => {
       if (roomFilter && w.roomId !== roomFilter) return false;
       if (!q) return true;
       const hay = [w.username, w.displayName, w.roomId, String(w.round)].join(' ').toLowerCase();
       return q.split(/\s+/).every(tok => hay.includes(tok));
     });
-
     if (!filtered.length) {
       target.innerHTML = '<div class="utable-empty">' +
-        (q || roomFilter ? 'No winners match the filter.' : 'No winner records yet.') +
-        '</div>';
+        (q || roomFilter ? 'No winners match the filter.' : 'No winner records yet.') + '</div>';
       return;
     }
-
     let html = '<table class="utable"><thead><tr>' +
-      '<th>Date</th>' +
-      '<th>Player</th>' +
-      '<th>User ID</th>' +
-      '<th>Room</th>' +
-      '<th class="num">Round</th>' +
-      '<th class="num">Win Amount</th>' +
-      '<th class="num">Winning #</th>' +
+      '<th>Date</th><th>Player</th><th>User ID</th><th>Room</th><th class="num">Round</th><th class="num">Win Amount</th><th class="num">Winning #</th>' +
       '</tr></thead><tbody>';
-
     let totalWon = 0;
     for (const w of filtered) {
       totalWon += Number(w.winAmount) || 0;
@@ -943,12 +958,10 @@
         '<td class="num">' + (w.winningNumber != null ? w.winningNumber : '—') + '</td>' +
         '</tr>';
     }
-
     html += '</tbody><tfoot><tr style="background:#160f25;">' +
       '<td colspan="5" style="text-align:right;color:var(--muted);">Total (' + filtered.length + ' records):</td>' +
       '<td class="num" style="color:#6ee7b7;font-weight:700;">' + totalWon.toLocaleString() + ' Birr</td>' +
       '<td></td></tr></tfoot></table>';
-
     target.innerHTML = html;
   }
 
@@ -958,12 +971,10 @@
     $('udBody').innerHTML = '<div class="empty">Loading user details...</div>';
     $('udMsgText').value = '';
     $('userDetailsModal').classList.add('show');
-
     try {
       const res = await adminApi('/admin/user-details?uid=' + encodeURIComponent(user.uid));
       const u = res.user;
       activeUser = u;
-
       let html = '<div class="ud-grid">';
       html += '<div class="ud-item"><b>Full Name</b><span>' + esc(u.name || '—') + '</span></div>';
       html += '<div class="ud-item"><b>User ID</b><span>' + esc(u.uid) + '</span></div>';
@@ -973,20 +984,27 @@
       html += '<div class="ud-item"><b>Presence</b><span>' + (u.online ? 'Online now' : 'Offline · ' + (u.last_seen ? new Date(Number(u.last_seen)).toLocaleString() : 'Never seen')) + '</span></div>';
       html += '<div class="ud-item"><b>Referred By</b><span>' + esc(u.referred_by || 'None') + '</span></div>';
       html += '<div class="ud-item"><b>Referring List</b><span>' + (u.referrals && u.referrals.length ? u.referrals.length + ' users' : '0 users') + '</span></div>';
+      // Show fraud status if present
+      if (u.fraud_status && u.fraud_status !== 'clean') {
+        const color = u.fraud_status === 'frozen' ? '#fca5a5' : '#fcd34d';
+        html += '<div class="ud-item"><b>Fraud Status</b><span style="color:' + color + '">' + esc(u.fraud_status) + '</span></div>';
+      }
       html += '</div>';
-
       if (u.referrals && u.referrals.length > 0) {
         html += '<div style="margin-bottom: 15px; font-size: 13px; color: var(--muted);"><b>Referred Users:</b> ' + u.referrals.map(r => esc(r.name) + ' (' + esc(r.uid) + ')').join(', ') + '</div>';
       }
-
+      // If this user is flagged, offer a shortcut to security details
+      if (_flaggedUsers.some(x => x.uid === u.uid)) {
+        html += '<div style="margin-bottom: 12px;"><button class="secondary" id="udSecurityDetailsBtn" style="font-size:13px;">🛡 View security signals</button></div>';
+      }
       $('udBody').innerHTML = html;
-
       const isBlocked = u.blocked;
       const blockBtn = $('udBlockBtn');
       blockBtn.textContent = isBlocked ? 'Unblock User' : 'Block User';
       blockBtn.className = isBlocked ? 'approve' : 'reject';
       blockBtn.dataset.blocked = isBlocked ? 'true' : 'false';
-
+      const secBtn = $('udSecurityDetailsBtn');
+      if (secBtn) secBtn.onclick = () => { closeUserModals(); openSecurityDetail(u.uid); };
     } catch (e) {
       $('udBody').innerHTML = '<div class="empty" style="color:var(--red)">Failed to load user details: ' + esc(e.message) + '</div>';
     }
@@ -1002,7 +1020,6 @@
     if (!activeUser) return;
     const msg = $('udMsgText').value.trim();
     if (!msg) return alert('Enter a message first.');
-
     this.disabled = true;
     try {
       await adminApi('/admin/send-message', 'POST', { userId: activeUser.uid, message: msg, dismissPolicy: 'user' });
@@ -1010,32 +1027,24 @@
       $('udMsgText').value = '';
     } catch (e) {
       showStatus('Failed to send message: ' + e.message, 'error');
-    } finally {
-      this.disabled = false;
-    }
+    } finally { this.disabled = false; }
   };
 
   $('udBlockBtn').onclick = async function() {
     if (!activeUser) return;
     const currentlyBlocked = this.dataset.blocked === 'true';
     const newState = !currentlyBlocked;
-
     if (!confirm('Are you sure you want to ' + (newState ? 'BLOCK' : 'UNBLOCK') + ' this user?')) return;
-
     this.disabled = true;
     try {
       await adminApi('/admin/block-user', 'POST', { userId: activeUser.uid, blocked: newState });
       showStatus('User ' + (newState ? 'blocked' : 'unblocked') + '.', 'success');
-
       activeUser.blocked = newState;
       this.dataset.blocked = newState ? 'true' : 'false';
       this.textContent = newState ? 'Unblock User' : 'Block User';
       this.className = newState ? 'approve' : 'reject';
-    } catch (e) {
-      showStatus('Failed to update block status: ' + e.message, 'error');
-    } finally {
-      this.disabled = false;
-    }
+    } catch (e) { showStatus('Failed to update block status: ' + e.message, 'error'); }
+    finally { this.disabled = false; }
   };
 
   $('udDeleteBtn').onclick = async function(){
@@ -1048,23 +1057,16 @@
   $('udTxLink').onclick = async function(e) {
     e.preventDefault();
     if (!activeUser) return;
-
     $('txHistoryModal').classList.add('show');
     $('txHistoryTable').innerHTML = '<div class="empty">Loading transactions...</div>';
-
     try {
       const res = await adminApi('/admin/user-transactions?uid=' + encodeURIComponent(activeUser.uid));
       const txs = res.transactions || [];
-
       if (!txs.length) {
         $('txHistoryTable').innerHTML = '<div class="empty">No transactions found for this user.</div>';
         return;
       }
-
-      let tbl = '<table class="utable"><thead><tr>' +
-        '<th>Date</th><th>Type</th><th class="num">Amount</th><th>Status</th><th>Ref / ID</th>' +
-        '</tr></thead><tbody>';
-
+      let tbl = '<table class="utable"><thead><tr><th>Date</th><th>Type</th><th class="num">Amount</th><th>Status</th><th>Ref / ID</th></tr></thead><tbody>';
       txs.forEach(t => {
         const date = t.timestamp ? new Date(Number(t.timestamp)).toLocaleString() : '—';
         const typeColor = t.type === 'deposit' ? '#6ee7b7' : '#fca5a5';
@@ -1078,7 +1080,6 @@
       });
       tbl += '</tbody></table>';
       $('txHistoryTable').innerHTML = tbl;
-
     } catch (e) {
       $('txHistoryTable').innerHTML = '<div class="empty" style="color:var(--red)">Failed to load: ' + esc(e.message) + '</div>';
     }
@@ -1110,32 +1111,23 @@
             ' · ' + Number(r.amount || 0).toFixed(2) + ' Birr' +
             ' · ' + new Date(Number(r.consumed_at)).toLocaleString() +
             (r.sender ? ' · from ' + r.sender : '');
-          left.appendChild(meta);
-          row.appendChild(left);
-          list.appendChild(row);
+          left.appendChild(meta); row.appendChild(left); list.appendChild(row);
         }
       }
-    } catch (e) {
-      showStatus('Load references failed: ' + e.message, 'error');
-    } finally {
-      $('refsRefresh').disabled = false;
-    }
+    } catch (e) { showStatus('Load references failed: ' + e.message, 'error'); }
+    finally { $('refsRefresh').disabled = false; }
   }
 
-  // ============================================================
-  // ANALYTICS TAB
-  // ============================================================
-  function todayUTC() { return new Date().toISOString().slice(0, 10); }
+  // ═══════════════════════════════════════════════════════════════════════
+  // SECURITY — FULL REWRITE
+  // ═══════════════════════════════════════════════════════════════════════
+  let _flaggedUsers = [];
+  let _scanHistory = [];
+  let _securityDetailCache = new Map(); // uid -> { fetchedAt, data }
+  let _activeSecurityUid = null;
 
-  function initAnalyticsDates() {
-    const from = $('anFrom');
-    const to = $('anTo');
-    if (from && !from.value) from.value = todayUTC();
-    if (to && !to.value) to.value = todayUTC();
-  }
-
-  function anShowStatus(msg, kind) {
-    const s = $('anStatus');
+  function secShowStatus(msg, kind) {
+    const s = $('securityStatus');
     s.textContent = msg;
     s.className = 'statusbar show ' + (kind || 'info');
     if (kind === 'success') {
@@ -1143,29 +1135,424 @@
     }
   }
 
+  function signalLabel(kind) {
+    return ({
+      'ip-cluster': 'Shared IP cluster',
+      'fingerprint-cluster': 'Shared device fingerprint',
+      'account-relationships': 'Account relationships',
+    })[kind] || String(kind || 'Security signal');
+  }
+
+  function secFilters() {
+    return {
+      q: String($('securitySearch').value || '').trim().toLowerCase(),
+      kind: String($('securityKindFilter').value || ''),
+      sort: String($('securitySort').value || 'recent'),
+    };
+  }
+
+  function signalSummaryForPill(signals) {
+    if (!signals || !signals.length) return '0 signals';
+    const counts = { 'ip-cluster': 0, 'fingerprint-cluster': 0 };
+    let other = 0;
+    for (const s of signals) {
+      if (counts[s.kind] !== undefined) counts[s.kind]++;
+      else other++;
+    }
+    const parts = [];
+    if (counts['ip-cluster']) parts.push(counts['ip-cluster'] + ' IP');
+    if (counts['fingerprint-cluster']) parts.push(counts['fingerprint-cluster'] + ' FP');
+    if (other) parts.push(other + ' other');
+    return parts.join(' · ') || signals.length + ' signals';
+  }
+
+  function filterFlaggedUsers(list, filters) {
+    let out = [...list];
+    if (filters.kind) {
+      out = out.filter(u => (u.signals || []).some(s => s.kind === filters.kind));
+    }
+    if (filters.q) {
+      const q = filters.q;
+      out = out.filter(u => {
+        const hay = [
+          u.uid, u.name,
+          ...(u.signals || []).map(s => s.kind),
+          ...(u.signals || []).map(s => String(s.reason || '')),
+        ].join(' ').toLowerCase();
+        return q.split(/\s+/).every(tok => hay.includes(tok));
+      });
+    }
+    out.sort((a, b) => {
+      if (filters.sort === 'name') return (a.name || a.uid).localeCompare(b.name || b.uid);
+      if (filters.sort === 'signals') return ((b.signals || []).length) - ((a.signals || []).length);
+      return (Number(b.detectedAt || 0)) - (Number(a.detectedAt || 0));
+    });
+    return out;
+  }
+
+  function renderSecurityMetrics() {
+    const total = _flaggedUsers.length;
+    let ipCount = 0, fpCount = 0, new24h = 0;
+    const since = Date.now() - 24 * 60 * 60 * 1000;
+    for (const u of _flaggedUsers) {
+      for (const s of (u.signals || [])) {
+        if (s.kind === 'ip-cluster') ipCount++;
+        if (s.kind === 'fingerprint-cluster') fpCount++;
+      }
+      if (u.detectedAt && Number(u.detectedAt) > since) new24h++;
+    }
+    $('secTotalFlagged').textContent = String(total);
+    $('secIpClusters').textContent = String(ipCount);
+    $('secFpClusters').textContent = String(fpCount);
+    $('secNew24h').textContent = String(new24h);
+  }
+
+  function renderSignalCard(sig, uid, opts = {}) {
+    const related = Array.isArray(sig.relatedAccounts) ? sig.relatedAccounts : [];
+    const count = Number(sig.count ?? related.length ?? 0);
+    const thresholdLabel = sig.threshold ? ' / threshold ' + sig.threshold : '';
+    const windowLabel = sig.windowDays ? ' · ' + sig.windowDays + '-day window' : '';
+    const firstSeen = sig.firstSeen ? new Date(Number(sig.firstSeen)).toLocaleString() : null;
+    const lastSeen = sig.lastSeen ? new Date(Number(sig.lastSeen)).toLocaleString() : null;
+    const reason = sig.reason
+      ? '<div style="font-size:12px;color:#c4b5fd;margin:4px 0 6px">' + esc(sig.reason) + '</div>'
+      : '';
+
+    let relatedHtml;
+    if (related.length) {
+      relatedHtml =
+        '<div style="font-size:12px;color:var(--muted);font-weight:600;margin:6px 0 4px">Related accounts (' + related.length + ')</div>' +
+        '<div style="overflow:auto"><table class="utable"><thead><tr>' +
+          '<th>Account</th><th>Name</th><th>Relationship</th><th>Referrer</th><th>Last shared</th>' +
+        '</tr></thead><tbody>' +
+        related.map(m => '<tr>' +
+          '<td class="mono">' + esc(m.uid || '—') + '</td>' +
+          '<td class="name">' + esc(m.name || '—') + '</td>' +
+          '<td>' + esc((m.relation || 'same cluster').replace(/-/g, ' ')) + '</td>' +
+          '<td class="mono">' + esc(m.referredBy || '—') + '</td>' +
+          '<td class="mono">' + (m.sharedAt ? new Date(Number(m.sharedAt)).toLocaleString() : '—') + '</td>' +
+        '</tr>').join('') +
+        '</tbody></table></div>';
+    } else if (count > 0 && !opts.hideLoadButton) {
+      relatedHtml =
+        '<div class="refmeta" style="padding:6px 0">' +
+          count + ' other account(s) share this signal. ' +
+          '<button class="secondary" style="padding:4px 10px;font-size:11px;margin-left:6px" data-sec-action="details" data-uid="' + esc(uid) + '">Load details</button>' +
+        '</div>';
+    } else if (count > 0) {
+      relatedHtml = '<div class="refmeta" style="padding:6px 0">' + count + ' other account(s) share this signal. Related-accounts list not available from this server.</div>';
+    } else {
+      relatedHtml = '';
+    }
+
+    const rawJson =
+      '<details style="margin-top:8px">' +
+        '<summary style="font-size:11.5px;color:var(--muted);cursor:pointer">Raw signal JSON</summary>' +
+        '<pre class="signal-json">' + esc(JSON.stringify(sig, null, 2)) + '</pre>' +
+      '</details>';
+
+    return '<div class="signal-card">' +
+      '<div class="signal-title">' + esc(signalLabel(sig.kind)) + ' · ' + count + thresholdLabel + windowLabel + '</div>' +
+      reason +
+      (firstSeen ? '<div class="signal-meta">First seen: ' + firstSeen + '</div>' : '') +
+      (lastSeen ? '<div class="signal-meta">Last seen: ' + lastSeen + '</div>' : '') +
+      relatedHtml +
+      rawJson +
+      '</div>';
+  }
+
+  function bindSecurityActions(rootEl) {
+    rootEl.querySelectorAll('[data-sec-action]').forEach(btn => {
+      if (btn.dataset.bound === '1') return;
+      btn.dataset.bound = '1';
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const action = btn.dataset.secAction;
+        const uid = btn.dataset.uid;
+        if (action === 'details') return openSecurityDetail(uid);
+        if (action === 'profile') {
+          const u = _flaggedUsers.find(x => x.uid === uid) || { uid };
+          return openUserDetails(u);
+        }
+        if (action === 'freeze') return freezeUser(uid, btn);
+        if (action === 'clear') return clearUserSignals(uid, btn);
+      });
+    });
+  }
+
+  function renderFlaggedUsers() {
+    renderSecurityMetrics();
+    const filters = secFilters();
+    const filtered = filterFlaggedUsers(_flaggedUsers, filters);
+    const target = $('securityFlaggedUsers');
+
+    if (!filtered.length) {
+      target.innerHTML = '<div class="utable-empty">' +
+        (_flaggedUsers.length
+          ? 'No flagged accounts match your filters.'
+          : 'No flagged accounts currently require review. ✅') +
+        '</div>';
+      return;
+    }
+
+    target.innerHTML = filtered.map(u => {
+      const sigPill = signalSummaryForPill(u.signals);
+      const detected = u.detectedAt ? new Date(Number(u.detectedAt)).toLocaleString() : '—';
+      const signalCards = (u.signals || []).map(s => renderSignalCard(s, u.uid)).join('') ||
+        '<p style="color:var(--muted);padding:6px 0">Flagged; no detailed signal data is available. Run a fresh scan.</p>';
+      return '<details class="referrer-block">' +
+        '<summary>' +
+          '<span>' + esc(u.name || u.uid) + ' <span class="refmeta">(' + esc(u.uid) + ')</span></span>' +
+          '<span>' +
+            '<span class="pill dup" style="margin-right:6px">' + esc(sigPill) + '</span>' +
+            '<span class="refmeta">' + detected + '</span>' +
+          '</span>' +
+        '</summary>' +
+        '<div class="ref-body">' +
+          signalCards +
+          '<div class="sec-actions">' +
+            '<button class="secondary" data-sec-action="details" data-uid="' + esc(u.uid) + '">View full details</button>' +
+            '<button class="secondary" data-sec-action="freeze" data-uid="' + esc(u.uid) + '">Freeze account</button>' +
+            '<button class="secondary" data-sec-action="clear" data-uid="' + esc(u.uid) + '">Clear signals</button>' +
+            '<button class="secondary" data-sec-action="profile" data-uid="' + esc(u.uid) + '">View profile</button>' +
+          '</div>' +
+        '</div>' +
+      '</details>';
+    }).join('');
+
+    bindSecurityActions(target);
+  }
+
+  function renderScanHistory() {
+    const target = $('securityResults');
+    if (!_scanHistory.length) {
+      target.innerHTML = '<p style="color:var(--muted);padding:12px">No scan history is available yet.</p>';
+      return;
+    }
+    target.innerHTML = _scanHistory.map(x => {
+      let findings = x.findings || [];
+      if (typeof findings === 'string') { try { findings = JSON.parse(findings); } catch { findings = []; } }
+      if (!Array.isArray(findings)) findings = [];
+      const when = new Date(Number(x.created_at || x.createdAt || 0)).toLocaleString();
+      const scanned = Number(x.scanned || 0);
+      const flagged = Number(x.flagged || 0);
+      const findingsHtml = findings.length ? findings.map(f => {
+        const account = f.uid || f.username || f.user || 'Unknown account';
+        const sigs = Array.isArray(f.signals) ? f.signals : [];
+        const sigList = sigs.map(v => signalLabel(v.kind) + ' (' + (v.count ?? 0) + (v.windowDays ? ' · ' + v.windowDays + 'd' : '') + ')').join(', ');
+        const relatedBlock = sigs.map(v => {
+          const members = Array.isArray(v.relatedAccounts) ? v.relatedAccounts : [];
+          if (!members.length) return '';
+          return '<div style="margin:4px 0 0 14px;font-size:12px;color:var(--muted)">' +
+            '<b style="color:#c4b5fd">' + esc(signalLabel(v.kind)) + '</b>: ' +
+            members.map(m => esc(m.uid || '')).join(', ') +
+          '</div>';
+        }).join('');
+        return '<div style="padding:8px 0;border-bottom:1px solid rgba(58,42,85,.4)">' +
+          '<div style="font-weight:600;color:#fca5a5">' + esc(account) + '</div>' +
+          '<div style="font-size:12px;color:var(--muted);margin-top:2px">' + esc(sigList || 'No detail') + '</div>' +
+          relatedBlock +
+          '<div class="sec-actions" style="margin-top:4px">' +
+            '<button class="secondary" style="padding:3px 9px;font-size:11px" data-sec-action="details" data-uid="' + esc(account) + '">View details</button>' +
+          '</div>' +
+        '</div>';
+      }).join('') : '<div class="refmeta">No detailed findings stored for this scan.</div>';
+      return '<details class="referrer-block">' +
+        '<summary>' +
+          '<span>' + when + '</span>' +
+          '<span class="refmeta">' + scanned + ' checked · ' + flagged + ' flagged</span>' +
+        '</summary>' +
+        '<div class="ref-body">' + findingsHtml + '</div>' +
+      '</details>';
+    }).join('');
+    bindSecurityActions(target);
+  }
+
+  async function loadSecurityHistory() {
+    try {
+      const r = await adminApi('/admin/security-scans');
+      _flaggedUsers = Array.isArray(r.flaggedUsers) ? r.flaggedUsers : [];
+      _scanHistory = Array.isArray(r.scans) ? r.scans : [];
+      renderFlaggedUsers();
+      renderScanHistory();
+    } catch (e) {
+      secShowStatus('Could not load scan results: ' + e.message, 'error');
+      $('securityResults').innerHTML = '<div class="utable-empty" style="color:var(--red)">Failed: ' + esc(e.message) + '</div>';
+      $('securityFlaggedUsers').innerHTML = '<div class="utable-empty" style="color:var(--red)">Failed: ' + esc(e.message) + '</div>';
+    }
+  }
+
+  async function runSecurityScan() {
+    const b = $('securityScan');
+    b.disabled = true;
+    secShowStatus('Scanning accounts…', 'info');
+    try {
+      const r = await adminApi('/admin/scan-suspicious', 'POST', {});
+      secShowStatus('Scan completed: ' + r.scanned + ' checked, ' + r.flagged + ' newly flagged.', 'success');
+      await loadSecurityHistory();
+    } catch (e) {
+      secShowStatus('Scan failed: ' + e.message, 'error');
+    } finally {
+      b.disabled = false;
+    }
+  }
+
+  async function openSecurityDetail(uid) {
+    _activeSecurityUid = uid;
+    $('sdBody').innerHTML = '<div class="empty">Loading security details for ' + esc(uid) + '…</div>';
+    $('securityDetailModal').classList.add('show');
+
+    // Try the new enriched endpoint first; fall back to cached signal data
+    try {
+      const res = await adminApi('/admin/security-details?uid=' + encodeURIComponent(uid));
+      _securityDetailCache.set(uid, { fetchedAt: Date.now(), data: res });
+      renderSecurityDetail(uid, res, false);
+    } catch (e) {
+      const cached = _flaggedUsers.find(u => u.uid === uid);
+      if (cached) {
+        renderSecurityDetail(uid, { user: cached, signals: cached.signals || [] }, true);
+      } else {
+        $('sdBody').innerHTML = '<div class="empty" style="color:var(--red)">Failed: ' + esc(e.message) + '</div>';
+      }
+    }
+  }
+
+  function renderSecurityDetail(uid, res, endpointMissing) {
+    const user = res.user || {};
+    const signals = Array.isArray(res.signals)
+      ? res.signals
+      : (Array.isArray(user.signals) ? user.signals : []);
+    const name = user.name || user.display_name || uid;
+    const fraudStatus = user.fraud_status || 'flagged';
+    const detectedAt = user.detectedAt || user.fraud_flagged_at;
+    const statusColor = fraudStatus === 'frozen' ? '#fca5a5' : fraudStatus === 'flagged' ? '#fcd34d' : '#6ee7b7';
+    const warnBanner = endpointMissing
+      ? '<div class="statusbar show warn" style="margin-bottom:12px">Server endpoint <code>/admin/security-details</code> is not available. Showing cached signal data. To see related accounts, deploy the enhanced server.</div>'
+      : '';
+    const signalsHtml = signals.length
+      ? signals.map(s => renderSignalCard(s, uid, { hideLoadButton: !endpointMissing })).join('')
+      : '<p style="color:var(--muted);padding:8px 0">No signals stored. The account may have been manually flagged.</p>';
+
+    $('sdBody').innerHTML = warnBanner +
+      '<div class="ud-grid">' +
+        '<div class="ud-item"><b>Account</b><span>' + esc(name) + '</span></div>' +
+        '<div class="ud-item"><b>UID</b><span class="mono">' + esc(uid) + '</span></div>' +
+        '<div class="ud-item"><b>Fraud status</b><span style="color:' + statusColor + ';font-weight:600">' + esc(fraudStatus) + '</span></div>' +
+        '<div class="ud-item"><b>Detected</b><span>' + (detectedAt ? new Date(Number(detectedAt)).toLocaleString() : '—') + '</span></div>' +
+        '<div class="ud-item"><b>Signals</b><span>' + signals.length + '</span></div>' +
+        '<div class="ud-item"><b>Blocked</b><span>' + (user.blocked ? 'Yes' : 'No') + '</span></div>' +
+      '</div>' +
+      '<h3 style="margin:8px 0">Detected signals</h3>' +
+      signalsHtml;
+
+    bindSecurityActions($('sdBody'));
+  }
+
+  async function freezeUser(uid, btn) {
+    if (!confirm('Freeze account ' + uid + '? This will block all deposits, withdrawals, and gameplay.')) return;
+    if (btn) btn.disabled = true;
+    try {
+      try {
+        await adminApi('/admin/freeze-user', 'POST', { userId: uid, freeze: true });
+        secShowStatus('Account ' + uid + ' frozen.', 'success');
+      } catch (e) {
+        if (String(e.message).includes('404') || String(e.message).includes('not-found')) {
+          // Fallback: use the block endpoint
+          await adminApi('/admin/block-user', 'POST', { userId: uid, blocked: true });
+          secShowStatus('Account ' + uid + ' blocked (freeze endpoint unavailable).', 'success');
+        } else {
+          throw e;
+        }
+      }
+      $('securityDetailModal').classList.remove('show');
+      await loadSecurityHistory();
+    } catch (e) {
+      secShowStatus('Failed to freeze: ' + e.message, 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function clearUserSignals(uid, btn) {
+    if (!confirm('Clear all fraud signals for ' + uid + '? This will reset the account to normal status.')) return;
+    if (btn) btn.disabled = true;
+    try {
+      await adminApi('/admin/clear-signals', 'POST', { userId: uid });
+      secShowStatus('Signals cleared for ' + uid + '.', 'success');
+      $('securityDetailModal').classList.remove('show');
+      await loadSecurityHistory();
+    } catch (e) {
+      secShowStatus('Failed to clear: ' + e.message, 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function exportSecurityJSON() {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      flaggedUsers: _flaggedUsers,
+      scanHistory: _scanHistory,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'winzo-security-scan-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    secShowStatus('Exported ' + _flaggedUsers.length + ' flagged account(s) and ' + _scanHistory.length + ' scan record(s).', 'success');
+  }
+
+  // Bind filter/action events
+  $('securitySearch').addEventListener('input', renderFlaggedUsers);
+  $('securityKindFilter').addEventListener('change', renderFlaggedUsers);
+  $('securitySort').addEventListener('change', renderFlaggedUsers);
+  $('securityScan').onclick = runSecurityScan;
+  $('securityReload').onclick = loadSecurityHistory;
+  $('securityExport').onclick = exportSecurityJSON;
+
+  // Detail modal bindings
+  $('sdCloseBtn').onclick = () => $('securityDetailModal').classList.remove('show');
+  $('securityDetailModal').addEventListener('click', e => {
+    if (e.target === $('securityDetailModal')) $('securityDetailModal').classList.remove('show');
+  });
+  $('sdFreezeBtn').onclick = () => { if (_activeSecurityUid) freezeUser(_activeSecurityUid, $('sdFreezeBtn')); };
+  $('sdClearBtn').onclick = () => { if (_activeSecurityUid) clearUserSignals(_activeSecurityUid, $('sdClearBtn')); };
+
+  // ============================================================
+  // ANALYTICS TAB
+  // ============================================================
+  function todayUTC() { return new Date().toISOString().slice(0, 10); }
+  function initAnalyticsDates() {
+    const from = $('anFrom'); const to = $('anTo');
+    if (from && !from.value) from.value = todayUTC();
+    if (to && !to.value) to.value = todayUTC();
+  }
+  function anShowStatus(msg, kind) {
+    const s = $('anStatus');
+    s.textContent = msg;
+    s.className = 'statusbar show ' + (kind || 'info');
+    if (kind === 'success') { setTimeout(() => { if (s.textContent === msg) s.className = 'statusbar show info'; }, 3500); }
+  }
   function fmtHourUTC(h) {
     const start = new Date(Date.UTC(2020, 0, 1, h));
     const end = new Date(Date.UTC(2020, 0, 1, h + 1));
     const f = d => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', hour: 'numeric', hour12: true }).format(d);
     return `${f(start)}–${f(end)}`;
   }
-
   async function loadAnalytics(showErrors) {
     if (!serverUrl || !adminKey) return;
     initAnalyticsDates();
-    const from = $('anFrom').value;
-    const to = $('anTo').value;
-    const room = $('anRoom').value;
-    if (!from || !to || from > to) {
-      anShowStatus('Choose a valid date range.', 'error');
-      return;
-    }
+    const from = $('anFrom').value; const to = $('anTo').value; const room = $('anRoom').value;
+    if (!from || !to || from > to) { anShowStatus('Choose a valid date range.', 'error'); return; }
     anShowStatus('Loading analytics from PostgreSQL…', 'info');
     try {
       const qs = new URLSearchParams({ from, to, room }).toString();
       const res = await adminApi('/admin/analytics/games?' + qs);
       window._analyticsLoaded = true;
-
       const s = res.summary || {};
       $('anAvg').textContent             = (Number(s.overallAvgPlayersPerGame || 0)).toFixed(2);
       $('anPeak').textContent            = (Number(s.peakHourlyAvg || 0)).toFixed(2);
@@ -1175,7 +1562,6 @@
       $('anPeakPlayers').textContent     = Number(s.peakPlayersInHour || 0).toLocaleString();
       $('anAvgRounds').textContent       = (Number(s.avgRoundsPerHour || 0)).toFixed(2);
       $('anAvgPlayers').textContent      = (Number(s.avgPlayersPerHour || 0)).toFixed(2);
-
       const rows = Array.isArray(res.hourly) ? res.hourly : [];
       const tbody = $('anRows');
       if (!rows.length) {
@@ -1195,7 +1581,6 @@
             '</tr>';
         }).join('');
       }
-
       anShowStatus('Loaded ' + (s.roundsRecorded || 0) + ' round(s) in range.', 'success');
     } catch (e) {
       anShowStatus('Load failed: ' + e.message, 'error');
@@ -1210,30 +1595,21 @@
     const s = $('refStatus');
     s.textContent = msg;
     s.className = 'statusbar show ' + (kind || 'info');
-    if (kind === 'success') {
-      setTimeout(() => { if (s.textContent === msg) s.className = 'statusbar show info'; }, 3500);
-    }
+    if (kind === 'success') { setTimeout(() => { if (s.textContent === msg) s.className = 'statusbar show info'; }, 3500); }
   }
-
   let _referralData = { totals: {}, referrers: [] };
-
   async function loadReferrals(showErrors) {
     if (!serverUrl || !adminKey) return;
     refShowStatus('Loading referrals…', 'info');
     try {
       const res = await adminApi('/admin/analytics/referrals');
       window._referralsLoaded = true;
-      _referralData = {
-        totals: res.totals || {},
-        referrers: Array.isArray(res.referrers) ? res.referrers : [],
-      };
-
+      _referralData = { totals: res.totals || {}, referrers: Array.isArray(res.referrers) ? res.referrers : [] };
       const t = _referralData.totals;
       $('refReferrers').textContent = String(t.referrers || 0);
       $('refReferred').textContent  = String(t.referredUsers || 0);
       $('refEarn').textContent      = Number(t.totalEarnings || 0).toLocaleString() + ' Birr';
       $('refAvg').textContent       = (Number(t.avgPerReferrer || 0)).toFixed(2);
-
       renderReferrals();
       refShowStatus('Loaded ' + (t.referrers || 0) + ' referrer(s).', 'success');
     } catch (e) {
@@ -1241,35 +1617,24 @@
       if (showErrors) showStatus('Load referrals failed: ' + e.message, 'error');
     }
   }
-
   function renderReferrals() {
     const q = String($('refSearch').value || '').trim().toLowerCase();
     const sortBy = $('refSort').value;
-
     let list = [...(_referralData.referrers || [])];
-
     if (q) {
       list = list.filter(r => {
         if ((r.name || '').toLowerCase().includes(q)) return true;
         if ((r.uid || '').toLowerCase().includes(q)) return true;
-        return (r.referred || []).some(x =>
-          (x.name || '').toLowerCase().includes(q) || (x.uid || '').toLowerCase().includes(q)
-        );
+        return (r.referred || []).some(x => (x.name || '').toLowerCase().includes(q) || (x.uid || '').toLowerCase().includes(q));
       });
     }
-
     list.sort((a, b) => {
       if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
       if (sortBy === 'earnings') return (b.referralEarnings || 0) - (a.referralEarnings || 0);
       return (b.referralCount || 0) - (a.referralCount || 0);
     });
-
     const box = $('refList');
-    if (!list.length) {
-      box.innerHTML = '<div class="utable-empty">No referrers match.</div>';
-      return;
-    }
-
+    if (!list.length) { box.innerHTML = '<div class="utable-empty">No referrers match.</div>'; return; }
     box.innerHTML = list.map(r => {
       const referredHtml = (r.referred || []).map(x =>
         '<div class="refrow">' +
@@ -1277,7 +1642,6 @@
           '<span class="refmeta">' + (x.createdAt ? new Date(x.createdAt).toLocaleDateString() : '—') + '</span>' +
         '</div>'
       ).join('') || '<div class="refrow refmeta">No referred players.</div>';
-
       return '<details class="referrer-block">' +
         '<summary>' +
           '<span>' + esc(r.name || r.uid) + ' <span class="refmeta">(' + esc(r.uid) + ')</span></span>' +
@@ -1314,8 +1678,14 @@
   $('refSearch').addEventListener('input', () => { if (window._referralsLoaded) renderReferrals(); });
   $('refSort').addEventListener('change', () => { if (window._referralsLoaded) renderReferrals(); });
 
-  document.querySelectorAll('.tab').forEach(t => { t.onclick = () => {switchTab(t.dataset.tab);if(t.dataset.tab==='security')loadSecurityHistory();}; });
+  document.querySelectorAll('.tab').forEach(t => {
+    t.onclick = () => {
+      switchTab(t.dataset.tab);
+      if (t.dataset.tab === 'security') loadSecurityHistory();
+    };
+  });
 
+  // --- FINANCE ---
   const financeExcludedUids = new Set();
   function selectedFinanceExcluded(){return [...financeExcludedUids];}
   function renderFinanceExcludedUsers(){
@@ -1350,26 +1720,6 @@
     if([...target.options].some(o=>o.value===keep))target.value=keep;
   }
   async function loadBroadcastRecipients(){if(!usersData.length)await loadUsers(false);}
-  function renderFlaggedUsers(users){
-    const rows=users||[];
-    const signalLabel=k=>({'ip-cluster':'Shared IP cluster','fingerprint-cluster':'Shared device fingerprint','account-relationships':'Referral / account relationships'}[k]||String(k||'Security signal'));
-    const renderSignal=v=>{
-      const members=Array.isArray(v.relatedAccounts)?v.relatedAccounts:[];
-      return '<div class="card" style="margin:8px 0;padding:10px 12px;background:#160f25">'+
-        '<div style="font-weight:600;color:#fcd34d">'+esc(signalLabel(v.kind))+' · '+esc(v.count??members.length)+'</div>'+
-        '<div style="font-size:12px;color:#c4b5fd;margin:4px 0 8px">'+esc(v.reason||'Specific reason was not stored by the earlier scan.')+'</div>'+
-        (members.length?'<div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:5px">Related / grouped accounts</div>'+
-          '<div style="overflow:auto"><table class="utable"><thead><tr><th>Account</th><th>Name</th><th>Relationship</th><th>Referrer</th></tr></thead><tbody>'+
-          members.map(m=>'<tr><td>'+esc(m.uid||'—')+'</td><td>'+esc(m.name||'—')+'</td><td>'+esc((m.relation||'same cluster').replace(/-/g,' '))+'</td><td>'+esc(m.referredBy||'—')+'</td></tr>').join('')+
-          '</tbody></table></div>':'<div style="font-size:12px;color:var(--muted)">No related account details were returned.</div>')+
-        '</div>';
-    };
-    $('securityFlaggedUsers').innerHTML='<h3 style="margin:16px 0 8px">Flagged accounts requiring review ('+rows.length+')</h3>'+
-      (rows.length?rows.map(x=>'<details class="referrer-block"><summary><span>'+esc(x.name||x.uid)+' <span class="refmeta">('+esc(x.uid)+')</span></span><span class="pill dup">'+(x.signals||[]).filter(v=>v.kind!=='account-relationships').length+' risk signal(s)</span></summary><div class="ref-body"><div class="refmeta" style="margin:4px 0 8px">Detected / updated: '+(x.detectedAt?new Date(Number(x.detectedAt)).toLocaleString():'—')+'</div>'+
-      ((x.signals||[]).length?(x.signals||[]).map(renderSignal).join(''):'<p style="color:var(--muted)">Flagged; detailed signal data is unavailable.</p>')+
-      '</div></details>').join(''):'<p style="color:var(--muted);padding:12px">No flagged accounts currently require review.</p>');
-  }
-  async function runSecurityScan(){const b=$('securityScan');b.disabled=true;$('securityStatus').textContent='Scanning accounts…';$('securityStatus').className='statusbar show info';try{const r=await adminApi('/admin/scan-suspicious','POST',{});$('securityStatus').textContent='Scan completed: '+r.scanned+' checked, '+r.flagged+' newly flagged.';$('securityStatus').className='statusbar show success';renderFlaggedUsers(r.flaggedUsers||[]);}catch(e){$('securityStatus').textContent='Scan failed: '+e.message;$('securityStatus').className='statusbar show error';}finally{b.disabled=false;}}
   $('financeRefresh').onclick=loadFinance;
   $('financeApply').onclick=loadFinance;
   $('financeClear').onclick=()=>{$('financeFrom').value='';$('financeTo').value='';$('financeExcludeSearch').value='';financeExcludedUids.clear();renderFinanceExcludedUsers();loadFinance();};
@@ -1381,21 +1731,6 @@
     [...sel.selectedOptions].forEach(o=>financeExcludedUids.add(o.value));
   });
   $('broadcastSearch').addEventListener('input',renderBroadcastRecipients);
-  $('securityScan').onclick=runSecurityScan;
-  async function loadSecurityHistory(){try{
-    const r=await adminApi('/admin/security-scans');renderFlaggedUsers(r.flaggedUsers||[]);
-    const scans=r.scans||[];
-    $('securityResults').innerHTML='<h3 style="margin:14px 0 8px">Recent scan history</h3>'+
-      (scans.length?scans.map(x=>{
-        let findings=x.findings||[];if(typeof findings==='string'){try{findings=JSON.parse(findings)}catch{findings=[]}}
-        return '<details class="referrer-block"><summary>'+new Date(Number(x.created_at)).toLocaleString()+' · '+x.scanned+' checked · '+x.flagged+' newly flagged</summary><div class="ref-body">'+
-          (findings.length?findings.map(f=>'<div class="refrow"><b>'+esc(f.uid||'Unknown account')+'</b><span>'+esc((f.signals||[]).map(v=>signalNameForHistory(v.kind)+' ('+(v.count??0)+')').join(', ')||'No detail')+'</span></div>'+
-            (f.signals||[]).map(v=>'<div class="refmeta" style="padding:4px 0 8px">'+esc(v.reason||'')+(Array.isArray(v.relatedAccounts)?' · Accounts: '+esc(v.relatedAccounts.map(m=>m.uid).join(', ')):'')+'</div>').join('')).join(''):'<div class="refmeta">No detailed findings stored for this scan.</div>')+
-          '</div></details>';
-      }).join(''):'<p style="color:var(--muted);padding:12px">No scan history is available yet.</p>');
-  }catch(e){$('securityStatus').textContent='Could not load scan results: '+e.message;$('securityStatus').className='statusbar show error';}}
-  function signalNameForHistory(k){return ({'ip-cluster':'Shared IP cluster','fingerprint-cluster':'Shared device fingerprint','account-relationships':'Referral / account relationships'}[k]||String(k||'Signal'));}
-  const _switchTabOriginal=switchTab;
   $('broadcastRemove').onclick=async function(){const id=$('broadcastRemoveId').value.trim();if(!id)return alert('Enter the broadcast ID.');try{const r=await adminApi('/admin/remove-broadcast','POST',{broadcastId:id});$('broadcastStatus').textContent='Removed from '+r.removed+' stored message(s).';$('broadcastStatus').className='statusbar show success';}catch(e){$('broadcastStatus').textContent='Remove failed: '+e.message;$('broadcastStatus').className='statusbar show error';}};
   $('broadcastSend').onclick=async function(){const message=$('broadcastText').value.trim();if(!message)return alert('Enter a message.');this.disabled=true;try{const r=await adminApi('/admin/broadcast','POST',{target:$('broadcastTarget').value,message,dismissPolicy:$('broadcastType').value});$('broadcastStatus').textContent='Message sent to '+r.sent+' user(s).';$('broadcastStatus').className='statusbar show success';$('broadcastText').value='';if(r.broadcastId)$('broadcastRemoveId').value=r.broadcastId;}catch(e){$('broadcastStatus').textContent='Broadcast failed: '+e.message;$('broadcastStatus').className='statusbar show error';}finally{this.disabled=false;}};
 
