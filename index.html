@@ -335,8 +335,8 @@
     <div id="tab-analytics" class="tabpanel" style="display:none">
       <div class="card">
         <div class="row">
-          <div><label for="anFrom">From date (UTC)</label><input id="anFrom" type="date"></div>
-          <div><label for="anTo">To date (UTC)</label><input id="anTo" type="date"></div>
+          <div><label for="anFrom">From date (Addis Ababa)</label><input id="anFrom" type="date"></div>
+          <div><label for="anTo">To date (Addis Ababa)</label><input id="anTo" type="date"></div>
           <div><label for="anRoom">Room</label>
             <select id="anRoom">
               <option value="both">Both rooms</option>
@@ -361,6 +361,25 @@
         <div class="metric-card"><div class="lbl">Avg players / hour</div><div id="anAvgPlayers" class="val">—</div></div>
       </div>
 
+      <div class="metrics-grid" style="margin-top:14px">
+        <div class="metric-card"><div class="lbl">Total picks (real players)</div><div id="anTotalPicks" class="val green">—</div></div>
+        <div class="metric-card"><div class="lbl">Spin picks</div><div id="anSpinPicks" class="val">—</div></div>
+        <div class="metric-card"><div class="lbl">Bingo picks</div><div id="anBingoPicks" class="val">—</div></div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0">Total picks — round records</h3>
+        <p style="font-size:12px;color:var(--muted);margin:0 0 10px">
+          Number selections made by real players in each completed Spin or Bingo round. Bot selections and Ladder activity are excluded. Each Bingo card selection counts as one pick.
+        </p>
+        <div style="overflow:auto">
+          <table class="utable">
+            <thead><tr><th>Recorded (Addis Ababa)</th><th>Game</th><th>Room</th><th>Round</th><th class="num">Stake</th><th class="num">Total picks</th></tr></thead>
+            <tbody id="anTotalPickRows"><tr><td colspan="6" class="utable-empty">Load analytics to see Total picks records.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="card">
         <h3 style="margin-top:0">Hourly breakdown</h3>
         <p style="font-size:12px;color:var(--muted);margin:0 0 10px">
@@ -370,7 +389,7 @@
         <div style="overflow:auto">
           <table class="utable">
             <thead>
-              <tr><th>Hour (UTC)</th><th class="num">Rounds</th><th class="num">Players</th><th class="num">Average</th></tr>
+              <tr><th>Hour (Addis Ababa)</th><th class="num">Rounds</th><th class="num">Players</th><th class="num">Average</th></tr>
             </thead>
             <tbody id="anRows"><tr><td colspan="4" class="utable-empty">Load data to see hourly breakdown.</td></tr></tbody>
           </table>
@@ -1551,7 +1570,10 @@
     anShowStatus('Loading analytics from PostgreSQL…', 'info');
     try {
       const qs = new URLSearchParams({ from, to, room }).toString();
-      const res = await adminApi('/admin/analytics/games?' + qs);
+      const [res, picksRes] = await Promise.all([
+        adminApi('/admin/analytics/games?' + qs),
+        adminApi('/admin/analytics/total-picks?' + qs)
+      ]);
       window._analyticsLoaded = true;
       const s = res.summary || {};
       $('anAvg').textContent             = (Number(s.overallAvgPlayersPerGame || 0)).toFixed(2);
@@ -1581,7 +1603,25 @@
             '</tr>';
         }).join('');
       }
-      anShowStatus('Loaded ' + (s.roundsRecorded || 0) + ' round(s) in range.', 'success');
+      const pickSummary = picksRes.summary || {};
+      $('anTotalPicks').textContent = Number(pickSummary.totalPicks || 0).toLocaleString();
+      $('anSpinPicks').textContent = Number(pickSummary.spinPicks || 0).toLocaleString();
+      $('anBingoPicks').textContent = Number(pickSummary.bingoPicks || 0).toLocaleString();
+      const pickRows = Array.isArray(picksRes.records) ? picksRes.records : [];
+      const pickTbody = $('anTotalPickRows');
+      if (!pickRows.length) {
+        pickTbody.innerHTML = '<tr><td colspan="6" class="utable-empty">No Total picks records in this date range.</td></tr>';
+      } else {
+        const dateFmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Addis_Ababa', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+        pickTbody.innerHTML = pickRows.map(r => {
+          const stamp = Number(r.recordedAt || 0);
+          const when = stamp ? dateFmt.format(new Date(stamp)) : '—';
+          const game = String(r.game || '').toUpperCase();
+          const roomLabel = r.roomId === 'room_15' ? '15 Birr' : (r.roomId === 'room_30' ? '30 Birr' : r.roomId);
+          return '<tr><td>' + esc(when) + '</td><td>' + esc(game) + '</td><td>' + esc(roomLabel) + '</td><td>' + esc(r.roundId) + '</td><td class="num">' + Number(r.stake || 0).toLocaleString() + '</td><td class="num"><b>' + Number(r.totalPicks || 0).toLocaleString() + '</b></td></tr>';
+        }).join('');
+      }
+      anShowStatus('Loaded ' + (s.roundsRecorded || 0) + ' round(s) and ' + pickRows.length + ' Total picks record(s).', 'success');
     } catch (e) {
       anShowStatus('Load failed: ' + e.message, 'error');
       if (showErrors) showStatus('Load analytics failed: ' + e.message, 'error');
