@@ -1613,16 +1613,20 @@
     refShowStatus('Loading referrals…', 'info');
     try {
       const res = await adminApi('/admin/analytics/referrals');
+      if (!res || !res.totals || !Array.isArray(res.referrers)) {
+        throw new Error('invalid-referral-response');
+      }
+      _referralData = { totals: res.totals, referrers: res.referrers };
       window._referralsLoaded = true;
-      _referralData = { totals: res.totals || {}, referrers: Array.isArray(res.referrers) ? res.referrers : [] };
       const t = _referralData.totals;
-      $('refReferrers').textContent = String(t.referrers || 0);
-      $('refReferred').textContent  = String(t.referredUsers || 0);
+      $('refReferrers').textContent = String(Number(t.referrers || 0));
+      $('refReferred').textContent  = String(Number(t.referredUsers || 0));
       $('refEarn').textContent      = Number(t.totalEarnings || 0).toLocaleString() + ' Birr';
-      $('refAvg').textContent       = (Number(t.avgPerReferrer || 0)).toFixed(2);
+      $('refAvg').textContent       = Number(t.avgPerReferrer || 0).toFixed(2) + ' Birr';
       renderReferrals();
-      refShowStatus('Loaded ' + (t.referrers || 0) + ' referrer(s).', 'success');
+      refShowStatus('Loaded ' + Number(t.referrers || 0) + ' referrer(s) and ' + Number(t.referredUsers || 0) + ' referred player(s).', 'success');
     } catch (e) {
+      window._referralsLoaded = false;
       refShowStatus('Load failed: ' + e.message, 'error');
       if (showErrors) showStatus('Load referrals failed: ' + e.message, 'error');
     }
